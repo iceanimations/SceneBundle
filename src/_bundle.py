@@ -28,12 +28,22 @@ class BundleMaker(Form, Base):
         
         self.rootPath = None
         self.texturesMapping = {}
+        self.refNodes = []
+        self.cacheMapping = {}
         
-        self.bundleButton.clicked.connect(self.createProjectFolder)
+        self.bundleButton.clicked.connect(self.createBundle)
         self.browseButton.clicked.connect(self.browseFolder)
+        
+    def createBundle(self):
+        if self.createProjectFolder():
+            if self.collectTextures():
+                if self.collectReferences():
+                    if self.collectCaches():
+                        pass
         
     def closeEvent(self, event):
         self.deleteLater()
+        del self
         
     def browseFolder(self):
         path = QFileDialog.getExistingDirectory(self, 'Select Folder', '')
@@ -106,6 +116,11 @@ class BundleMaker(Form, Base):
             src = r"R:\Pipe_Repo\Users\Qurban\templateProject"
             shutil.copytree(src, dest)
             self.rootPath = dest
+            return True
+            
+    def clearData(self):
+        #TODO: remove the directory structure, and clear the variables
+        pass
             
     def getNiceName(self, nodeName):
         return nodeName.replace(':', '_').replace('|', '_')
@@ -127,20 +142,51 @@ class BundleMaker(Form, Base):
 
 
     def collectTextures(self):
-        self.statusLabel.setText('Preperring to collect textures...')
-        qApp.processEvents()
-        for node in self.getFileNodes():
-            origName = node.name()
-            name = self.getNiceName(origName)
-            if name != origName:
-                pc.rename(node, name)
-        self.statusLabel.setText('Creating folders and placing textures...')
+        self.statusLabel.setText('Checking texture files...')
+        textureFileNodes = self.getFileNodes()
+        badTexturePaths = []
+        for node in textureFileNodes:
+            try:
+                filePath = node.fileTextureName.get()
+            except:
+                filePath = node.filename.get()
+            if filePath:
+                if '<udim>' in filePath.lower():
+                    fileNames = self.getUDIMFiles(filePath)
+                    if not fileNames:
+                        badTexturePaths.append(filePath)
+                else:
+                    if not osp.exists(filePath):
+                        badTexturePaths.append(filePath)
+        
+        if badTexturePaths:
+            detail = 'Following textures does not exist\n'
+            for texture in badTexturePaths:
+                detail += '\n'+ texture
+            btn = msgBox.showMessage(self, title='Scene Bundle',
+                                     msg='Some textures used in the scene not found in the file system',
+                                     ques='Do you want to proceed?',
+                                     details=detail,
+                                     icon=QMessageBox.Information,
+                                     btns=QMessageBox.Yes|QMessageBox.No)
+            if btn == QMessageBox.Yes:
+                pass
+            else:
+                return
+#         self.statusLabel.setText('Preperring to collect textures...')
+#         qApp.processEvents()
+#         for node in textureFileNodes:
+#             origName = node.name()
+#             name = self.getNiceName(origName)
+#             if name != origName:
+#                 pc.rename(node, name)
+        newName = self.getNiceName(node.name())
+        self.statusLabel.setText('collecting textures...')
         qApp.processEvents()
         imagesPath = osp.join(self.rootPath, 'sourceImages')
-        badTexturePaths = []
-        for node in self.getFileNodes():
-            folderPath = osp.join(imagesPath, node.name())
-            relativePath = osp.join(osp.basename(imagesPath), node.name())
+        for node in textureFileNodes:
+            folderPath = osp.join(imagesPath, newName)
+            relativePath = osp.join(osp.basename(imagesPath), newName)
             os.mkdir(folderPath)
             try:
                 textureFilePath = node.fileTextureName.get()
@@ -154,29 +200,75 @@ class BundleMaker(Form, Base):
                             shutil.copy(phile, folderPath)
                         relativeFilePath = osp.join(relativePath, re.sub('\.\d+\.', '.<UDIM>.', osp.basename(fileNames[0])))
                         self.texturesMapping[node] = relativeFilePath
-                    else:
-                        badTexturePaths.append(textureFilePath)
                 else:
                     if osp.exists(textureFilePath):
                         shutil.copy(textureFilePath, folderPath)
                         relativeFilePath = osp.join(relativePath, osp.basename(textureFilePath))
                         self.texturesMapping[node] = relativeFilePath
-                    else:
-                        badTexturePaths.append(textureFilePath)
-        if badTexturePaths:
-            detail = 'Following textures does not exist\n'
-            for texture in badTexturePaths:
-                detail += '\n'+ texture
+        self.statusLabel.setText('All textures collected successfully...')
+        qApp.processEvents()
+        return True
+    
+    def getRefNodes(self):
+        return [pc.FileReference(node) for node in pc.ls(type=pc.nt.Reference)]
+    
+    def collectReferences(self):
+        self.statusLabel.setText('collecting references info...')
+        refNodes = self.getRefNodes()
+        if refNodes:
+            for ref in refNodes:
+                if ref.isLoaded():
+                    self.refNodes.append(ref)
+        else:
+            self.statusLabel.setText('No references found in the scene...')
+            qApp.processEvents()
+        return True
+    
+    def getCacheNodes(self):
+        return pc.ls(type=pc.nt.CacheFile)
+    
+    def collectCaches(self):
+        self.statusLabel.setText('Prepering to collect cache files...')
+        qApp.processEvents()
+        cacheNodes = self.getCacheNodes()
+        badCachePaths = []
+        self.statusLabel.setText('checking cache files...')
+        qApp.processEvents()
+        for node in cacheNodes:
+            cacheXMLFilePath, cacheMCFilePath = node.getFileName()
+            if not osp.exists(cacheXMLFilePath):
+                badCachePaths.append(cacheXMLFilePath)
+            if not osp.exists(cacheMCFilePath):
+                badCachePaths.append(cacheMCFilePath)
+        if badCachePaths:
+            detail = 'Following cache files not found\n'
+            for phile in badCachePaths:
+                detail += '\n'+ phile
             btn = msgBox.showMessage(self, title='Scene Bundle',
-                                     msg='Some textures used in the scene not found in the file system',
+                                     msg='Some cache files used in the scene not found in the file system',
                                      ques='Do you want to proceed?',
                                      details=detail,
                                      icon=QMessageBox.Information,
                                      btns=QMessageBox.Yes|QMessageBox.No)
             if btn == QMessageBox.Yes:
-                self.collectReferences()
+                pass
             else:
                 return
-    
-    def collectReferences(self):
-        
+        self.statusLabel.setText('collecting cache files...')
+        qApp.processEvents()
+        cacheFolder = osp.join(self.rootPath, 'cache')
+        for node in cacheNodes:
+            cacheXMLFilePath, cacheMCFilePath = node.getFileName()
+            #origName = node.name()
+            newName = self.getNiceName(node.name())
+            #if newName !=origName:
+            #    pc.rename(node, newName)
+            relativePath = osp.join(osp.basename(cacheFolder), newName)
+            folderPath = osp.join(cacheFolder, newName)
+            os.mkdir(folderPath)
+            shutil.copy(cacheXMLFilePath, folderPath)
+            shutil.copy(cacheMCFilePath, folderPath)
+            #node.cachePath.set(relativePath)
+            #node.cacheName.set(osp.splitext(osp.basename(cacheMCFilePath))[0])
+            self.cacheMapping[node] = [relativePath, osp.splitext(osp.basename(cacheMCFilePath))[0]]
+        return True
