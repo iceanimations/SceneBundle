@@ -26,13 +26,6 @@ import pymel.core as pc
 import maya.cmds as cmds
 import os.path as osp
 rootPath = osp.dirname(osp.dirname(cmds.file(q=True, location=True)))
-for node in pc.ls(type='cacheFile'):
-    path = node.cachePath.get()
-    if path:
-        base2 = osp.basename(path)
-        base1 = osp.basename(osp.dirname(path))
-        path = osp.join(rootPath, base1, base2)
-        node.cachePath.set(path)
 for node in pc.ls(type='reference'):
     try:
         fNode = pc.FileReference(node)
@@ -40,6 +33,13 @@ for node in pc.ls(type='reference'):
         fNode.replaceWith(refPath)
     except:
         pass
+for node in pc.ls(type='cacheFile'):
+    path = node.cachePath.get()
+    if path:
+        base2 = osp.basename(path)
+        base1 = osp.basename(osp.dirname(path))
+        path = osp.join(rootPath, base1, base2)
+        node.cachePath.set(path)
 def getLast3(path):
     b1 = osp.basename(path)
     b2 = osp.basename(osp.dirname(path))
@@ -242,11 +242,13 @@ class BundleMaker(Form, Base):
                     if fileNames:
                         for phile in fileNames:
                             shutil.copy(phile, folderPath)
+                            self.copyTxFile(phile, folderPath)
                         relativeFilePath = osp.join(relativePath, re.sub('\.\d+\.', '.<udim>.', osp.basename(fileNames[0])))
                         self.texturesMapping[node] = relativeFilePath # osp.join(folderPath, osp.basename(textureFilePath))
                 else:
                     if osp.exists(textureFilePath):
                         shutil.copy(textureFilePath, folderPath)
+                        self.copyTxFile(textureFilePath, folderPath)
                         relativeFilePath = osp.join(relativePath, osp.basename(textureFilePath))
                         self.texturesMapping[node] = relativeFilePath
             newName = newName + 1
@@ -257,6 +259,12 @@ class BundleMaker(Form, Base):
         self.statusLabel.setText('All textures collected successfully...')
         qApp.processEvents()
         return True
+    
+    def copyTxFile(self, path, path2):
+        directoryPath, ext = osp.splitext(path)
+        directoryPath += '.tx'
+        if osp.exists(directoryPath):
+            shutil.copy(directoryPath, path2)
     
     def getRefNodes(self):
         nodes = []
