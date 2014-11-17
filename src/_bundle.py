@@ -21,6 +21,37 @@ import maya.cmds as cmds
 root_path = osp.dirname(osp.dirname(__file__))
 ui_path = osp.join(root_path, 'ui')
 
+mapCacheFiles = '''
+import pymel.core as pc
+import maya.cmds as cmds
+import os.path as osp
+rootPath = osp.dirname(osp.dirname(cmds.file(q=True, location=True)))
+for node in pc.ls(type='cacheFile'):
+    path = node.cachePath.get()
+    if path:
+        base2 = osp.basename(path)
+        base1 = osp.basename(osp.dirname(path))
+        path = osp.join(rootPath, base1, base2)
+        node.cachePath.set(path)
+for node in pc.ls(type='reference'):
+    try:
+        fNode = pc.FileReference(node)
+        refPath = osp.join(rootPath, 'scenes', 'refs', osp.basename(fNode.path))
+        fNode.replaceWith(refPath)
+    except:
+        pass
+def getLast3(path):
+    b1 = osp.basename(path)
+    b2 = osp.basename(osp.dirname(path))
+    b3 = osp.basename(osp.dirname(osp.dirname(path)))
+    return osp.join(b3, b2, b1)
+for node in pc.ls(type=['aiImage', 'file']):
+    try:
+        node.fileTextureName.set(osp.join(rootPath, getLast3(node.fileTextureName.get())))
+    except:
+        node.filename.set(osp.join(rootPath, getLast3(node.filename.get())))
+'''
+
 Form, Base = uic.loadUiType(osp.join(ui_path, 'bundle.ui'))
 class BundleMaker(Form, Base):
     def __init__(self, parent=qtfy.getMayaWindow()):
@@ -39,22 +70,27 @@ class BundleMaker(Form, Base):
         
         self.progressBar.hide()
         
+    def createScriptNode(self):
+        pc.scriptNode(st=2, bs=mapCacheFiles, stp='python')
         
     def createBundle(self):
+        ws = pc.workspace(o=True, q=True)
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
         qApp.processEvents()
         if self.createProjectFolder():
+            pc.workspace(self.rootPath, o=True)
             if self.collectTextures():
-                #if self.collectReferences():
-                if self.collectCaches():
-                    #self.importRef()
-                    self.mapTextures()
-                    self.mapCache()
-                    self.exportScene()
+                if self.collectReferences():
+                    if self.collectCaches():
+                        self.copyRef()
+                        self.mapTextures()
+                        self.mapCache()
+                        self.exportScene()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         qApp.processEvents()
+        pc.workspace(ws, o=True)
         
     def closeEvent(self, event):
         self.deleteLater()
@@ -105,23 +141,8 @@ class BundleMaker(Form, Base):
                                                  icon=QMessageBox.Warning)
                         if btn == QMessageBox.Ok:
                             errors = {}
-#                             for phile in files:
-#                                 filePath = osp.join(dest, phile)
-#                                 try:
-#                                     if osp.isfile(filePath):
-#                                         os.remove(filePath)
-#                                     else:
-#                                         try:
-#                                             shutil.rmtree(filePath)
-#                                         except:
-#                                             os.rmdir(filePath)
-#                                 except Exception as ex:
-#                                     errors[filePath] = str(ex)
                             try:
-                                #os.rmdir(dest)
-                                #except Exception as ex:
                                 shutil.rmtree(dest)
-                                #errors[dest] = str(ex)
                             except Exception as ex:
                                 errors[dest] = str(ex)
                             if errors:
@@ -199,13 +220,6 @@ class BundleMaker(Form, Base):
                 pass
             else:
                 return
-#         self.statusLabel.setText('Preperring to collect textures...')
-#         qApp.processEvents()
-#         for node in textureFileNodes:
-#             origName = node.name()
-#             name = self.getNiceName(origName)
-#             if name != origName:
-#                 pc.rename(node, name)
         newName = 0
         self.statusLabel.setText('collecting textures...')
         qApp.processEvents()
@@ -224,15 +238,13 @@ class BundleMaker(Form, Base):
                     fileNames = self.getUDIMFiles(textureFilePath)
                     if fileNames:
                         for phile in fileNames:
-                            #print 'copying '+ phile + ' > ' + folderPath
                             shutil.copy(phile, folderPath)
                         relativeFilePath = osp.join(relativePath, re.sub('\.\d+\.', '.<udim>.', osp.basename(fileNames[0])))
-                        self.texturesMapping[node] = osp.join(folderPath, osp.basename(textureFilePath)) #relativeFilePath
+                        self.texturesMapping[node] = relativeFilePath # osp.join(folderPath, osp.basename(textureFilePath))
                 else:
                     if osp.exists(textureFilePath):
-                        #print 'copying ' + textureFilePath + ' > ' + folderPath
                         shutil.copy(textureFilePath, folderPath)
-                        relativeFilePath = osp.join(folderPath, osp.basename(textureFilePath))
+                        relativeFilePath = osp.join(relativePath, osp.basename(textureFilePath))
                         self.texturesMapping[node] = relativeFilePath
             newName = newName + 1
             self.progressBar.setValue(newName)
@@ -244,7 +256,13 @@ class BundleMaker(Form, Base):
         return True
     
     def getRefNodes(self):
-        return [pc.FileReference(node) for node in pc.ls(type=pc.nt.Reference)]
+        nodes = []
+        for node in pc.ls(type=pc.nt.Reference):
+            try:
+                nodes.append(pc.FileReference(node))
+            except:
+                pass
+        return nodes
     
     def collectReferences(self):
         self.statusLabel.setText('collecting references info...')
@@ -347,20 +365,22 @@ class BundleMaker(Form, Base):
                     shutil.copy(fullPath, particleCachePath)
             self.statusLabel.setText('particle cache collected successfully')
             
-    def importRef(self):
-        self.statusLabel.setText('Importing references...')
+    def copyRef(self):
+        self.statusLabel.setText('copying references...')
         qApp.processEvents()
         c = 0
         self.progressBar.setMaximum(len(self.refNodes))
         if self.refNodes:
+            refsPath = osp.join(self.rootPath, 'scenes', 'refs')
+            os.mkdir(refsPath)
             for ref in self.refNodes:
-                ref.importContents()
+                shutil.copy(ref.path, refsPath)
                 c += 1
                 self.progressBar.setValue(c)
                 qApp.processEvents()
             self.progressBar.setValue(0)
             qApp.processEvents()
-    
+
     def mapTextures(self):
         self.statusLabel.setText('Mapping collected textures...')
         qApp.processEvents()
@@ -369,13 +389,15 @@ class BundleMaker(Form, Base):
         for node in self.texturesMapping:
             try:
                 node.fileTextureName.set(self.texturesMapping[node])
-            except:
+                print 'node info...', node, node.ftn.get(), self.texturesMapping[node]
+            except AttributeError:
                 node.filename.set(self.texturesMapping[node])
             c += 1
             self.progressBar.setValue(c)
             qApp.processEvents()
         self.progressBar.setValue(0)
         qApp.processEvents()
+        
     
     def mapCache(self):
         self.statusLabel.setText('Mapping cache files...')
@@ -390,10 +412,11 @@ class BundleMaker(Form, Base):
             qApp.processEvents()
         self.progressBar.setValue(0)
         qApp.processEvents()
-            
+
     def exportScene(self):
         self.statusLabel.setText('Exporting scene...')
         qApp.processEvents()
+        self.createScriptNode()
         scenePath = osp.join(self.rootPath, 'scenes', str(self.nameBox.text()))
         pc.exportAll(scenePath, type=cmds.file(q=True, type=True)[0],
                      f=True, pr=True)
