@@ -178,7 +178,10 @@ class BundleMaker(Form, Base):
         if not osp.exists(dirname):
             return []
         fileName = osp.basename(path)
-        first, byProduct, last = fileName.split('.')
+        try:
+            first, byProduct, last = fileName.split('.')
+        except:
+            return []
         pattern = first +'\.\d+\.'+ last
         goodFiles = []
         fileNames = os.listdir(dirname)
