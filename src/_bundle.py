@@ -26,14 +26,14 @@ import pymel.core as pc
 import maya.cmds as cmds
 import os.path as osp
 rootPath = osp.dirname(osp.dirname(cmds.file(q=True, location=True)))
-for node in pc.ls(type='reference'):
+for node in pc.ls(type="reference"):
     try:
         fNode = pc.FileReference(node)
-        refPath = osp.join(rootPath, 'scenes', 'refs', osp.basename(fNode.path))
+        refPath = osp.join(rootPath, "scenes", "refs", osp.basename(fNode.path))
         fNode.replaceWith(refPath)
     except:
         pass
-for node in pc.ls(type='cacheFile'):
+for node in pc.ls(type="cacheFile"):
     path = node.cachePath.get()
     if path:
         base2 = osp.basename(path)
@@ -45,7 +45,7 @@ def getLast3(path):
     b2 = osp.basename(osp.dirname(path))
     b3 = osp.basename(osp.dirname(osp.dirname(path)))
     return osp.join(b3, b2, b1)
-for node in pc.ls(type=['aiImage', 'file']):
+for node in pc.ls(type=["aiImage", "file"]):
     try:
         node.fileTextureName.set(osp.join(rootPath, getLast3(node.fileTextureName.get())))
     except:
@@ -400,7 +400,6 @@ class BundleMaker(Form, Base):
         for node in self.texturesMapping:
             try:
                 node.fileTextureName.set(self.texturesMapping[node])
-                print 'node info...', node, node.ftn.get(), self.texturesMapping[node]
             except AttributeError:
                 node.filename.set(self.texturesMapping[node])
             c += 1
