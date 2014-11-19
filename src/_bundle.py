@@ -33,13 +33,6 @@ for node in pc.ls(type="reference"):
         fNode.replaceWith(refPath)
     except:
         pass
-for node in pc.ls(type="cacheFile"):
-    path = node.cachePath.get()
-    if path:
-        base2 = osp.basename(path)
-        base1 = osp.basename(osp.dirname(path))
-        path = osp.join(rootPath, base1, base2)
-        node.cachePath.set(path)
 def getLast3(path):
     b1 = osp.basename(path)
     b2 = osp.basename(osp.dirname(path))
@@ -50,6 +43,13 @@ for node in pc.ls(type=["aiImage", "file"]):
         node.fileTextureName.set(osp.join(rootPath, getLast3(node.fileTextureName.get())))
     except:
         node.filename.set(osp.join(rootPath, getLast3(node.filename.get())))
+for node in pc.ls(type="cacheFile"):
+    path = node.cachePath.get()
+    if path:
+        base2 = osp.basename(path)
+        base1 = osp.basename(osp.dirname(path))
+        path = osp.join(rootPath, base1, base2)
+        node.cachePath.set(path)
 '''
 
 Form, Base = uic.loadUiType(osp.join(ui_path, 'bundle.ui'))
