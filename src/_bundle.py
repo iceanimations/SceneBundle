@@ -385,7 +385,10 @@ class BundleMaker(Form, Base):
             refsPath = osp.join(self.rootPath, 'scenes', 'refs')
             os.mkdir(refsPath)
             for ref in self.refNodes:
-                shutil.copy(ref.path, refsPath)
+                try:
+                    shutil.copy(ref.path, refsPath)
+                except:
+                    pass
                 c += 1
                 self.progressBar.setValue(c)
                 qApp.processEvents()
