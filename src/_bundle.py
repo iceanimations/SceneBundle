@@ -17,6 +17,7 @@ import shutil
 import pymel.core as pc
 import msgBox
 import maya.cmds as cmds
+import appUsageApp
 
 root_path = osp.dirname(osp.dirname(__file__))
 ui_path = osp.join(root_path, 'ui')
@@ -26,13 +27,18 @@ import pymel.core as pc
 import maya.cmds as cmds
 import os.path as osp
 rootPath = osp.dirname(osp.dirname(cmds.file(q=True, location=True)))
+msg = False
 for node in pc.ls(type="reference"):
+    if node.name() == "sharedReferenceNode":
+        continue
     try:
         fNode = pc.FileReference(node)
         refPath = osp.join(rootPath, "scenes", "refs", osp.basename(fNode.path))
         fNode.replaceWith(refPath)
     except:
-        pass
+        msg = True
+if msg:
+    pc.confirmDialog(title="Scene Bundle", message="Could not load all references, please see the Reference Editor", button="Ok")
 def getLast3(path):
     b1 = osp.basename(path)
     b2 = osp.basename(osp.dirname(path))
@@ -70,6 +76,8 @@ class BundleMaker(Form, Base):
         
         self.progressBar.hide()
         
+        appUsageApp.updateDatabase('sceneBundle')
+        
     def createScriptNode(self):
         pc.scriptNode(st=2, bs=mapCacheFiles, stp='python')
         
@@ -83,12 +91,13 @@ class BundleMaker(Form, Base):
             if self.collectTextures():
                 if self.collectReferences():
                     if self.collectCaches():
-                        self.copyRef()
-                        self.mapTextures()
-                        self.mapCache()
-                        self.exportScene()
+                        if self.copyRef():
+                            self.mapTextures()
+                            self.mapCache()
+                            self.exportScene()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
+        self.statusLabel.setText('')
         qApp.processEvents()
         pc.workspace(ws, o=True)
         
@@ -135,11 +144,11 @@ class BundleMaker(Form, Base):
                     files = os.listdir(dest)
                     if files:
                         btn = msgBox.showMessage(self, title='Scene Bundle',
-                                                 msg='A directory already exists with the specified name at specified path and is not empty.'+
-                                                 '\nPress Ok to proceed and clear the directory or press Cancel to stop the script',
-                                                 btns=QMessageBox.Ok|QMessageBox.Cancel,
+                                                 msg='A directory already exists with the specified name at specified path and is not empty',
+                                                 ques='Do you want to replace it?',
+                                                 btns=QMessageBox.Yes|QMessageBox.No,
                                                  icon=QMessageBox.Warning)
-                        if btn == QMessageBox.Ok:
+                        if btn == QMessageBox.Yes:
                             errors = {}
                             try:
                                 shutil.rmtree(dest)
@@ -269,6 +278,8 @@ class BundleMaker(Form, Base):
     def getRefNodes(self):
         nodes = []
         for node in pc.ls(type=pc.nt.Reference):
+            if node.name() == 'sharedReferenceNode':
+                continue
             try:
                 nodes.append(pc.FileReference(node))
             except:
@@ -281,17 +292,34 @@ class BundleMaker(Form, Base):
         self.progressBar.setMaximum(len(refNodes))
         if refNodes:
             c = 1
+            badRefs = {}
             for ref in refNodes:
                 try:
                     if ref.isLoaded():
+                        if not osp.exists(ref.path):
+                            badRefs[ref] = 'Does not exist in file system'
+                            continue
                         self.refNodes.append(ref)
-                except:
-                    pass
+                except Exception as ex:
+                    badRefs[ref] = str(ex)
                 self.progressBar.setValue(c)
                 qApp.processEvents()
                 c += 1
             self.progressBar.setValue(0)
             qApp.processEvents()
+            if badRefs:
+                detail = 'Following references can not be collected\n'
+                for node in badRefs:
+                    detail += '\n'+ node.path + '\nReason: '+ badRefs[node]
+                btn = msgBox.showMessage(self, title='Scene Bundle',
+                                         msg='Errors occured while collecting references',
+                                         ques='Do you want to proceed?',
+                                         icon=QMessageBox.Warning,
+                                         btns=QMessageBox.Yes|QMessageBox.No,
+                                         details=detail)
+                if btn == QMessageBox.Ok:
+                    pass
+                else: return False
         else:
             self.statusLabel.setText('No references found in the scene...')
             qApp.processEvents()
@@ -384,16 +412,32 @@ class BundleMaker(Form, Base):
         if self.refNodes:
             refsPath = osp.join(self.rootPath, 'scenes', 'refs')
             os.mkdir(refsPath)
+            errors = {}
             for ref in self.refNodes:
                 try:
+                    if osp.exists(osp.join(refsPath, osp.basename(ref.path))):
+                        continue
                     shutil.copy(ref.path, refsPath)
-                except:
-                    pass
+                except Exception as ex:
+                    errors[ref] = str(ex)
                 c += 1
                 self.progressBar.setValue(c)
                 qApp.processEvents()
             self.progressBar.setValue(0)
             qApp.processEvents()
+            if errors:
+                detail = 'Could not copy following references\n'
+                for node in errors:
+                    detail += '\n'+ node.path + '\nReason: '+errors[node]
+                btn = msgBox.showMessage(self, title='Scene Bundle',
+                                         msg='Errors occured while copying references',
+                                         ques='Do you want to proceed?',
+                                         icon=QMessageBox.Warning,
+                                         btns=QMessageBox.Yes|QMessageBox.No)
+                if btn == QMessageBox.Yes:
+                    pass
+                else: return False
+        return True
 
     def mapTextures(self):
         self.statusLabel.setText('Mapping collected textures...')
