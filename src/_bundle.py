@@ -14,49 +14,15 @@ import shutil
 import os
 import re
 import shutil
+import _utilities as util
 import pymel.core as pc
-import msgBox
 import maya.cmds as cmds
 import appUsageApp
 
 root_path = osp.dirname(osp.dirname(__file__))
 ui_path = osp.join(root_path, 'ui')
 
-mapCacheFiles = '''
-import pymel.core as pc
-import maya.cmds as cmds
-import os.path as osp
-rootPath = osp.dirname(osp.dirname(cmds.file(q=True, location=True)))
-msg = False
-for node in pc.ls(type="reference"):
-    if node.name() == "sharedReferenceNode":
-        continue
-    try:
-        fNode = pc.FileReference(node)
-        refPath = osp.join(rootPath, "scenes", "refs", osp.basename(fNode.path))
-        fNode.replaceWith(refPath)
-    except:
-        msg = True
-if msg:
-    pc.confirmDialog(title="Scene Bundle", message="Could not load all references, please see the Reference Editor", button="Ok")
-def getLast3(path):
-    b1 = osp.basename(path)
-    b2 = osp.basename(osp.dirname(path))
-    b3 = osp.basename(osp.dirname(osp.dirname(path)))
-    return osp.join(b3, b2, b1)
-for node in pc.ls(type=["aiImage", "file"]):
-    try:
-        node.fileTextureName.set(osp.join(rootPath, getLast3(node.fileTextureName.get())))
-    except:
-        node.filename.set(osp.join(rootPath, getLast3(node.filename.get())))
-for node in pc.ls(type="cacheFile"):
-    path = node.cachePath.get()
-    if path:
-        base2 = osp.basename(path)
-        base1 = osp.basename(osp.dirname(path))
-        path = osp.join(rootPath, base1, base2)
-        node.cachePath.set(path)
-'''
+mapFiles = util.mapFiles
 
 Form, Base = uic.loadUiType(osp.join(ui_path, 'bundle.ui'))
 class BundleMaker(Form, Base):
@@ -79,7 +45,11 @@ class BundleMaker(Form, Base):
         appUsageApp.updateDatabase('sceneBundle')
         
     def createScriptNode(self):
-        pc.scriptNode(st=2, bs=mapCacheFiles, stp='python')
+        pc.scriptNode(st=2, bs=mapFiles, stp='python')
+        
+    def closeEvent(self, event):
+        self.deleteLater()
+        del self
         
     def createBundle(self):
         ws = pc.workspace(o=True, q=True)
@@ -91,24 +61,16 @@ class BundleMaker(Form, Base):
             if self.collectTextures():
                 if self.collectReferences():
                     if self.collectCaches():
-                        if self.copyRef():
-                            self.mapTextures()
-                            self.mapCache()
-                            self.exportScene()
+                        if self.collectParticleCache():
+                            if self.copyRef():
+                                self.mapTextures()
+                                self.mapCache()
+                                self.exportScene()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         self.statusLabel.setText('')
         qApp.processEvents()
         pc.workspace(ws, o=True)
-        
-    def closeEvent(self, event):
-        self.deleteLater()
-        del self
-        
-    def browseFolder(self):
-        path = QFileDialog.getExistingDirectory(self, 'Select Folder', '')
-        if path:
-            self.pathBox.setText(path)
         
     def getPath(self):
         path = str(self.pathBox.text())
@@ -122,15 +84,6 @@ class BundleMaker(Form, Base):
         else:
             msgBox.showMessage(self, title='Scene Bundle',
                                msg='Path not specified',
-                               icon=QMessageBox.Information)
-            
-    def getName(self):
-        name = str(self.nameBox.text())
-        if name:
-            return name
-        else:
-            msgBox.showMessage(self, title='Scene Bundle',
-                               msg='Name not specified',
                                icon=QMessageBox.Information)
     
     def createProjectFolder(self):
@@ -165,10 +118,32 @@ class BundleMaker(Form, Base):
                                 return
                         else:
                             return
+                    else:
+                        try:
+                            os.rmdir(dest)
+                        except Exception as ex:
+                            msgBox.showMessage(self, title='Scene Bundle',
+                                               msg=str(ex),
+                                               icon=QMessageBox.Information)
+                            return
             src = r"R:\Pipe_Repo\Users\Qurban\templateProject"
             shutil.copytree(src, dest)
             self.rootPath = dest
             return True
+        
+    def getName(self):
+        name = str(self.nameBox.text())
+        if name:
+            return name
+        else:
+            msgBox.showMessage(self, title='Scene Bundle',
+                               msg='Name not specified',
+                               icon=QMessageBox.Information)
+        
+    def browseFolder(self):
+        path = QFileDialog.getExistingDirectory(self, 'Select Folder', '')
+        if path:
+            self.pathBox.setText(path)
             
     def clearData(self):
         self.rootPath = None
@@ -253,7 +228,7 @@ class BundleMaker(Form, Base):
                             shutil.copy(phile, folderPath)
                             self.copyTxFile(phile, folderPath)
                         relativeFilePath = osp.join(relativePath, re.sub('\.\d+\.', '.<udim>.', osp.basename(fileNames[0])))
-                        self.texturesMapping[node] = relativeFilePath # osp.join(folderPath, osp.basename(textureFilePath))
+                        self.texturesMapping[node] = relativeFilePath
                 else:
                     if osp.exists(textureFilePath):
                         shutil.copy(textureFilePath, folderPath)
@@ -362,6 +337,7 @@ class BundleMaker(Form, Base):
         cacheFolder = osp.join(self.rootPath, 'cache')
         newName = 0
         self.progressBar.setMaximum(len(cacheNodes))
+        errors = {}
         for node in cacheNodes:
             cacheFiles = node.getFileName()
             if cacheFiles:
@@ -370,17 +346,33 @@ class BundleMaker(Form, Base):
                 relativePath = osp.join(osp.basename(cacheFolder), str(newName))
                 folderPath = osp.join(cacheFolder, str(newName))
                 os.mkdir(folderPath)
-                shutil.copy(cacheXMLFilePath, folderPath)
-                shutil.copy(cacheMCFilePath, folderPath)
+                try:
+                    shutil.copy(cacheXMLFilePath, folderPath)
+                    shutil.copy(cacheMCFilePath, folderPath)
+                except Exception as ex:
+                    errors[osp.splitext(cacheMCFilePath)[0]] = str(ex)
                 self.cacheMapping[node] = osp.join(folderPath, osp.splitext(osp.basename(cacheMCFilePath))[0])
                 self.progressBar.setValue(newName)
                 qApp.processEvents()
+        if errors:
+            detail = 'Could not collect following cache files'
+            for cPath in errors.keys():
+                detail += '\n\n'+ cPath + '\nReason: '+ errors[cPath]
+            btn = msgBox.showMessage(self, title='Scene Bundle',
+                                     msg='Could not collect some of the cache files. '+
+                                     'This would result in loss of animation',
+                                     ques='Do you want to proceed?',
+                                     btns=QMessageBox.Yes|QMessageBox.No,
+                                     icon=QMessageBox.Warning)
+            if btn == QMessageBox.Yes:
+                pass
+            else: return
         self.progressBar.setValue(0)
         qApp.processEvents()
         return True
     
     def getParticleNode(self):
-        return pc.dynGlobals(a=True, q=True)
+        return pc.PyNode(pc.dynGlobals(a=True, q=True))
     
     def getParcleCacheDirectory(self):
         node = self.getParticleNode()
@@ -399,10 +391,36 @@ class BundleMaker(Form, Base):
             os.mkdir(particleCachePath)
             files = os.listdir(path)
             if files:
+                count = 1
+                self.progressBar.setMaximum(len(files))
+                errors = {}
                 for phile in files:
                     fullPath = osp.join(path, phile)
-                    shutil.copy(fullPath, particleCachePath)
-            self.statusLabel.setText('particle cache collected successfully')
+                    try:
+                        shutil.copy(fullPath, particleCachePath)
+                    except Exception as ex:
+                        errors[fullPath] = str(ex)
+                    self.progressBar.setValue(count)
+                    qApp.processEvents()
+                    count += 1
+                if errors:
+                    detail = 'Could not collect following cacha files'
+                    for cPath in errors.keys():
+                        detail += '\n\n'+cPath + '\nReason: '+ errors[cPath]
+                    btn = msgBox.showMessage(self, title='Scene Bundle',
+                                             msg='Could not collect some of the particle cache files. '+
+                                             'This would result in loss of animation',
+                                             ques='Do you want to proceed?',
+                                             details=detail,
+                                             btns=QMessageBox.Yes|QMessageBox.No,
+                                             icon=QMessageBox.Warning)
+                    if btn == QMessageBox.Yes:
+                        pass
+                    else: return
+                self.progressBar.setValue(0)
+                self.statusLabel.setText('particle cache collected successfully')
+                qApp.processEvents()
+        return True
             
     def copyRef(self):
         self.statusLabel.setText('copying references...')
@@ -469,6 +487,10 @@ class BundleMaker(Form, Base):
             qApp.processEvents()
         self.progressBar.setValue(0)
         qApp.processEvents()
+        
+    def mapParticleCache(self):
+        #TODO: implement this method
+        pass
 
     def exportScene(self):
         self.statusLabel.setText('Exporting scene...')
