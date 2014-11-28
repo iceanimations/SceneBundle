@@ -12,7 +12,7 @@ rootPath = osp.dirname(osp.dirname(cmds.file(q=True, location=True)))
 msg = False
 pc.workspace(rootPath, o=True)
 for node in pc.ls(type="reference"):
-    if node.name() == "sharedReferenceNode":
+    if not node.referenceFile():
         continue
     try:
         fNode = pc.FileReference(node)

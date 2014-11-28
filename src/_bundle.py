@@ -61,14 +61,16 @@ class BundleMaker(Form, Base):
             if self.collectTextures():
                 if self.collectReferences():
                     if self.collectCaches():
+                        pc.workspace(ws, o=True)
                         if self.collectParticleCache():
+                            pc.workspace(self.rootPath, o=True)
                             if self.copyRef():
                                 self.mapTextures()
                                 self.mapCache()
                                 self.exportScene()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
-        self.statusLabel.setText('')
+        #self.statusLabel.setText('')
         qApp.processEvents()
         pc.workspace(ws, o=True)
         
@@ -253,7 +255,7 @@ class BundleMaker(Form, Base):
     def getRefNodes(self):
         nodes = []
         for node in pc.ls(type=pc.nt.Reference):
-            if node.name() == 'sharedReferenceNode':
+            if not node.referenceFile():
                 continue
             try:
                 nodes.append(pc.FileReference(node))
@@ -374,7 +376,7 @@ class BundleMaker(Form, Base):
     def getParticleNode(self):
         return pc.PyNode(pc.dynGlobals(a=True, q=True))
     
-    def getParcleCacheDirectory(self):
+    def getParticleCacheDirectory(self):
         node = self.getParticleNode()
         if node.useParticleDiskCache.get():
             pfr = pc.workspace(fre='particles')
@@ -384,7 +386,7 @@ class BundleMaker(Form, Base):
     def collectParticleCache(self):
         self.statusLabel.setText('Collecting particle cache...')
         qApp.processEvents()
-        path = self.getParcleCacheDirectory()
+        path = self.getParticleCacheDirectory()
         if path:
             particlePath = osp.join(self.rootPath, 'cache', 'particles')
             particleCachePath = osp.join(particlePath, osp.basename(path))
@@ -420,6 +422,8 @@ class BundleMaker(Form, Base):
                 self.progressBar.setValue(0)
                 self.statusLabel.setText('particle cache collected successfully')
                 qApp.processEvents()
+            else:
+                self.statusLabel.setText('No particle cache found...')
         return True
             
     def copyRef(self):
@@ -489,7 +493,9 @@ class BundleMaker(Form, Base):
         qApp.processEvents()
         
     def mapParticleCache(self):
-        #TODO: implement this method
+        # no need to map particle cache
+        # because we set the workspace
+        # at the time of scene open
         pass
 
     def exportScene(self):
