@@ -52,6 +52,11 @@ class BundleMaker(Form, Base):
         del self
         
     def createBundle(self):
+        if cmds.file(q=True, modified=True):
+            msgBox.showMessage(self, title='Scene Bundle',
+                               msg='Your scene contains unsaved changes, save them before proceeding',
+                               icon=QMessageBox.Warning)
+            return
         ws = pc.workspace(o=True, q=True)
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
@@ -73,6 +78,13 @@ class BundleMaker(Form, Base):
         #self.statusLabel.setText('')
         qApp.processEvents()
         pc.workspace(ws, o=True)
+        btn = msgBox.showMessage(self, title='Scene Bundle',
+                                 msg='Some changes were made to the scene, please don\'t save the scene and close it',
+                                 ques='Do you want to close it now?',
+                                 btns=QMessageBox.Yes|QMessageBox.No,
+                                 icon=QMessageBox.Information)
+        if btn == QMessageBox.Yes:
+            cmds.file(new=True, force=True)
         
     def getPath(self):
         path = str(self.pathBox.text())
