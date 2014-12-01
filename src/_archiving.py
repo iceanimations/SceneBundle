@@ -130,7 +130,10 @@ def make_archive(dirname, format='7z', comp_level=1, progressBar=None):
     if comp_level not in levels:
         raise ArchivingError, "Unknown Compression level"
 
-    archive = remove_file(dirname, ext)
+    try:
+        archive = remove_file(dirname, ext)
+    except Exception as e:
+        raise ArchivingError, "Cannot remove existing Archive %s "%archive + str(e)
     if os.path.exists(archive):
         raise ArchivingError, "Cannot remove existing Archive %s" %archive
 
