@@ -61,6 +61,7 @@ class BundleMaker(Form, Base):
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
         qApp.processEvents()
+        modified = False
         if self.createProjectFolder():
             pc.workspace(self.rootPath, o=True)
             if self.collectTextures():
@@ -70,6 +71,7 @@ class BundleMaker(Form, Base):
                         if self.collectParticleCache():
                             pc.workspace(self.rootPath, o=True)
                             if self.copyRef():
+                                modified = True
                                 self.mapTextures()
                                 self.mapCache()
                                 self.exportScene()
@@ -78,13 +80,14 @@ class BundleMaker(Form, Base):
         #self.statusLabel.setText('')
         qApp.processEvents()
         pc.workspace(ws, o=True)
-        btn = msgBox.showMessage(self, title='Scene Bundle',
-                                 msg='Some changes were made to the scene, please don\'t save the scene and close it',
-                                 ques='Do you want to close it now?',
-                                 btns=QMessageBox.Yes|QMessageBox.No,
-                                 icon=QMessageBox.Information)
-        if btn == QMessageBox.Yes:
-            cmds.file(new=True, force=True)
+        if modified:
+            btn = msgBox.showMessage(self, title='Scene Bundle',
+                                     msg='Some changes were made to the scene, please don\'t save the scene and close it',
+                                     ques='Do you want to close it now?',
+                                     btns=QMessageBox.Yes|QMessageBox.No,
+                                     icon=QMessageBox.Information)
+            if btn == QMessageBox.Yes:
+                cmds.file(new=True, force=True)
         
     def getPath(self):
         path = str(self.pathBox.text())
