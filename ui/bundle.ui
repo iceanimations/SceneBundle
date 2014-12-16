@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>403</width>
-    <height>117</height>
+    <height>140</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -62,6 +62,16 @@
        </widget>
       </item>
      </layout>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="deadlineCheck">
+      <property name="text">
+       <string>Submit To Deadline</string>
+      </property>
+      <property name="checked">
+       <bool>false</bool>
+      </property>
+     </widget>
     </item>
     <item>
      <widget class="QLabel" name="statusLabel">

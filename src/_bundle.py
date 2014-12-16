@@ -77,7 +77,8 @@ class BundleMaker(Form, Base):
                                 self.mapCache()
                                 #self.exportScene()
                                 self.saveSceneAs()
-                                self.submitToDeadline()
+                                if self.deadlineCheck.isChecked():
+                                    self.submitToDeadline()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         #self.statusLabel.setText('')
@@ -539,5 +540,4 @@ class BundleMaker(Form, Base):
     def submitToDeadline(self):
         deadline.initDeadline()
         deadline.openSubmissionWindow()
-        deadline.hideAndDisableUIElements()
 
