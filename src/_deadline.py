@@ -52,16 +52,16 @@ def initDeadline(addToShelf=True):
     else:
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        __repopath__ = subprocess.check_output(
+        __deadlineRepoPath__ = subprocess.check_output(
                 [__deadlineCmd__, '-getrepositoryroot'],
                 startupinfo=startupinfo).strip()
 
     if __deadlineCmd__:
         __deadlineStatus__ = True
 
-    __deadlineInitScript__ = os.path.join(__repopath__, "clientSetup", "Maya",
+    __deadlineInitScript__ = os.path.join(__deadlineRepoPath__, "clientSetup", "Maya",
             "InitDeadlineSubmitter.mel")
-    __deadlineSubmitScript__ = os.path.join(__repopath__, "submission", "Maya",
+    __deadlineSubmitScript__ = os.path.join(__deadlineRepoPath__, "submission", "Maya",
             "SubmitMayaToDeadline.mel")
 
     try:
