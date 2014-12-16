@@ -13,11 +13,12 @@ import os.path as osp
 import shutil
 import os
 import re
-import shutil
 import _utilities as util
 import pymel.core as pc
 import maya.cmds as cmds
 import appUsageApp
+from . import _deadline as deadline
+reload(deadline)
 
 root_path = osp.dirname(osp.dirname(__file__))
 ui_path = osp.join(root_path, 'ui')
@@ -29,28 +30,28 @@ class BundleMaker(Form, Base):
     def __init__(self, parent=qtfy.getMayaWindow()):
         super(BundleMaker, self).__init__(parent)
         self.setupUi(self)
-        
+
         self.rootPath = None
         self.texturesMapping = {}
         self.refNodes = []
         self.cacheMapping = {}
-        
+
         self.bundleButton.clicked.connect(self.createBundle)
         self.browseButton.clicked.connect(self.browseFolder)
         self.nameBox.returnPressed.connect(self.createBundle)
         self.pathBox.returnPressed.connect(self.createBundle)
-        
+
         self.progressBar.hide()
-        
+
         appUsageApp.updateDatabase('sceneBundle')
-        
+
     def createScriptNode(self):
         pc.scriptNode(st=2, bs=mapFiles, stp='python')
-        
+
     def closeEvent(self, event):
         self.deleteLater()
         del self
-        
+
     def createBundle(self):
         if cmds.file(q=True, modified=True):
             msgBox.showMessage(self, title='Scene Bundle',
@@ -74,21 +75,23 @@ class BundleMaker(Form, Base):
                                 modified = True
                                 self.mapTextures()
                                 self.mapCache()
-                                self.exportScene()
+                                #self.exportScene()
+                                self.saveSceneAs()
+                                self.submitToDeadline()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         #self.statusLabel.setText('')
         qApp.processEvents()
         pc.workspace(ws, o=True)
-        if modified:
-            btn = msgBox.showMessage(self, title='Scene Bundle',
-                                     msg='Some changes were made to the scene, please don\'t save the scene and close it',
-                                     ques='Do you want to close it now?',
-                                     btns=QMessageBox.Yes|QMessageBox.No,
-                                     icon=QMessageBox.Information)
-            if btn == QMessageBox.Yes:
-                cmds.file(new=True, force=True)
-        
+        #if modified:
+            #btn = msgBox.showMessage(self, title='Scene Bundle',
+                                     #msg="Some changes were made to the scene, please don\'t save the scene and close it",
+                                     #ques='Do you want to close it now?',
+                                     #btns=QMessageBox.Yes|QMessageBox.No,
+                                     #icon=QMessageBox.Information)
+            #if btn == QMessageBox.Yes:
+                #cmds.file(new=True, force=True)
+
     def getPath(self):
         path = str(self.pathBox.text())
         if path:
@@ -102,7 +105,7 @@ class BundleMaker(Form, Base):
             msgBox.showMessage(self, title='Scene Bundle',
                                msg='Path not specified',
                                icon=QMessageBox.Information)
-    
+
     def createProjectFolder(self):
         self.clearData()
         path = self.getPath()
@@ -147,7 +150,7 @@ class BundleMaker(Form, Base):
             shutil.copytree(src, dest)
             self.rootPath = dest
             return True
-        
+
     def getName(self):
         name = str(self.nameBox.text())
         if name:
@@ -156,24 +159,24 @@ class BundleMaker(Form, Base):
             msgBox.showMessage(self, title='Scene Bundle',
                                msg='Name not specified',
                                icon=QMessageBox.Information)
-        
+
     def browseFolder(self):
         path = QFileDialog.getExistingDirectory(self, 'Select Folder', '')
         if path:
             self.pathBox.setText(path)
-            
+
     def clearData(self):
         self.rootPath = None
         self.cacheMapping.clear()
         del self.refNodes[:]
         self.texturesMapping.clear()
-            
+
     def getNiceName(self, nodeName):
         return nodeName.replace(':', '_').replace('|', '_')
-            
+
     def getFileNodes(self):
         return pc.ls(type=['file', 'aiImage'])
-    
+
     def getUDIMFiles(self, path):
         dirname = osp.dirname(path)
         if not osp.exists(dirname):
@@ -209,7 +212,7 @@ class BundleMaker(Form, Base):
                 else:
                     if not osp.exists(filePath):
                         badTexturePaths.append(filePath)
-        
+
         if badTexturePaths:
             detail = 'Following textures do not exist\n'
             for texture in badTexturePaths:
@@ -260,13 +263,13 @@ class BundleMaker(Form, Base):
         self.statusLabel.setText('All textures collected successfully...')
         qApp.processEvents()
         return True
-    
+
     def copyTxFile(self, path, path2):
         directoryPath, ext = osp.splitext(path)
         directoryPath += '.tx'
         if osp.exists(directoryPath):
             shutil.copy(directoryPath, path2)
-    
+
     def getRefNodes(self):
         nodes = []
         for node in pc.ls(type=pc.nt.Reference):
@@ -277,7 +280,7 @@ class BundleMaker(Form, Base):
             except:
                 pass
         return nodes
-    
+
     def collectReferences(self):
         self.statusLabel.setText('collecting references info...')
         refNodes = self.getRefNodes()
@@ -316,10 +319,10 @@ class BundleMaker(Form, Base):
             self.statusLabel.setText('No references found in the scene...')
             qApp.processEvents()
         return True
-    
+
     def getCacheNodes(self):
         return pc.ls(type=pc.nt.CacheFile)
-    
+
     def collectCaches(self):
         self.statusLabel.setText('Prepering to collect cache files...')
         qApp.processEvents()
@@ -387,17 +390,17 @@ class BundleMaker(Form, Base):
         self.progressBar.setValue(0)
         qApp.processEvents()
         return True
-    
+
     def getParticleNode(self):
         return pc.PyNode(pc.dynGlobals(a=True, q=True))
-    
+
     def getParticleCacheDirectory(self):
         node = self.getParticleNode()
         if node.useParticleDiskCache.get():
             pfr = pc.workspace(fre='particles')
             pcp = pc.workspace(en=pfr)
             return osp.join(pcp, node.cd.get())
-        
+
     def collectParticleCache(self):
         self.statusLabel.setText('Collecting particle cache...')
         qApp.processEvents()
@@ -440,7 +443,7 @@ class BundleMaker(Form, Base):
             else:
                 self.statusLabel.setText('No particle cache found...')
         return True
-            
+
     def copyRef(self):
         self.statusLabel.setText('copying references...')
         qApp.processEvents()
@@ -491,8 +494,8 @@ class BundleMaker(Form, Base):
             qApp.processEvents()
         self.progressBar.setValue(0)
         qApp.processEvents()
-        
-    
+
+
     def mapCache(self):
         self.statusLabel.setText('Mapping cache files...')
         qApp.processEvents()
@@ -506,7 +509,7 @@ class BundleMaker(Form, Base):
             qApp.processEvents()
         self.progressBar.setValue(0)
         qApp.processEvents()
-        
+
     def mapParticleCache(self):
         # no need to map particle cache
         # because we set the workspace
@@ -522,3 +525,19 @@ class BundleMaker(Form, Base):
                      f=True, pr=True)
         self.statusLabel.setText('Scene bundled successfully...')
         qApp.processEvents()
+
+    def saveSceneAs(self):
+        self.statusLabel.setText('Saving Scene in New Location')
+        qApp.processEvents()
+        self.createScriptNode()
+        scenePath = osp.join(self.rootPath, 'scenes', str(self.nameBox.text()))
+        cmds.file(rename=scenePath)
+        cmds.file(f=True, save=True, options="v=0;", type=cmds.file(q=True, type=True)[0])
+        self.statusLabel.setText('Scene bundled successfully...')
+        qApp.processEvents()
+
+    def submitToDeadline(self):
+        deadline.initDeadline()
+        deadline.openSubmissionWindow()
+        deadline.hideAndDisableUIElements()
+
