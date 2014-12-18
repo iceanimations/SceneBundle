@@ -46,7 +46,7 @@ class BundleMaker(Form, Base):
         appUsageApp.updateDatabase('sceneBundle')
 
     def createScriptNode(self):
-        pc.scriptNode(st=2, bs=mapFiles, stp='python')
+        pc.scriptNode(st=1, bs=mapFiles, stp='python')
 
     def closeEvent(self, event):
         self.deleteLater()
