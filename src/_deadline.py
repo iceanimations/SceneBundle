@@ -78,7 +78,7 @@ def addCustomWindowToShelf():
         raise deadlineError, 'Deadline not initialized'
 
     command =('import sceneBundle.src._deadline as deadlineSubmitter;'
-            'deadlineSubmitter.openSubmissionWindow()')
+            'deadlineSubmitter.openSubmissionWindow(True)')
     try:
         pc.uitypes.ShelfButton(__deadlineShelfButton__).setCommand(command)
 
@@ -94,7 +94,7 @@ def getEditProjectButton():
 
 def openSubmissionWindow(init=False, customize=True):
     if init:
-        initDeadline()
+        initDeadline(False)
     if not __deadlineStatus__:
         raise deadlineError, 'Deadline not initialized'
     pc.mel.SubmitJobToDeadline()
