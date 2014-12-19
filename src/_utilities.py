@@ -8,7 +8,8 @@ import os
 import sys
 import pymel.core as pc
 
-mapFiles = '''
+mapFiles = '''#ICE_BundleScript
+#version==0.2
 import pymel.core as pc
 import maya.cmds as cmds
 import os.path as osp

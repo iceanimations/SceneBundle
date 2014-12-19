@@ -46,7 +46,31 @@ class BundleMaker(Form, Base):
         appUsageApp.updateDatabase('sceneBundle')
 
     def createScriptNode(self):
-        pc.scriptNode(st=1, bs=mapFiles, stp='python')
+        '''Creates a unique script node which remap file in bundles scripts'''
+        script = None
+        try:
+            script = filter(
+                    lambda x: ( x.st.get() == 1 and x.stp.get() == 1 and
+                            x.before.get().strip().startswith('#ICE_BundleScript')),
+                    pc.ls( 'ICE_BundleScript', type='script'))[0]
+        except IndexError:
+            sceneLoadScripts = filter(
+                    lambda x: (x.st.get() in [1, 2] and x.stp.get() == 1
+                        and x.before.get().strip().startswith('import pymel.core as pc')
+                        and not x.after.get()),
+                    pc.ls('script*', type='script'))
+            if sceneLoadScripts:
+                script = sceneLoadScripts[0]
+
+        if script:
+            script.before.set(mapFiles)
+            script.st.set(1)
+            script.rename('ICE_BundleScript')
+        else:
+            script = pc.scriptNode(name='ICE_BundleScript', st=1, bs=mapFiles,
+                    stp='python')
+
+        return script
 
     def closeEvent(self, event):
         self.deleteLater()
