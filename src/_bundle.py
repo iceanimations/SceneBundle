@@ -3,8 +3,6 @@ Created on Nov 5, 2014
 
 @author: qurban.ali
 '''
-import site
-site.addsitedir(r"R:\Pipe_Repo\Users\Qurban\utilities")
 import qtify_maya_window as qtfy
 from uiContainer import uic
 import msgBox
