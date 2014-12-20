@@ -7,5 +7,6 @@ import src._bundle as bun
 reload(bun)
 
 app = QApplication(sys.argv)
-bun.BundleMaker().show()
+win = bun.BundleMaker()
+win.show()
 sys.exit(app.exec_())
