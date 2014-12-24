@@ -7,6 +7,7 @@ import qtify_maya_window as qtfy
 from uiContainer import uic
 import msgBox
 from PyQt4.QtGui import QMessageBox, QFileDialog, qApp
+from PyQt4.QtCore import Qt
 import os.path as osp
 import shutil
 import os
@@ -25,10 +26,11 @@ mapFiles = util.mapFiles
 
 Form, Base = uic.loadUiType(osp.join(ui_path, 'bundle.ui'))
 class BundleMaker(Form, Base):
-    def __init__(self, parent=qtfy.getMayaWindow()):
+    def __init__(self, parent=qtfy.getMayaWindow(), standalone=False):
         super(BundleMaker, self).__init__(parent)
         self.setupUi(self)
-
+        
+        self.standalone = standalone
         self.rootPath = None
         self.texturesMapping = {}
         self.refNodes = []
@@ -38,8 +40,16 @@ class BundleMaker(Form, Base):
         self.browseButton.clicked.connect(self.browseFolder)
         self.nameBox.returnPressed.connect(self.createBundle)
         self.pathBox.returnPressed.connect(self.createBundle)
+        self.browseButton2.clicked.connect(self.browseFolder2)
 
         self.progressBar.hide()
+        #if self.standalone:
+        #self.deadlineCheck.hide()
+        #else:
+        #self.filesBox.hide()
+        #self.browseButton2.hide()
+        #self.filesLabel.hide()
+        #self.adjustSize()
 
         appUsageApp.updateDatabase('sceneBundle')
 
@@ -73,9 +83,31 @@ class BundleMaker(Form, Base):
     def closeEvent(self, event):
         self.deleteLater()
         del self
+        
+    def callCreateBundle(self):
+        if self.standalone:
+            total = self.filesBox.count()
+            if total == 0:
+                msgBox.showMessage(self, title='Scene Bundle',
+                                   msg='No file added to the files box',
+                                   icon=QMessageBox.Information)
+                return
+            
+            count = 1
+            for i in total:
+                self.statusLabel.setText('Opening scene '+ str(count) +' of '+ str(total))
+                item = self.filesBox.item(i)
+                item.setBackground(Qt.Green)
+                qApp.processEvents()
+                filename = item.text()
+                if osp.splitext(filename)[-1] in ['.ma', '.mb']:
+                    cmds.file(filename, o=True, f=True)
+                    self.createBundle()
+        else:
+            self.createBundle()
 
     def createBundle(self):
-        if cmds.file(q=True, modified=True):
+        if cmds.file(q=True, modified=True) and not self.standalone:
             msgBox.showMessage(self, title='Scene Bundle',
                                msg='Your scene contains unsaved changes, save them before proceeding',
                                icon=QMessageBox.Warning)
@@ -97,23 +129,13 @@ class BundleMaker(Form, Base):
                                 modified = True
                                 self.mapTextures()
                                 self.mapCache()
-                                #self.exportScene()
                                 self.saveSceneAs()
                                 if self.deadlineCheck.isChecked():
                                     self.submitToDeadline()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
-        #self.statusLabel.setText('')
         qApp.processEvents()
         pc.workspace(ws, o=True)
-        #if modified:
-            #btn = msgBox.showMessage(self, title='Scene Bundle',
-                                     #msg="Some changes were made to the scene, please don\'t save the scene and close it",
-                                     #ques='Do you want to close it now?',
-                                     #btns=QMessageBox.Yes|QMessageBox.No,
-                                     #icon=QMessageBox.Information)
-            #if btn == QMessageBox.Yes:
-                #cmds.file(new=True, force=True)
 
     def getPath(self):
         path = str(self.pathBox.text())
@@ -187,6 +209,13 @@ class BundleMaker(Form, Base):
         path = QFileDialog.getExistingDirectory(self, 'Select Folder', '')
         if path:
             self.pathBox.setText(path)
+            
+    def browseFolder2(self):
+        paths = QFileDialog.getOpenFileNames(self, 'Select Folder', '', '*.ma *.mb')
+        if paths:
+            for path in paths:
+                if osp.splitext(path)[-1] in ['.ma', '.mb']:
+                    self.filesBox.addItem(path)
 
     def clearData(self):
         self.rootPath = None
