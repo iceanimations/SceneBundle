@@ -6,15 +6,41 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>638</width>
-    <height>371</height>
+    <width>770</width>
+    <height>380</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>770</width>
+    <height>0</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>770</width>
+    <height>380</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Scene Bundle</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Name    </string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="nameBox"/>
+      </item>
+     </layout>
+    </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
@@ -37,30 +63,6 @@
      </layout>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Name    </string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="nameBox"/>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <widget class="QCheckBox" name="deadlineCheck">
-      <property name="text">
-       <string>Submit To Deadline</string>
-      </property>
-      <property name="checked">
-       <bool>false</bool>
-      </property>
-     </widget>
-    </item>
-    <item>
      <widget class="Line" name="line">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
@@ -68,45 +70,24 @@
      </widget>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_3">
-      <item>
-       <widget class="QLabel" name="filesLabel">
-        <property name="text">
-         <string>Files</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QToolButton" name="browseButton2">
-        <property name="text">
-         <string>...</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <widget class="QListWidget" name="filesBox">
-      <property name="dragDropMode">
-       <enum>QAbstractItemView::DropOnly</enum>
-      </property>
-      <property name="alternatingRowColors">
-       <bool>true</bool>
-      </property>
-      <property name="selectionMode">
-       <enum>QAbstractItemView::NoSelection</enum>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QLabel" name="statusLabel">
-      <property name="text">
-       <string/>
-      </property>
-     </widget>
-    </item>
-    <item>
      <layout class="QHBoxLayout" name="horizontalLayout_4">
+      <item>
+       <widget class="QCheckBox" name="currentSceneButton">
+        <property name="text">
+         <string>Current scene</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="deadlineCheck">
+        <property name="text">
+         <string>Submit To Deadline</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
@@ -129,11 +110,58 @@
          </size>
         </property>
         <property name="text">
-         <string>Bundle</string>
+         <string>Create</string>
         </property>
        </widget>
       </item>
      </layout>
+    </item>
+    <item>
+     <widget class="QWidget" name="widget" native="true">
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <property name="margin">
+        <number>0</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QLabel" name="filesLabel">
+           <property name="text">
+            <string>Files</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="browseButton2">
+           <property name="text">
+            <string>...</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QListWidget" name="filesBox">
+         <property name="dragDropMode">
+          <enum>QAbstractItemView::DropOnly</enum>
+         </property>
+         <property name="alternatingRowColors">
+          <bool>true</bool>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::NoSelection</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="statusLabel">
+      <property name="text">
+       <string>Status</string>
+      </property>
+     </widget>
     </item>
     <item>
      <widget class="QProgressBar" name="progressBar">
@@ -146,5 +174,22 @@
   </widget>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>currentSceneButton</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>widget</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>47</x>
+     <y>82</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>75</x>
+     <y>125</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

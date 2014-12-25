@@ -7,7 +7,7 @@ import qtify_maya_window as qtfy
 from uiContainer import uic
 import msgBox
 from PyQt4.QtGui import QMessageBox, QFileDialog, qApp
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import Qt, QPropertyAnimation, QRect, QEasingCurve
 import os.path as osp
 import shutil
 import os
@@ -26,32 +26,45 @@ mapFiles = util.mapFiles
 
 Form, Base = uic.loadUiType(osp.join(ui_path, 'bundle.ui'))
 class BundleMaker(Form, Base):
-    def __init__(self, parent=qtfy.getMayaWindow(), standalone=False):
+    def __init__(self, parent=qtfy.getMayaWindow()):
         super(BundleMaker, self).__init__(parent)
         self.setupUi(self)
         
-        self.standalone = standalone
         self.rootPath = None
         self.texturesMapping = {}
         self.refNodes = []
         self.cacheMapping = {}
+
+        self.animation = QPropertyAnimation(self, 'geometry')
+        self.animation.setDuration(500)
+        self.animation.setEasingCurve(QEasingCurve.OutBounce)
 
         self.bundleButton.clicked.connect(self.createBundle)
         self.browseButton.clicked.connect(self.browseFolder)
         self.nameBox.returnPressed.connect(self.createBundle)
         self.pathBox.returnPressed.connect(self.createBundle)
         self.browseButton2.clicked.connect(self.browseFolder2)
-
+        self.currentSceneButton.toggled.connect(self.animateWindow)
+        
         self.progressBar.hide()
-        #if self.standalone:
-        #self.deadlineCheck.hide()
-        #else:
-        #self.filesBox.hide()
-        #self.browseButton2.hide()
-        #self.filesLabel.hide()
-        #self.adjustSize()
 
         appUsageApp.updateDatabase('sceneBundle')
+        
+    def animateWindow(self, state):
+        if state:
+            self.shrinkWindow()
+        else:
+            self.expandWindow()
+        
+    def expandWindow(self):
+        self.animation.setStartValue(QRect(self.x()+8, self.y()+30, self.width(), self.height()))
+        self.animation.setEndValue(QRect(self.x()+8, self.y()+30, self.width(), 380))
+        self.animation.start()
+    
+    def shrinkWindow(self):
+        self.animation.setStartValue(QRect(self.x()+8, self.y()+30, self.width(), self.height()))
+        self.animation.setEndValue(QRect(self.x()+8, self.y()+30, self.width(), 160))
+        self.animation.start()
 
     def createScriptNode(self):
         '''Creates a unique script node which remap file in bundles scripts'''
@@ -116,7 +129,6 @@ class BundleMaker(Form, Base):
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
         qApp.processEvents()
-        modified = False
         if self.createProjectFolder():
             pc.workspace(self.rootPath, o=True)
             if self.collectTextures():
@@ -126,7 +138,6 @@ class BundleMaker(Form, Base):
                         if self.collectParticleCache():
                             pc.workspace(self.rootPath, o=True)
                             if self.copyRef():
-                                modified = True
                                 self.mapTextures()
                                 self.mapCache()
                                 self.saveSceneAs()
