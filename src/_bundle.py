@@ -129,7 +129,6 @@ class BundleMaker(Form, Base):
                                    icon=QMessageBox.Information)
                 return
             
-            count = 1
             for i in range(total):
                 if len(self.filesBox.item(i).text().split(' | ')) < 2:
                     msgBox.showMessage(self, title='Scene Bundle',
@@ -137,14 +136,14 @@ class BundleMaker(Form, Base):
                                        icon=QMessageBox.Information)
                     return
             for i in range(total):
-                self.statusLabel.setText('Opening scene '+ str(count) +' of '+ str(total))
+                self.statusLabel.setText('Opening scene '+ str(i+1) +' of '+ str(total))
                 item = self.filesBox.item(i)
-                item.setBackground(Qt.Green)
+                item.setBackground(Qt.gray)
                 qApp.processEvents()
-                filename = item.text()
+                name, filename = item.text().split(' | ')
                 if osp.splitext(filename)[-1] in ['.ma', '.mb']:
                     cmds.file(filename, o=True, f=True)
-                    self.createBundle()
+                    self.createBundle(name)
         else:
             self.createBundle()
 
