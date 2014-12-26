@@ -6,8 +6,8 @@ Created on Nov 5, 2014
 import qtify_maya_window as qtfy
 from uiContainer import uic
 import msgBox
-from PyQt4.QtGui import QMessageBox, QFileDialog, qApp
-from PyQt4.QtCore import Qt, QPropertyAnimation, QRect, QEasingCurve
+from PyQt4.QtGui import QMessageBox, QFileDialog, qApp, QIcon, QRegExpValidator
+from PyQt4.QtCore import Qt, QPropertyAnimation, QRect, QEasingCurve, QRegExp
 import os.path as osp
 import shutil
 import os
@@ -21,6 +21,10 @@ reload(deadline)
 
 root_path = osp.dirname(osp.dirname(__file__))
 ui_path = osp.join(root_path, 'ui')
+ic_path = osp.join(root_path, 'icons')
+
+_regexp = QRegExp('[a-zA-Z0-9_]*')
+__validator__ = QRegExpValidator(_regexp)
 
 mapFiles = util.mapFiles
 
@@ -39,16 +43,32 @@ class BundleMaker(Form, Base):
         self.animation.setDuration(500)
         self.animation.setEasingCurve(QEasingCurve.OutBounce)
 
-        self.bundleButton.clicked.connect(self.createBundle)
+        self.addButton.setIcon(QIcon(osp.join(ic_path, 'ic_plus.png')))
+        self.removeButton.setIcon(QIcon(osp.join(ic_path, 'ic_minus.png')))
+        self.selectButton.setIcon(QIcon(osp.join(ic_path, 'ic_mark.png')))
+        self.nameBox.setValidator(__validator__)
+
+        self.bundleButton.clicked.connect(self.callCreateBundle)
         self.browseButton.clicked.connect(self.browseFolder)
-        self.nameBox.returnPressed.connect(self.createBundle)
-        self.pathBox.returnPressed.connect(self.createBundle)
-        self.browseButton2.clicked.connect(self.browseFolder2)
+        self.nameBox.returnPressed.connect(self.callCreateBundle)
+        self.pathBox.returnPressed.connect(self.callCreateBundle)
+        self.addButton.clicked.connect(self.browseFolder2)
         self.currentSceneButton.toggled.connect(self.animateWindow)
+        self.removeButton.clicked.connect(self.removeSelected)
+        self.selectButton.clicked.connect(self.filesBox.selectAll)
+        self.filesBox.doubleClicked.connect(self.showEditForm)
         
         self.progressBar.hide()
 
         appUsageApp.updateDatabase('sceneBundle')
+        
+    def showEditForm(self):
+        EditForm(self).show()
+    
+    def removeSelected(self):
+        for i in self.filesBox.selectedItems():
+            item = self.filesBox.takeItem(self.filesBox.row(i))
+            del item
         
     def animateWindow(self, state):
         if state:
@@ -58,7 +78,7 @@ class BundleMaker(Form, Base):
         
     def expandWindow(self):
         self.animation.setStartValue(QRect(self.x()+8, self.y()+30, self.width(), self.height()))
-        self.animation.setEndValue(QRect(self.x()+8, self.y()+30, self.width(), 380))
+        self.animation.setEndValue(QRect(self.x()+8, self.y()+30, self.width(), 420))
         self.animation.start()
     
     def shrinkWindow(self):
@@ -97,8 +117,11 @@ class BundleMaker(Form, Base):
         self.deleteLater()
         del self
         
+    def isCurrentScene(self):
+        return self.currentSceneButton.isChecked()
+        
     def callCreateBundle(self):
-        if self.standalone:
+        if not self.isCurrentScene():
             total = self.filesBox.count()
             if total == 0:
                 msgBox.showMessage(self, title='Scene Bundle',
@@ -107,7 +130,13 @@ class BundleMaker(Form, Base):
                 return
             
             count = 1
-            for i in total:
+            for i in range(total):
+                if len(self.filesBox.item(i).text().split(' | ')) < 2:
+                    msgBox.showMessage(self, title='Scene Bundle',
+                                       msg='Name not specified for the item',
+                                       icon=QMessageBox.Information)
+                    return
+            for i in range(total):
                 self.statusLabel.setText('Opening scene '+ str(count) +' of '+ str(total))
                 item = self.filesBox.item(i)
                 item.setBackground(Qt.Green)
@@ -119,8 +148,8 @@ class BundleMaker(Form, Base):
         else:
             self.createBundle()
 
-    def createBundle(self):
-        if cmds.file(q=True, modified=True) and not self.standalone:
+    def createBundle(self, name=None):
+        if cmds.file(q=True, modified=True) and self.isCurrentScene():
             msgBox.showMessage(self, title='Scene Bundle',
                                msg='Your scene contains unsaved changes, save them before proceeding',
                                icon=QMessageBox.Warning)
@@ -129,7 +158,7 @@ class BundleMaker(Form, Base):
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
         qApp.processEvents()
-        if self.createProjectFolder():
+        if self.createProjectFolder(name):
             pc.workspace(self.rootPath, o=True)
             if self.collectTextures():
                 if self.collectReferences():
@@ -140,13 +169,20 @@ class BundleMaker(Form, Base):
                             if self.copyRef():
                                 self.mapTextures()
                                 self.mapCache()
-                                self.saveSceneAs()
+                                self.saveSceneAs(name)
                                 if self.deadlineCheck.isChecked():
                                     self.submitToDeadline()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         qApp.processEvents()
         pc.workspace(ws, o=True)
+        
+    def setPaths(self, paths):
+        self.filesBox.clear()
+        self.filesBox.addItems(paths)
+    
+    def getPaths(self):
+        return [self.filesBox.item(i).text() for i in range(self.filesBox.count())]
 
     def getPath(self):
         path = str(self.pathBox.text())
@@ -162,46 +198,56 @@ class BundleMaker(Form, Base):
                                msg='Path not specified',
                                icon=QMessageBox.Information)
 
-    def createProjectFolder(self):
+    def createProjectFolder(self, name=None):
         self.clearData()
         path = self.getPath()
-        name = self.getName()
+        if not name:
+            name = self.getName()
         if path and name:
             dest = osp.join(path, name)
             if osp.exists(dest):
-                if not osp.isfile(dest):
-                    files = os.listdir(dest)
-                    if files:
-                        btn = msgBox.showMessage(self, title='Scene Bundle',
-                                                 msg='A directory already exists with the specified name at specified path and is not empty',
-                                                 ques='Do you want to replace it?',
-                                                 btns=QMessageBox.Yes|QMessageBox.No,
-                                                 icon=QMessageBox.Warning)
-                        if btn == QMessageBox.Yes:
-                            errors = {}
-                            try:
-                                shutil.rmtree(dest)
-                            except Exception as ex:
-                                errors[dest] = str(ex)
-                            if errors:
-                                detail = 'Could not delete the following files'
-                                for key, value in errors.items():
-                                    detail += '\n\n'+key+'\nReason: '+value
-                                msgBox.showMessage(self, title='Scene Bundle',
-                                                    msg='Could not delete files',
-                                                    icon=QMessageBox.Information,
-                                                    details=detail)
+                if self.isCurrentScene():
+                    if not osp.isfile(dest):
+                        files = os.listdir(dest)
+                        if files:
+                            btn = msgBox.showMessage(self, title='Scene Bundle',
+                                                     msg='A directory already exists with the specified name at specified path and is not empty',
+                                                     ques='Do you want to replace it?',
+                                                     btns=QMessageBox.Yes|QMessageBox.No,
+                                                     icon=QMessageBox.Warning)
+                            if btn == QMessageBox.Yes:
+                                errors = {}
+                                try:
+                                    shutil.rmtree(dest)
+                                except Exception as ex:
+                                    errors[dest] = str(ex)
+                                if errors:
+                                    detail = 'Could not delete the following files'
+                                    for key, value in errors.items():
+                                        detail += '\n\n'+key+'\nReason: '+value
+                                    msgBox.showMessage(self, title='Scene Bundle',
+                                                        msg='Could not delete files',
+                                                        icon=QMessageBox.Information,
+                                                        details=detail)
+                                    return
+                            else:
                                 return
                         else:
-                            return
-                    else:
-                        try:
-                            os.rmdir(dest)
-                        except Exception as ex:
-                            msgBox.showMessage(self, title='Scene Bundle',
-                                               msg=str(ex),
-                                               icon=QMessageBox.Information)
-                            return
+                            try:
+                                os.rmdir(dest)
+                            except Exception as ex:
+                                msgBox.showMessage(self, title='Scene Bundle',
+                                                   msg=str(ex),
+                                                   icon=QMessageBox.Information)
+                                return
+                else:
+                    count = 1
+                    dest += ' ('+ str(count) +')'
+                    while 1:
+                        if not osp.exists(dest):
+                            break
+                        dest = dest.replace('('+ str(count) +')', '('+ str(count+1) +')')
+                        count += 1
             src = r"R:\Pipe_Repo\Users\Qurban\templateProject"
             shutil.copytree(src, dest)
             self.rootPath = dest
@@ -276,7 +322,7 @@ class BundleMaker(Form, Base):
                     if not osp.exists(filePath):
                         badTexturePaths.append(filePath)
 
-        if badTexturePaths:
+        if badTexturePaths and self.isCurrentScene():
             detail = 'Following textures do not exist\n'
             for texture in badTexturePaths:
                 detail += '\n'+ texture
@@ -365,7 +411,7 @@ class BundleMaker(Form, Base):
                 c += 1
             self.progressBar.setValue(0)
             qApp.processEvents()
-            if badRefs:
+            if badRefs and self.isCurrentScene():
                 detail = 'Following references can not be collected\n'
                 for node in badRefs:
                     detail += '\n'+ node.path + '\nReason: '+ badRefs[node]
@@ -401,7 +447,7 @@ class BundleMaker(Form, Base):
                     badCachePaths.append(cacheXMLFilePath)
                 if not osp.exists(cacheMCFilePath):
                     badCachePaths.append(cacheMCFilePath)
-        if badCachePaths:
+        if badCachePaths and self.isCurrentScene():
             detail = 'Following cache files not found\n'
             for phile in badCachePaths:
                 detail += '\n'+ phile
@@ -437,7 +483,7 @@ class BundleMaker(Form, Base):
                 self.cacheMapping[node] = osp.join(folderPath, osp.splitext(osp.basename(cacheMCFilePath))[0])
                 self.progressBar.setValue(newName)
                 qApp.processEvents()
-        if errors:
+        if errors and self.isCurrentScene():
             detail = 'Could not collect following cache files'
             for cPath in errors.keys():
                 detail += '\n\n'+ cPath + '\nReason: '+ errors[cPath]
@@ -486,7 +532,7 @@ class BundleMaker(Form, Base):
                     self.progressBar.setValue(count)
                     qApp.processEvents()
                     count += 1
-                if errors:
+                if errors and self.isCurrentScene():
                     detail = 'Could not collect following cacha files'
                     for cPath in errors.keys():
                         detail += '\n\n'+cPath + '\nReason: '+ errors[cPath]
@@ -528,7 +574,7 @@ class BundleMaker(Form, Base):
                 qApp.processEvents()
             self.progressBar.setValue(0)
             qApp.processEvents()
-            if errors:
+            if errors and self.isCurrentScene():
                 detail = 'Could not copy following references\n'
                 for node in errors:
                     detail += '\n'+ node.path + '\nReason: '+errors[node]
@@ -589,11 +635,13 @@ class BundleMaker(Form, Base):
         self.statusLabel.setText('Scene bundled successfully...')
         qApp.processEvents()
 
-    def saveSceneAs(self):
+    def saveSceneAs(self, name=None):
+        if not name:
+            name = self.nameBox.text()
         self.statusLabel.setText('Saving Scene in New Location')
         qApp.processEvents()
         self.createScriptNode()
-        scenePath = osp.join(self.rootPath, 'scenes', str(self.nameBox.text()))
+        scenePath = osp.join(self.rootPath, 'scenes', name)
         cmds.file(rename=scenePath)
         cmds.file(f=True, save=True, options="v=0;", type=cmds.file(q=True, type=True)[0])
         self.statusLabel.setText('Scene bundled successfully...')
@@ -603,3 +651,85 @@ class BundleMaker(Form, Base):
         deadline.initDeadline()
         deadline.openSubmissionWindow()
 
+Form1, Base1 = uic.loadUiType(osp.join(ui_path, 'form.ui'))
+class EditForm(Form1, Base1):
+    def __init__(self, parent=None):
+        super(EditForm, self).__init__(parent)
+        self.setupUi(self)
+        
+        self.parentWin = parent
+        self.inputFields = []
+        
+        self.populate()
+        
+        self.okButton.clicked.connect(self.ok)
+        
+    def populate(self):
+        paths = self.parentWin.getPaths()
+        for path in paths:
+            name = ''
+            if ' | ' in path:
+                name, path = path.split(' | ')
+            iField = InputField(self, name, path)
+            self.itemsLayout.addWidget(iField)
+            self.inputFields.append(iField)
+
+    def ok(self):
+        paths = []
+        for iField in self.inputFields:
+            name = iField.getName()
+            path = iField.getPath()
+            if not name:
+                msgBox.showMessage(self, title='Scene Bundle',
+                                   msg='Name not specified for the bundle',
+                                   icon=QMessageBox.Information)
+                return
+            if not path:
+                msgBox.showMessage(self, title='Scene Bundle',
+                                   msg='Path not specified for the bundle',
+                                   icon=QMessageBox.Information)
+                return
+            paths.append(name +' | '+ path)
+        self.parentWin.setPaths(paths)
+        self.accept()
+        
+        
+Form2, Base2 = uic.loadUiType(osp.join(ui_path, 'input_field.ui'))
+class InputField(Form2, Base2):
+    def __init__(self, parent=None, name=None, path=None):
+        super(InputField, self).__init__(parent)
+        self.setupUi(self)
+        
+        if name:
+            self.nameBox.setText(name)
+        if path:
+            self.pathBox.setText(path)
+        
+        self.nameBox.setValidator(__validator__)
+        
+        self.browseButton.clicked.connect(self.browseFolder)
+    
+    def closeEvent(self, event):
+        self.deleteLater()
+        del self
+        
+    def browseFolder(self):
+        filename = QFileDialog.getSaveFileName(self, 'Select File', '', '*.ma *.mb')
+        if filename:
+            self.pathBox.setText(filename)
+            
+    def closeEvent(self, event):
+        self.deleteLater()
+        del self
+        
+    def setName(self, name):
+        self.nameBox.setText(name)
+        
+    def setPath(self, path):
+        self.pathBox.setText(path)
+        
+    def getName(self):
+        return self.nameBox.text()
+    
+    def getPath(self):
+        return self.pathBox.text()
