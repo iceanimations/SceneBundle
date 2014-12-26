@@ -241,7 +241,7 @@ class BundleMaker(Form, Base):
                                 return
                 else:
                     count = 1
-                    dest += ' ('+ str(count) +')'
+                    dest += '('+ str(count) +')'
                     while 1:
                         if not osp.exists(dest):
                             break
