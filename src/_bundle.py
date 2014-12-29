@@ -110,7 +110,6 @@ class BundleMaker(Form, Base):
         else:
             script = pc.scriptNode(name='ICE_BundleScript', st=1, bs=mapFiles,
                     stp='python')
-
         return script
 
     def closeEvent(self, event):
@@ -508,8 +507,30 @@ class BundleMaker(Form, Base):
             pfr = pc.workspace(fre='particles')
             pcp = pc.workspace(en=pfr)
             return osp.join(pcp, node.cd.get())
+        
+    def collectMCFIs(self):
+        self.statusLabel.setText('Collecting mcfi files')
+        qApp.processEvents()
+        path = pc.workspace(en=pc.workspace(fre='diskCache'))
+        targetPath = osp.join(self.rootPath, 'data')
+        if path and osp.exists(path):
+            files = os.listdir(path)
+            count = 1
+            self.progressBar.setMaximum(len(files))
+            qApp.processEvents()
+            for fl in files:
+                fullPath = osp.join(path, fl)
+                if osp.isfile(fullPath):
+                    if osp.splitext(fullPath)[-1] == '.mcfi':
+                        shutil.copy(fullPath, targetPath)
+                self.progressBar.setValue(count)
+                qApp.processEvents()
+                count += 1
+            self.progressBar.setValue(0)
+            qApp.processEvents()
 
     def collectParticleCache(self):
+        self.collectMCFIs()
         self.statusLabel.setText('Collecting particle cache...')
         qApp.processEvents()
         path = self.getParticleCacheDirectory()
