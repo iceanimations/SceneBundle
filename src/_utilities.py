@@ -48,13 +48,20 @@ for node in pc.ls(type=["aiImage", "file"]):
     except:
         node.filename.set(osp.join(rootPath, getLast3(node.filename.get())))
 
+msg=False
 for node in pc.ls(type="cacheFile"):
     path = node.cachePath.get()
     if path:
         base2 = osp.basename(path)
         base1 = osp.basename(osp.dirname(path))
         path = osp.join(rootPath, base1, base2)
-        node.cachePath.set(path)
+        path = path.replace('\\', '/')
+        if osp.exists(path):
+            node.cachePath.set(path)
+        else:
+            msg=True
+if msg:
+    pc.confirmDialog(title="Scene Bundle", message="Could not apply some cache files", button="Ok")
 
 '''
 

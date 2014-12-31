@@ -12,6 +12,7 @@ import os.path as osp
 import shutil
 import os
 import re
+import subprocess
 import _utilities as util
 import pymel.core as pc
 import maya.cmds as cmds
@@ -38,6 +39,7 @@ class BundleMaker(Form, Base):
         self.texturesMapping = {}
         self.refNodes = []
         self.cacheMapping = {}
+        self.logFile = None
 
         self.animation = QPropertyAnimation(self, 'geometry')
         self.animation.setDuration(500)
@@ -59,8 +61,26 @@ class BundleMaker(Form, Base):
         self.filesBox.doubleClicked.connect(self.showEditForm)
         
         self.progressBar.hide()
+        
+        path = osp.join(osp.expanduser('~'), 'scene_bundle_log')
+        if not osp.exists(path):
+            os.mkdir(path)
+        self.logFilePath = osp.join(path, 'log.txt')
 
         appUsageApp.updateDatabase('sceneBundle')
+        
+    def openLogFile(self):
+        try:
+            self.logFile = open(self.logFilePath, 'wb')
+        except:
+            pass
+        
+    def closeLogFile(self):
+        try:
+            self.logFile.close()
+            self.logFile = None
+        except:
+            pass
         
     def showEditForm(self):
         EditForm(self).show()
@@ -113,6 +133,7 @@ class BundleMaker(Form, Base):
         return script
 
     def closeEvent(self, event):
+        self.closeLogFile()
         self.deleteLater()
         del self
         
@@ -120,6 +141,7 @@ class BundleMaker(Form, Base):
         return self.currentSceneButton.isChecked()
         
     def callCreateBundle(self):
+        self.openLogFile()
         if not self.isCurrentScene():
             total = self.filesBox.count()
             if total == 0:
@@ -141,10 +163,29 @@ class BundleMaker(Form, Base):
                 qApp.processEvents()
                 name, filename = item.text().split(' | ')
                 if osp.splitext(filename)[-1] in ['.ma', '.mb']:
-                    cmds.file(filename, o=True, f=True)
+                    cmds.file(filename, o=True, f=True, prompt=False)
                     self.createBundle(name)
         else:
             self.createBundle()
+        self.closeLogFile()
+        self.showLogFileMessage()
+        
+    def showLogFileMessage(self):
+        with open(self.logFilePath, 'rb') as f:
+            details = f.read()
+            if details:
+                btn = msgBox.showMessage(self, title='Scene Bundle',
+                                         msg='Some errors occured while creating bundle\n'+self.logFilePath,
+                                         ques='Do you want to view log file now?',
+                                         icon=QMessageBox.Information,
+                                         btns=QMessageBox.Yes|QMessageBox.No)
+                if btn == QMessageBox.Yes:
+                    subprocess.call(self.logFilePath, shell=True)
+    
+    def createLog(self, details):
+        if self.logFile:
+            self.logFile.write(details)
+            self.logFile.write('\r\n'+'-'*100+'\r\n'*3)
 
     def createBundle(self, name=None):
         if cmds.file(q=True, modified=True) and self.isCurrentScene():
@@ -300,7 +341,9 @@ class BundleMaker(Form, Base):
             if re.match(pattern, fName):
                 goodFiles.append(osp.join(dirname, fName))
         return goodFiles
-
+    
+    def currentFileName(self):
+        return cmds.file(location=True, q=True)
 
     def collectTextures(self):
         self.statusLabel.setText('Checking texture files...')
@@ -320,20 +363,24 @@ class BundleMaker(Form, Base):
                     if not osp.exists(filePath):
                         badTexturePaths.append(filePath)
 
-        if badTexturePaths and self.isCurrentScene():
-            detail = 'Following textures do not exist\n'
+        if badTexturePaths:
+            detail = 'Following textures do not exist\r\n'
             for texture in badTexturePaths:
-                detail += '\n'+ texture
-            btn = msgBox.showMessage(self, title='Scene Bundle',
-                                     msg='Some textures used in the scene not found in the file system',
-                                     ques='Do you want to proceed?',
-                                     details=detail,
-                                     icon=QMessageBox.Information,
-                                     btns=QMessageBox.Yes|QMessageBox.No)
-            if btn == QMessageBox.Yes:
-                pass
+                detail += '\r\n'+ texture
+            if self.isCurrentScene():
+                btn = msgBox.showMessage(self, title='Scene Bundle',
+                                         msg='Some textures used in the scene not found in the file system',
+                                         ques='Do you want to proceed?',
+                                         details=detail,
+                                         icon=QMessageBox.Information,
+                                         btns=QMessageBox.Yes|QMessageBox.No)
+                if btn == QMessageBox.Yes:
+                    pass
+                else:
+                    return
             else:
-                return
+                detail = self.currentFileName() +'\r\n'*2 + detail
+                self.createLog(detail)
         newName = 0
         self.statusLabel.setText('collecting textures...')
         qApp.processEvents()
@@ -409,19 +456,23 @@ class BundleMaker(Form, Base):
                 c += 1
             self.progressBar.setValue(0)
             qApp.processEvents()
-            if badRefs and self.isCurrentScene():
-                detail = 'Following references can not be collected\n'
+            if badRefs:
+                detail = 'Following references can not be collected\r\n'
                 for node in badRefs:
-                    detail += '\n'+ node.path + '\nReason: '+ badRefs[node]
-                btn = msgBox.showMessage(self, title='Scene Bundle',
-                                         msg='Errors occured while collecting references',
-                                         ques='Do you want to proceed?',
-                                         icon=QMessageBox.Warning,
-                                         btns=QMessageBox.Yes|QMessageBox.No,
-                                         details=detail)
-                if btn == QMessageBox.Ok:
-                    pass
-                else: return False
+                    detail += '\r\n'+ node.path + '\r\nReason: '+ badRefs[node]
+                if self.isCurrentScene():
+                    btn = msgBox.showMessage(self, title='Scene Bundle',
+                                             msg='Errors occured while collecting references',
+                                             ques='Do you want to proceed?',
+                                             icon=QMessageBox.Warning,
+                                             btns=QMessageBox.Yes|QMessageBox.No,
+                                             details=detail)
+                    if btn == QMessageBox.Ok:
+                        pass
+                    else: return False
+                else:
+                    detail = self.currentFileName() +'\r\n'*2 + detail
+                    self.createLog(detail)
         else:
             self.statusLabel.setText('No references found in the scene...')
             qApp.processEvents()
@@ -445,20 +496,24 @@ class BundleMaker(Form, Base):
                     badCachePaths.append(cacheXMLFilePath)
                 if not osp.exists(cacheMCFilePath):
                     badCachePaths.append(cacheMCFilePath)
-        if badCachePaths and self.isCurrentScene():
-            detail = 'Following cache files not found\n'
+        if badCachePaths:
+            detail = 'Following cache files not found\r\n'
             for phile in badCachePaths:
-                detail += '\n'+ phile
-            btn = msgBox.showMessage(self, title='Scene Bundle',
-                                     msg='Some cache files used in the scene not found in the file system',
-                                     ques='Do you want to proceed?',
-                                     details=detail,
-                                     icon=QMessageBox.Information,
-                                     btns=QMessageBox.Yes|QMessageBox.No)
-            if btn == QMessageBox.Yes:
-                pass
+                detail += '\r\n'+ phile
+            if self.isCurrentScene():
+                btn = msgBox.showMessage(self, title='Scene Bundle',
+                                         msg='Some cache files used in the scene not found in the file system',
+                                         ques='Do you want to proceed?',
+                                         details=detail,
+                                         icon=QMessageBox.Information,
+                                         btns=QMessageBox.Yes|QMessageBox.No)
+                if btn == QMessageBox.Yes:
+                    pass
+                else:
+                    return
             else:
-                return
+                detail = self.currentFileName() +'\r\n'*2 + detail
+                self.createLog(detail)
         self.statusLabel.setText('collecting cache files...')
         qApp.processEvents()
         cacheFolder = osp.join(self.rootPath, 'cache')
@@ -481,19 +536,23 @@ class BundleMaker(Form, Base):
                 self.cacheMapping[node] = osp.join(folderPath, osp.splitext(osp.basename(cacheMCFilePath))[0])
                 self.progressBar.setValue(newName)
                 qApp.processEvents()
-        if errors and self.isCurrentScene():
+        if errors:
             detail = 'Could not collect following cache files'
             for cPath in errors.keys():
-                detail += '\n\n'+ cPath + '\nReason: '+ errors[cPath]
-            btn = msgBox.showMessage(self, title='Scene Bundle',
-                                     msg='Could not collect some of the cache files. '+
-                                     'This would result in loss of animation',
-                                     ques='Do you want to proceed?',
-                                     btns=QMessageBox.Yes|QMessageBox.No,
-                                     icon=QMessageBox.Warning)
-            if btn == QMessageBox.Yes:
-                pass
-            else: return
+                detail += '\r\n\r\n'+ cPath + '\r\nReason: '+ errors[cPath]
+            if self.isCurrentScene():
+                btn = msgBox.showMessage(self, title='Scene Bundle',
+                                         msg='Could not collect some of the cache files. '+
+                                         'This would result in loss of animation',
+                                         ques='Do you want to proceed?',
+                                         btns=QMessageBox.Yes|QMessageBox.No,
+                                         icon=QMessageBox.Warning)
+                if btn == QMessageBox.Yes:
+                    pass
+                else: return
+            else:
+                detail = self.currentFileName() +'\r\n'*2 + detail
+                self.createLog(detail)
         self.progressBar.setValue(0)
         qApp.processEvents()
         return True
@@ -552,20 +611,24 @@ class BundleMaker(Form, Base):
                     self.progressBar.setValue(count)
                     qApp.processEvents()
                     count += 1
-                if errors and self.isCurrentScene():
-                    detail = 'Could not collect following cacha files'
+                if errors:
+                    detail = 'Could not collect following cache files'
                     for cPath in errors.keys():
-                        detail += '\n\n'+cPath + '\nReason: '+ errors[cPath]
-                    btn = msgBox.showMessage(self, title='Scene Bundle',
-                                             msg='Could not collect some of the particle cache files. '+
-                                             'This would result in loss of animation',
-                                             ques='Do you want to proceed?',
-                                             details=detail,
-                                             btns=QMessageBox.Yes|QMessageBox.No,
-                                             icon=QMessageBox.Warning)
-                    if btn == QMessageBox.Yes:
-                        pass
-                    else: return
+                        detail += '\r\n\r\n'+cPath + '\r\nReason: '+ errors[cPath]
+                    if self.isCurrentScene():
+                        btn = msgBox.showMessage(self, title='Scene Bundle',
+                                                 msg='Could not collect some of the particle cache files. '+
+                                                 'This would result in loss of animation',
+                                                 ques='Do you want to proceed?',
+                                                 details=detail,
+                                                 btns=QMessageBox.Yes|QMessageBox.No,
+                                                 icon=QMessageBox.Warning)
+                        if btn == QMessageBox.Yes:
+                            pass
+                        else: return
+                    else:
+                        detail = self.currentFileName() +'\r\n'*2 + detail
+                        self.createLog(detail)
                 self.progressBar.setValue(0)
                 self.statusLabel.setText('particle cache collected successfully')
                 qApp.processEvents()
@@ -594,18 +657,22 @@ class BundleMaker(Form, Base):
                 qApp.processEvents()
             self.progressBar.setValue(0)
             qApp.processEvents()
-            if errors and self.isCurrentScene():
-                detail = 'Could not copy following references\n'
+            if errors:
+                detail = 'Could not copy following references\r\n'
                 for node in errors:
-                    detail += '\n'+ node.path + '\nReason: '+errors[node]
-                btn = msgBox.showMessage(self, title='Scene Bundle',
-                                         msg='Errors occured while copying references',
-                                         ques='Do you want to proceed?',
-                                         icon=QMessageBox.Warning,
-                                         btns=QMessageBox.Yes|QMessageBox.No)
-                if btn == QMessageBox.Yes:
-                    pass
-                else: return False
+                    detail += '\r\n'+ node.path + '\r\nReason: '+errors[node]
+                if self.isCurrentScene():
+                    btn = msgBox.showMessage(self, title='Scene Bundle',
+                                             msg='Errors occured while copying references',
+                                             ques='Do you want to proceed?',
+                                             icon=QMessageBox.Warning,
+                                             btns=QMessageBox.Yes|QMessageBox.No)
+                    if btn == QMessageBox.Yes:
+                        pass
+                    else: return False
+                else:
+                    detail = self.currentFileName() +'\r\n'*2 + detail
+                    self.createLog(detail)
         return True
 
     def mapTextures(self):
