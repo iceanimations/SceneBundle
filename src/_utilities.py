@@ -55,7 +55,7 @@ for node in pc.ls(type="cacheFile"):
         base2 = osp.basename(path)
         base1 = osp.basename(osp.dirname(path))
         path = osp.join(rootPath, base1, base2)
-        path = path.replace('\\', '/')
+        path = path.replace('\\\\', '/')
         if osp.exists(path):
             node.cachePath.set(path)
         else:
