@@ -170,7 +170,7 @@ class BundleMaker(Form, Base):
         self.closeLogFile()
         self.showLogFileMessage()
         
-        cmds.file(new=True, f=True)
+        #cmds.file(new=True, f=True)
         
     def showLogFileMessage(self):
         with open(self.logFilePath, 'rb') as f:
