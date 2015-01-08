@@ -143,6 +143,8 @@ class BundleMaker(Form, Base):
     def callCreateBundle(self):
         self.openLogFile()
         if not self.isCurrentScene():
+            if not self.getPath():
+                return
             total = self.filesBox.count()
             if total == 0:
                 msgBox.showMessage(self, title='Scene Bundle',
