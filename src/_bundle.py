@@ -14,10 +14,10 @@ import os
 import re
 import subprocess
 import _utilities as util
-import _archiving as arch
 import pymel.core as pc
 import maya.cmds as cmds
 import appUsageApp
+from . import _archiving as arch
 from . import _deadline as deadline
 reload(deadline)
 
