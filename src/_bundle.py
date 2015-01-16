@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import _utilities as util
+import _archiving as arch
 import pymel.core as pc
 import maya.cmds as cmds
 import appUsageApp
@@ -211,8 +212,11 @@ class BundleMaker(Form, Base):
                                 self.mapTextures()
                                 self.mapCache()
                                 self.saveSceneAs(name)
+                                self.archive()
                                 if self.deadlineCheck.isChecked():
                                     self.submitToDeadline()
+                                self.statusLabel.setText('Scene bundled successfully...')
+                                qApp.processEvents()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         qApp.processEvents()
@@ -714,6 +718,24 @@ class BundleMaker(Form, Base):
         # at the time of scene open
         pass
 
+    def archive(self):
+        archiver = arch.getFormats().values()[0]
+        self.statusLabel.setText(
+                'Creating Archive %s ...'%(self.rootPath+archiver.ext))
+        try:
+            arch.make_archive(self.rootPath, archiver.name,
+                    progressBar=self.progressBar)
+        except arch.ArchivingError as e:
+            if self.isCurrentScene():
+                msgBox.showMessage(self, title='Scene Bundle', msg=str(e),
+                        icon=QMessageBox.Information)
+            else:
+                detail = "\nArchiving Error" + str(e)
+                detail = self.currentFileName() +'\r\n'*2 + detail
+                self.createLog(detail)
+            return False
+        return True
+
     def exportScene(self):
         self.statusLabel.setText('Exporting scene...')
         qApp.processEvents()
@@ -733,8 +755,6 @@ class BundleMaker(Form, Base):
         scenePath = osp.join(self.rootPath, 'scenes', name)
         cmds.file(rename=scenePath)
         cmds.file(f=True, save=True, options="v=0;", type=cmds.file(q=True, type=True)[0])
-        self.statusLabel.setText('Scene bundled successfully...')
-        qApp.processEvents()
 
     def submitToDeadline(self):
         deadline.initDeadline()
