@@ -17,6 +17,7 @@ import _utilities as util
 import pymel.core as pc
 import maya.cmds as cmds
 import appUsageApp
+import imaya
 from . import _archiving as arch
 from . import _deadline as deadline
 reload(deadline)
@@ -360,9 +361,9 @@ class BundleMaker(Form, Base):
         badTexturePaths = []
         for node in textureFileNodes:
             try:
-                filePath = node.fileTextureName.get()
+                filePath = imaya.getFullpathFromAttr(node.fileTextureName)
             except:
-                filePath = node.filename.get()
+                filePath = imaya.getFullpathFromAttr(node.filename)
             if filePath:
                 if '<udim>' in filePath.lower():
                     fileNames = self.getUDIMFiles(filePath)
