@@ -764,7 +764,18 @@ class BundleMaker(Form, Base):
         deadline.openSubmissionWindow()
 
     def removeBundle(self):
-        shutil.rmtree(self.rootPath)
+        try:
+            shutil.rmtree(self.rootPath)
+        except Exception as e:
+            if self.isCurrentScene():
+                msgBox.showMessage(self, title='Scene Bundle', msg=str(e),
+                        icon=QMessageBox.Information)
+            else:
+                detail = "\nError in Removing Bundle:"
+                detail = self.currentFileName() + '\r\n'*2 + detail
+                self.createLog(detail)
+            return False
+        return True
 
 Form1, Base1 = uic.loadUiType(osp.join(ui_path, 'form.ui'))
 class EditForm(Form1, Base1):
