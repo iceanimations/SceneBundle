@@ -35,7 +35,7 @@ class BundleMaker(Form, Base):
     def __init__(self, parent=qtfy.getMayaWindow()):
         super(BundleMaker, self).__init__(parent)
         self.setupUi(self)
-        
+
         self.rootPath = None
         self.texturesMapping = {}
         self.refNodes = []
@@ -60,48 +60,50 @@ class BundleMaker(Form, Base):
         self.removeButton.clicked.connect(self.removeSelected)
         self.selectButton.clicked.connect(self.filesBox.selectAll)
         self.filesBox.doubleClicked.connect(self.showEditForm)
-        
+        self.deadlineCheck.setChecked(False)
+        self.deadlineCheck.hide()
+
         self.progressBar.hide()
-        
+
         path = osp.join(osp.expanduser('~'), 'scene_bundle_log')
         if not osp.exists(path):
             os.mkdir(path)
         self.logFilePath = osp.join(path, 'log.txt')
 
         appUsageApp.updateDatabase('sceneBundle')
-        
+
     def openLogFile(self):
         try:
             self.logFile = open(self.logFilePath, 'wb')
         except:
             pass
-        
+
     def closeLogFile(self):
         try:
             self.logFile.close()
             self.logFile = None
         except:
             pass
-        
+
     def showEditForm(self):
         EditForm(self).show()
-    
+
     def removeSelected(self):
         for i in self.filesBox.selectedItems():
             item = self.filesBox.takeItem(self.filesBox.row(i))
             del item
-        
+
     def animateWindow(self, state):
         if state:
             self.shrinkWindow()
         else:
             self.expandWindow()
-        
+
     def expandWindow(self):
         self.animation.setStartValue(QRect(self.x()+8, self.y()+30, self.width(), self.height()))
         self.animation.setEndValue(QRect(self.x()+8, self.y()+30, self.width(), 420))
         self.animation.start()
-    
+
     def shrinkWindow(self):
         self.animation.setStartValue(QRect(self.x()+8, self.y()+30, self.width(), self.height()))
         self.animation.setEndValue(QRect(self.x()+8, self.y()+30, self.width(), 160))
@@ -137,10 +139,10 @@ class BundleMaker(Form, Base):
         self.closeLogFile()
         self.deleteLater()
         del self
-        
+
     def isCurrentScene(self):
         return self.currentSceneButton.isChecked()
-        
+
     def callCreateBundle(self):
         self.openLogFile()
         if not self.isCurrentScene():
@@ -150,7 +152,7 @@ class BundleMaker(Form, Base):
                                    msg='No file added to the files box',
                                    icon=QMessageBox.Information)
                 return
-            
+
             for i in range(total):
                 if len(self.filesBox.item(i).text().split(' | ')) < 2:
                     msgBox.showMessage(self, title='Scene Bundle',
@@ -170,9 +172,9 @@ class BundleMaker(Form, Base):
             self.createBundle()
         self.closeLogFile()
         self.showLogFileMessage()
-        
+
         #cmds.file(new=True, f=True)
-        
+
     def showLogFileMessage(self):
         with open(self.logFilePath, 'rb') as f:
             details = f.read()
@@ -184,7 +186,7 @@ class BundleMaker(Form, Base):
                                          btns=QMessageBox.Yes|QMessageBox.No)
                 if btn == QMessageBox.Yes:
                     subprocess.call(self.logFilePath, shell=True)
-    
+
     def createLog(self, details):
         if self.logFile:
             self.logFile.write(details)
@@ -212,7 +214,8 @@ class BundleMaker(Form, Base):
                                 self.mapTextures()
                                 self.mapCache()
                                 self.saveSceneAs(name)
-                                self.archive()
+                                if self.archive() and not self.keepBundleButton.isChecked():
+                                    self.removeBundle()
                                 if self.deadlineCheck.isChecked():
                                     self.submitToDeadline()
                                 self.statusLabel.setText('Scene bundled successfully...')
@@ -221,11 +224,11 @@ class BundleMaker(Form, Base):
         self.bundleButton.setEnabled(True)
         qApp.processEvents()
         pc.workspace(ws, o=True)
-        
+
     def setPaths(self, paths):
         self.filesBox.clear()
         self.filesBox.addItems(paths)
-    
+
     def getPaths(self):
         return [self.filesBox.item(i).text() for i in range(self.filesBox.count())]
 
@@ -311,7 +314,7 @@ class BundleMaker(Form, Base):
         path = QFileDialog.getExistingDirectory(self, 'Select Folder', '')
         if path:
             self.pathBox.setText(path)
-            
+
     def browseFolder2(self):
         paths = QFileDialog.getOpenFileNames(self, 'Select Folder', '', '*.ma *.mb')
         if paths:
@@ -347,7 +350,7 @@ class BundleMaker(Form, Base):
             if re.match(pattern, fName):
                 goodFiles.append(osp.join(dirname, fName))
         return goodFiles
-    
+
     def currentFileName(self):
         return cmds.file(location=True, q=True)
 
@@ -572,7 +575,7 @@ class BundleMaker(Form, Base):
             pfr = pc.workspace(fre='particles')
             pcp = pc.workspace(en=pfr)
             return osp.join(pcp, node.cd.get())
-        
+
     def collectMCFIs(self):
         self.statusLabel.setText('Collecting mcfi files')
         qApp.processEvents()
@@ -730,7 +733,7 @@ class BundleMaker(Form, Base):
                 msgBox.showMessage(self, title='Scene Bundle', msg=str(e),
                         icon=QMessageBox.Information)
             else:
-                detail = "\nArchiving Error" + str(e)
+                detail = "\nArchiving Error: " + str(e)
                 detail = self.currentFileName() +'\r\n'*2 + detail
                 self.createLog(detail)
             return False
@@ -760,19 +763,22 @@ class BundleMaker(Form, Base):
         deadline.initDeadline()
         deadline.openSubmissionWindow()
 
+    def removeBundle(self):
+        shutil.rmtree(self.rootPath)
+
 Form1, Base1 = uic.loadUiType(osp.join(ui_path, 'form.ui'))
 class EditForm(Form1, Base1):
     def __init__(self, parent=None):
         super(EditForm, self).__init__(parent)
         self.setupUi(self)
-        
+
         self.parentWin = parent
         self.inputFields = []
-        
+
         self.populate()
-        
+
         self.okButton.clicked.connect(self.ok)
-        
+
     def populate(self):
         paths = self.parentWin.getPaths()
         for path in paths:
@@ -801,44 +807,44 @@ class EditForm(Form1, Base1):
             paths.append(name +' | '+ path)
         self.parentWin.setPaths(paths)
         self.accept()
-        
-        
+
+
 Form2, Base2 = uic.loadUiType(osp.join(ui_path, 'input_field.ui'))
 class InputField(Form2, Base2):
     def __init__(self, parent=None, name=None, path=None):
         super(InputField, self).__init__(parent)
         self.setupUi(self)
-        
+
         if name:
             self.nameBox.setText(name)
         if path:
             self.pathBox.setText(path)
-        
+
         self.nameBox.setValidator(__validator__)
-        
+
         self.browseButton.clicked.connect(self.browseFolder)
-    
+
     def closeEvent(self, event):
         self.deleteLater()
         del self
-        
+
     def browseFolder(self):
         filename = QFileDialog.getSaveFileName(self, 'Select File', '', '*.ma *.mb')
         if filename:
             self.pathBox.setText(filename)
-            
+
     def closeEvent(self, event):
         self.deleteLater()
         del self
-        
+
     def setName(self, name):
         self.nameBox.setText(name)
-        
+
     def setPath(self, path):
         self.pathBox.setText(path)
-        
+
     def getName(self):
         return self.nameBox.text()
-    
+
     def getPath(self):
         return self.pathBox.text()
