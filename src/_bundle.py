@@ -764,6 +764,7 @@ class BundleMaker(Form, Base):
         deadline.openSubmissionWindow()
 
     def removeBundle(self):
+        self.statusLabel.setText('Removing directory %s ...'%self.rootPath)
         try:
             shutil.rmtree(self.rootPath)
         except Exception as e:
