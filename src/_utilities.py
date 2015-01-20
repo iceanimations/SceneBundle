@@ -44,9 +44,9 @@ def getLast3(path):
 
 for node in pc.ls(type=["aiImage", "file"]):
     try:
-        node.fileTextureName.set(osp.join(rootPath, getLast3(node.fileTextureName.get())))
+        node.fileTextureName.set(osp.join(rootPath, getLast3(node.fileTextureName.get())).replace('\\\\', '/'))
     except:
-        node.filename.set(osp.join(rootPath, getLast3(node.filename.get())))
+        node.filename.set(osp.join(rootPath, getLast3(node.filename.get())).replace('\\\\', '/'))
 
 msg=False
 for node in pc.ls(type="cacheFile"):
