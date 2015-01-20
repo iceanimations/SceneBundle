@@ -6,7 +6,7 @@ Created on Nov 25, 2014
 '''
 import os
 import sys
-import pymel.core as pc
+import sys as pc
 
 mapFiles = '''#ICE_BundleScript
 #version==0.2
