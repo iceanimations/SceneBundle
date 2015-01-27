@@ -213,7 +213,7 @@ class BundleMaker(Form, Base):
                         pc.workspace(ws, o=True)
                         if self.collectParticleCache():
                             pc.workspace(self.rootPath, o=True)
-                            if self.copyRef():
+                            if self.importReferences():
                                 self.mapTextures()
                                 self.mapCache()
                                 self.saveSceneAs(name)
@@ -693,7 +693,7 @@ class BundleMaker(Form, Base):
         c=0
         self.progressBar.setMaximum(len(self.refNodes))
         errors = {}
-        refNodes = self.refNodes
+        refNodes = self.refNodes[:]
         for ref in refNodes:
             try:
                 pc.FileReference(ref).importContents()
