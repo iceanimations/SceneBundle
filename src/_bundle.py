@@ -687,6 +687,41 @@ class BundleMaker(Form, Base):
                     self.createLog(detail)
         return True
 
+    def importReferences(self):
+        self.statusLabel.setText('importing references ...')
+        qApp.processEvents()
+        c=0
+        self.progressBar.setMaximum(len(self.refNodes))
+        errors = {}
+        refNodes = self.refNodes
+        for ref in refNodes:
+            try:
+                pc.FileReference(ref).importContents()
+                self.refNodes.remove(ref)
+            except Exception as e:
+                errors[ref] = str(e)
+            c += 1
+            self.progressBar.setValue(c)
+        if errors:
+            detail = 'Could not import following references\r\n'
+            for node in errors:
+                detail += '\r\n'+ node.path + '\r\nReason: '+errors[node]
+            if self.isCurrentScene():
+                btn = msgBox.showMessage(self, title='Scene Bundle',
+                                            msg='Errors occured while importing references',
+                                            ques='Do you want to proceed?',
+                                            icon=QMessageBox.Warning,
+                                            btns=QMessageBox.Yes|QMessageBox.No)
+                if btn == QMessageBox.Yes:
+                    pass
+                else:
+                    return False
+            else:
+                detail = self.currentFileName() + '\r\n'*2 + detail
+                self.createLog(detail)
+        self.progressBar.setValue(0)
+        return True
+
     def mapTextures(self):
         self.statusLabel.setText('Mapping collected textures...')
         qApp.processEvents()
