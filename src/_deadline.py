@@ -13,18 +13,17 @@ reload(dlm)
 variables = ['bundle_base', 'poolidx', 'project', 'episode', 'sequence', 'shot']
 num_pools = 3
 bundle_base = r'\\hp-001\drive%(poolidx)d'
-output_loc = r'\\ice-lac\%(project)s\02_production\EP_%(episode)02d\SQ_%(sequence)02d\SH_%(shot)02d'
-bundle_loc = r'%(bundle_base)s\%(project)s\EP%(episode)02d\SQ%(sequence)03d\SH%(shot)03d'
+output_loc = r'\\ice-lac\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
+bundle_loc = r'%(bundle_base)s\%(project)s\%(episode)s\%(sequence)s\%(shot)s'
 
 
-rs_pools = OrderedDict([('rs'+(str(idx)), r'\shared\lb\rs'+(str(idx)))
+rs_pools = OrderedDict([('rs'+str(idx), bundle_base%{'poolidx':idx})
         for idx in range(1, num_pools+1) ])
 
 
 def getPreferredPool():
     poolframes = getFramesPendingOnPools(getRedshiftPools())
-    return min(enumerate(poolframes.values()), key=lambda x:poolframes[x[1]])
-
+    return min(enumerate(poolframes.keys()), key=lambda x:poolframes[x[1]])
 
 
 def createJobs(pool=None, outputPath=None, projectPath=None, sceneFile=None,
