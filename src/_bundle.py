@@ -251,6 +251,7 @@ class BundleMaker(Form, Base):
                                        msg='Shot name not selected',
                                        icon=QMessageBox.Information)
                     return
+                name = self.getName()
         if cmds.file(q=True, modified=True) and self.isCurrentScene():
             msgBox.showMessage(self, title='Scene Bundle',
                                msg='Your scene contains unsaved changes, save them before proceeding',
@@ -260,7 +261,6 @@ class BundleMaker(Form, Base):
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
         qApp.processEvents()
-        name = self.getName()
         if self.createProjectFolder(name):
             pc.workspace(self.rootPath, o=True)
             if self.collectTextures():
@@ -885,7 +885,7 @@ class BundleMaker(Form, Base):
             detail += "\n" + str(e)
             if self.isCurrentScene():
                 msgBox.showMessage(self, title='Scene Bundle',
-                                    msg='Cannot copy to rendering server' + str(e),
+                                    msg='Cannot copy to rendering server\n' + str(e),
                                     icon=QMessageBox.Information)
             else:
                 detail = self.currentFileName() + '\r\n'*2 + detail
@@ -912,7 +912,7 @@ class BundleMaker(Form, Base):
             detail += "\n" + str(e)
             if self.isCurrentScene():
                 msgBox.showMessage(self, title='Scene Bundle',
-                            msg='Cannot create jobs to rendering server  ' + str(e),
+                            msg='Cannot create jobs to rendering server\n' + str(e),
                             icon=QMessageBox.Information)
             else:
                 detail = self.currentFileName() + '\r\n'*2 + detail
