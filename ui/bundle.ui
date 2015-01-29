@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>770</width>
-    <height>420</height>
+    <height>375</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -129,6 +129,50 @@
         <property name="checked">
          <bool>false</bool>
         </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="projectBox">
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <item>
+         <property name="text">
+          <string>--Project--</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Al_Mansour_Season_02</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="epBox">
+        <item>
+         <property name="text">
+          <string>--Episode--</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="seqBox">
+        <item>
+         <property name="text">
+          <string>--Sequence--</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="shBox">
+        <item>
+         <property name="text">
+          <string>--Shot--</string>
+         </property>
+        </item>
        </widget>
       </item>
       <item>
@@ -331,6 +375,22 @@
     <hint type="destinationlabel">
      <x>70</x>
      <y>16</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>deadlineCheck</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>projectBox</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>178</x>
+     <y>84</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>348</x>
+     <y>87</y>
     </hint>
    </hints>
   </connection>

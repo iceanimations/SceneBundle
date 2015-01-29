@@ -62,9 +62,13 @@ class BundleMaker(Form, Base):
         self.selectButton.clicked.connect(self.filesBox.selectAll)
         self.filesBox.doubleClicked.connect(self.showEditForm)
         self.deadlineCheck.setChecked(False)
-        self.deadlineCheck.hide()
-
+        self.deadlineCheck.clicked.connect(self.toggleBoxes)
+        self.currentSceneButton.clicked.connect(self.toggleBoxes)
+        
+        self.projectBox.hide()
         self.progressBar.hide()
+        self.hideBoxes()
+        self.populateBoxes()
 
         path = osp.join(osp.expanduser('~'), 'scene_bundle_log')
         if not osp.exists(path):
@@ -72,6 +76,27 @@ class BundleMaker(Form, Base):
         self.logFilePath = osp.join(path, 'log.txt')
 
         appUsageApp.updateDatabase('sceneBundle')
+        
+    def populateBoxes(self):
+        self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
+        self.epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
+        self.seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
+        
+    def toggleBoxes(self):
+        if self.isCurrentScene() and self.isDeadlineCheck():
+            self.showBoxes()
+        else:
+            self.hideBoxes()
+    
+    def showBoxes(self):
+        self.epBox.show()
+        self.seqBox.show()
+        self.shBox.show()
+    
+    def hideBoxes(self):
+        self.epBox.hide()
+        self.seqBox.hide()
+        self.shBox.hide()
 
     def openLogFile(self):
         try:
@@ -143,9 +168,19 @@ class BundleMaker(Form, Base):
 
     def isCurrentScene(self):
         return self.currentSceneButton.isChecked()
+    
+    def isDeadlineCheck(self):
+        return self.deadlineCheck.isChecked()
 
     def callCreateBundle(self):
         self.openLogFile()
+        pro = self.projectBox.currentText()
+        if self.isDeadlineCheck():
+            if pro == '--Project--':
+                msgBox.showMessage(self, title='Scene Bundle',
+                                   msg='Project name not selected',
+                                   icon=QMessageBox.Information)
+                return
         if not self.isCurrentScene():
             if not self.getPath():
                 return
@@ -157,9 +192,9 @@ class BundleMaker(Form, Base):
                 return
 
             for i in range(total):
-                if len(self.filesBox.item(i).text().split(' | ')) < 2:
+                if len(self.filesBox.item(i).text().split(' | ')) < 5:
                     msgBox.showMessage(self, title='Scene Bundle',
-                                       msg='Name not specified for the item',
+                                       msg='Name, Episode, Sequence and/or Shot not specified for the item',
                                        icon=QMessageBox.Information)
                     return
             for i in range(total):
@@ -167,12 +202,12 @@ class BundleMaker(Form, Base):
                 item = self.filesBox.item(i)
                 item.setBackground(Qt.gray)
                 qApp.processEvents()
-                name, filename = item.text().split(' | ')
+                name, filename, ep, seq, sh = item.text().split(' | ')
                 if osp.splitext(filename)[-1] in ['.ma', '.mb']:
                     cmds.file(filename, o=True, f=True, prompt=False)
-                    self.createBundle(name)
+                    self.createBundle(name=name, project=pro, ep=ep, seq=seq, sh=sh)
         else:
-            self.createBundle()
+            self.createBundle(project=pro)
         self.closeLogFile()
         self.showLogFileMessage()
 
@@ -188,14 +223,35 @@ class BundleMaker(Form, Base):
                                          icon=QMessageBox.Information,
                                          btns=QMessageBox.Yes|QMessageBox.No)
                 if btn == QMessageBox.Yes:
-                    subprocess.call(self.logFilePath, shell=True)
+                    subprocess.Popen(self.logFilePath, shell=True)
 
     def createLog(self, details):
         if self.logFile:
             self.logFile.write(details)
             self.logFile.write('\r\n'+'-'*100+'\r\n'*3)
 
-    def createBundle(self, name=None):
+    def createBundle(self, name=None, project=None, ep=None, seq=None, sh=None):
+        if self.isDeadlineCheck():
+            if self.isCurrentScene():
+                ep = self.epBox.currentText()
+                if ep == '--Episode--':
+                    msgBox.showMessage(self, title='Scene Bundle',
+                                       msg='Episode name not selected',
+                                       icon=QMessageBox.Information)
+                    return
+                seq = self.seqBox.currentText()
+                if seq == '--Sequence--':
+                    msgBox.showMessage(self, title='Scene Bundle',
+                                       msg='Sequence name not selected',
+                                       icon=QMessageBox.Information)
+                    return
+                sh = self.shBox.currentText()
+                if sh == '--Shot--':
+                    msgBox.showMessage(self, title='Scene Bundle',
+                                       msg='Shot name not selected',
+                                       icon=QMessageBox.Information)
+                    return
+                name = self.getName()
         if cmds.file(q=True, modified=True) and self.isCurrentScene():
             msgBox.showMessage(self, title='Scene Bundle',
                                msg='Your scene contains unsaved changes, save them before proceeding',
@@ -217,10 +273,10 @@ class BundleMaker(Form, Base):
                                 self.mapTextures()
                                 self.mapCache()
                                 self.saveSceneAs(name)
-                                if self.archive() and not self.keepBundleButton.isChecked():
-                                    self.removeBundle()
                                 if self.deadlineCheck.isChecked():
-                                    self.submitToDeadline()
+                                    if self.submitToDeadline(name, project, ep, seq, sh):
+                                        if not self.keepBundleButton.isChecked():
+                                            self.removeBundle()
                                 self.statusLabel.setText('Scene bundled successfully...')
                                 qApp.processEvents()
         self.progressBar.hide()
@@ -246,7 +302,7 @@ class BundleMaker(Form, Base):
                                    icon=QMessageBox.Information)
         else:
             msgBox.showMessage(self, title='Scene Bundle',
-                               msg='Path not specified',
+                               msg='Location path not specified',
                                icon=QMessageBox.Information)
 
     def createProjectFolder(self, name=None):
@@ -412,13 +468,13 @@ class BundleMaker(Form, Base):
                     if fileNames:
                         for phile in fileNames:
                             shutil.copy(phile, folderPath)
-                            self.copyTxFile(phile, folderPath)
+                            self.copyRSFile(phile, folderPath)
                         relativeFilePath = osp.join(relativePath, re.sub('\.\d+\.', '.<udim>.', osp.basename(fileNames[0])))
                         self.texturesMapping[node] = relativeFilePath
                 else:
                     if osp.exists(textureFilePath):
                         shutil.copy(textureFilePath, folderPath)
-                        self.copyTxFile(textureFilePath, folderPath)
+                        self.copyRSFile(textureFilePath, folderPath)
                         relativeFilePath = osp.join(relativePath, osp.basename(textureFilePath))
                         self.texturesMapping[node] = relativeFilePath
             newName = newName + 1
@@ -430,9 +486,9 @@ class BundleMaker(Form, Base):
         qApp.processEvents()
         return True
 
-    def copyTxFile(self, path, path2):
+    def copyRSFile(self, path, path2):
         directoryPath, ext = osp.splitext(path)
-        directoryPath += '.tx'
+        directoryPath += '.rstexbin'
         if osp.exists(directoryPath):
             shutil.copy(directoryPath, path2)
 
@@ -797,9 +853,100 @@ class BundleMaker(Form, Base):
         cmds.file(rename=scenePath)
         cmds.file(f=True, save=True, options="v=0;", type=cmds.file(q=True, type=True)[0])
 
-    def submitToDeadline(self):
-        deadline.initDeadline()
-        deadline.openSubmissionWindow()
+    def submitToDeadline(self, name, project, episode, sequence, shot):
+        ''' hello world '''
+        ###############################################################################
+        #                                resolve paths                                #
+        ###############################################################################
+        self.progressBar.setMaximum(0)
+        self.statusLabel.setText('copying directory %s ...'%self.rootPath)
+        qApp.processEvents()
+        poolidx, pool = deadline.getPreferredPool()
+        bundle_base = deadline.rs_pools[pool]
+
+        bundle_loc = deadline.bundle_loc%{'bundle_base':bundle_base,
+                'project':project, 'episode':episode, 'sequence':sequence, 'shot':shot}
+
+        count = 0
+        projectPath = os.path.join( bundle_loc, "%03d"%(count), name )
+        while os.path.exists(projectPath):
+            count += 1
+            projectPath = os.path.join( bundle_loc, "%03d"%(count), name )
+
+        ###############################################################################
+        #                                   copying                                   #
+        ###############################################################################
+        try:
+            shutil.copytree(cmds.workspace(q=1, rd=1), projectPath)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            detail = "\nError in copying to directory" + projectPath
+            detail += "\n" + str(e)
+            if self.isCurrentScene():
+                msgBox.showMessage(self, title='Scene Bundle',
+                                    msg='Cannot copy to rendering server\n' + str(e),
+                                    icon=QMessageBox.Information)
+            else:
+                detail = self.currentFileName() + '\r\n'*2 + detail
+                self.createLog(detail)
+            return False
+
+        ###############################################################################
+        #                                creating jobs                                #
+        ###############################################################################
+        self.statusLabel.setText('creating jobs ')
+        qApp.processEvents()
+        jobName = '_'.join([project, episode, sequence, shot, name])
+        outputPath = deadline.output_loc%{'project':project, 'episode':episode,
+                'sequence':sequence, 'shot':shot}
+        filename = os.path.basename(cmds.file(q=1, sn=1))
+        sceneFile = os.path.join( projectPath, "scenes", filename)
+
+        try:
+            jobs = deadline.createJobs(pool, outputPath, projectPath, sceneFile, jobName)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            detail = "\nError in Creating Job"
+            detail += "\n" + str(e)
+            if self.isCurrentScene():
+                msgBox.showMessage(self, title='Scene Bundle',
+                            msg='Cannot create jobs to rendering server\n' + str(e),
+                            icon=QMessageBox.Information)
+            else:
+                detail = self.currentFileName() + '\r\n'*2 + detail
+                self.createLog(detail)
+            return False
+
+        ###############################################################################
+        #                               submitting jobs                               #
+        ###############################################################################
+        self.progressBar.setMaximum(len(jobs))
+        self.statusLabel.setText('creating jobs ')
+        qApp.processEvents()
+        for ji, job in enumerate(jobs):
+            self.statusLabel.setText('submitting job %d of %d' % (ji+1, len(jobs)))
+            self.progressBar.setValue(ji)
+            qApp.processEvents()
+            try:
+                job.submit()
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                detail = "\nError in submitting Job" + job.jobInfo["Name"]
+                detail += "\n" + str(e)
+                if self.isCurrentScene():
+                    msgBox.showMessage(self, title='Scene Bundle',
+                                        msg='Cannot submit Job ' + str(e),
+                                        icon=QMessageBox.Information)
+                else:
+                    detail = self.currentFileName() + '\r\n'*2 + detail
+                    self.createLog(detail)
+                return False
+        self.progressBar.setValue(0)
+        qApp.processEvents()
+        return True
 
     def removeBundle(self):
         self.statusLabel.setText('Removing directory %s ...'%self.rootPath)
@@ -824,26 +971,44 @@ class EditForm(Form1, Base1):
 
         self.parentWin = parent
         self.inputFields = []
-
+        
+        self.populateBoxes()
         self.populate()
+        self.epBox.currentIndexChanged.connect(self.switchAllBoxes)
+        self.seqBox.currentIndexChanged.connect(self.switchAllBoxes)
+        self.shBox.currentIndexChanged.connect(self.switchAllBoxes)
 
         self.okButton.clicked.connect(self.ok)
+        
+    def populateBoxes(self):
+        self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
+        self.epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
+        self.seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
 
     def populate(self):
         paths = self.parentWin.getPaths()
         for path in paths:
-            name = ''
+            name = ep = seq = sh = ''
             if ' | ' in path:
-                name, path = path.split(' | ')
-            iField = InputField(self, name, path)
+                name, path, ep, seq, sh = path.split(' | ')
+            iField = InputField(self, name, path, ep, seq, sh)
             self.itemsLayout.addWidget(iField)
             self.inputFields.append(iField)
+            
+    def switchAllBoxes(self):
+        for iField in self.inputFields:
+            iField.epBox.setCurrentIndex(self.getIndexOfBox(iField.epBox, self.epBox.currentText()))
+            iField.seqBox.setCurrentIndex(self.getIndexOfBox(iField.seqBox, self.seqBox.currentText()))
+            iField.shBox.setCurrentIndex(self.getIndexOfBox(iField.shBox, self.shBox.currentText()))
 
     def ok(self):
         paths = []
         for iField in self.inputFields:
             name = iField.getName()
             path = iField.getPath()
+            ep = iField.getEp()
+            seq = iField.getSeq()
+            sh = iField.getSh()
             if not name:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Name not specified for the bundle',
@@ -854,25 +1019,59 @@ class EditForm(Form1, Base1):
                                    msg='Path not specified for the bundle',
                                    icon=QMessageBox.Information)
                 return
-            paths.append(name +' | '+ path)
+            if not ep:
+                msgBox.showMessage(self, title='Scene Bundle',
+                                   msg='Episode not specified for the bundle',
+                                   icon=QMessageBox.Information)
+                return
+            if not seq:
+                msgBox.showMessage(self, title='Scene Bundle',
+                                   msg='Sequence not specified for the bundle',
+                                   icon=QMessageBox.Information)
+                return
+            if not sh:
+                msgBox.showMessage(self, title='Scene Bundle',
+                                   msg='Shot not specified fot the bundle',
+                                   icon=QMessageBox.Information)
+                return
+            paths.append(' | '.join([name, path, ep, seq, sh]))
         self.parentWin.setPaths(paths)
         self.accept()
+        
+    def getIndexOfBox(self, box, text):
+        for i in range(box.count()):
+            if box.itemText(i) == text:
+                return i
+        return -1
 
 
 Form2, Base2 = uic.loadUiType(osp.join(ui_path, 'input_field.ui'))
 class InputField(Form2, Base2):
-    def __init__(self, parent=None, name=None, path=None):
+    def __init__(self, parent=None, name=None, path=None, ep=None, seq=None, sh=None):
         super(InputField, self).__init__(parent)
         self.setupUi(self)
-
+        
+        self.populateBoxes()
+        
         if name:
             self.nameBox.setText(name)
         if path:
             self.pathBox.setText(path)
+        if ep:
+            self.setEp(ep)
+        if seq:
+            self.setSeq(seq)
+        if sh:
+            self.setSh(sh)
 
         self.nameBox.setValidator(__validator__)
 
         self.browseButton.clicked.connect(self.browseFolder)
+        
+    def populateBoxes(self):
+        self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
+        self.epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
+        self.seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
 
     def closeEvent(self, event):
         self.deleteLater()
@@ -886,6 +1085,21 @@ class InputField(Form2, Base2):
     def closeEvent(self, event):
         self.deleteLater()
         del self
+        
+    def setEp(self, ep):
+        self.epBox.setCurrentIndex(self.getIndexOfBox(self.epBox, ep))
+    
+    def setSeq(self, seq):
+        self.seqBox.setCurrentIndex(self.getIndexOfBox(self.seqBox, seq))
+    
+    def setSh(self, sh):
+        self.shBox.setCurrentIndex(self.getIndexOfBox(self.shBox, sh))
+        
+    def getIndexOfBox(self, box, text):
+        for i in range(box.count()):
+            if box.itemText(i) == text:
+                return i
+        return -1
 
     def setName(self, name):
         self.nameBox.setText(name)
@@ -898,3 +1112,18 @@ class InputField(Form2, Base2):
 
     def getPath(self):
         return self.pathBox.text()
+    
+    def getEp(self):
+        text = self.epBox.currentText()
+        if text != '--Episode--':
+            return text
+    
+    def getSeq(self):
+        text = self.seqBox.currentText()
+        if text != '--Sequence--':
+            return text
+        
+    def getSh(self):
+        text = self.shBox.currentText()
+        if text != '--Shot--':
+            return text
