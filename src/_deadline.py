@@ -1,7 +1,4 @@
-#import os
-#import os.path as op
-
-
+import math
 from collections import OrderedDict
 
 import ideadline as dl
@@ -39,6 +36,7 @@ def createJobs(pool=None, outputPath=None, projectPath=None, sceneFile=None,
         submitter.sceneFile = sceneFile
     if jobName:
         submitter.jobName = jobName
+    print jobName
     return submitter.createJobs()
 
 
@@ -48,8 +46,8 @@ def getRedshiftPools():
 
 def getFramesPendingInJob(job):
     totalFrames = len(job["Frames"].split(","))
-    doneRatio = float(job["QueuedChunks"])/int(job["TaskCount"])
-    return int(totalFrames * doneRatio)
+    ratio = 1-float(job["CompletedChunks"])/int(job["TaskCount"])
+    return int(math.ceil(totalFrames * ratio))
 
 
 def getFramesPendingOnPools(pools,
