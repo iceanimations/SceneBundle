@@ -897,7 +897,7 @@ class BundleMaker(Form, Base):
         ###############################################################################
         self.statusLabel.setText('creating jobs ')
         qApp.processEvents()
-        jobName = '_'.join([project, episode, sequence, shot, name])
+        jobName = '_'.join([project, episode, sequence, shot])
         outputPath = deadline.output_loc%{'project':project, 'episode':episode,
                 'sequence':sequence, 'shot':shot}
         filename = os.path.basename(cmds.file(q=1, sn=1))
