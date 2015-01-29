@@ -223,7 +223,7 @@ class BundleMaker(Form, Base):
                                          icon=QMessageBox.Information,
                                          btns=QMessageBox.Yes|QMessageBox.No)
                 if btn == QMessageBox.Yes:
-                    subprocess.call(self.logFilePath, shell=True)
+                    subprocess.Popen(self.logFilePath, shell=True)
 
     def createLog(self, details):
         if self.logFile:
