@@ -64,11 +64,25 @@ class BundleMaker(Form, Base):
         self.deadlineCheck.setChecked(False)
         self.deadlineCheck.clicked.connect(self.toggleBoxes)
         self.currentSceneButton.clicked.connect(self.toggleBoxes)
+        map(lambda btn: btn.clicked.connect(lambda: self.makeButtonsExclussive(btn)),
+            [self.deadlineCheck, self.makeZipButton, self.keepBundleButton])
+        addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
         
         self.projectBox.hide()
         self.progressBar.hide()
+        self.epBox2.hide()
+        self.seqBox2.hide()
+        self.shBox2.hide()
         self.hideBoxes()
-        self.populateBoxes()
+        populateBoxes(self.epBox, self.seqBox, self.shBox)
+        
+        addKeyEvent(self.epBox, self.epBox2)
+        addKeyEvent(self.seqBox, self.seqBox2)
+        addKeyEvent(self.shBox, self.shBox2)
+
+        self.epBox2.setValidator(__validator__)
+        self.seqBox2.setValidator(__validator__)
+        self.shBox2.setValidator(__validator__)
 
         path = osp.join(osp.expanduser('~'), 'scene_bundle_log')
         if not osp.exists(path):
@@ -76,6 +90,12 @@ class BundleMaker(Form, Base):
         self.logFilePath = osp.join(path, 'log.txt')
 
         appUsageApp.updateDatabase('sceneBundle')
+        
+    def makeButtonsExclussive(self, btn):
+        if not any([self.deadlineCheck.isChecked(),
+                   self.makeZipButton.isChecked(),
+                   self.keepBundleButton.isChecked()]):
+            btn.setChecked(True)
         
     def populateBoxes(self):
         self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
@@ -182,7 +202,7 @@ class BundleMaker(Form, Base):
                                    icon=QMessageBox.Information)
                 return
         if not self.isCurrentScene():
-            if not self.getPath():
+            if not self.getPath(): # Bundle location path
                 return
             total = self.filesBox.count()
             if total == 0:
@@ -234,18 +254,24 @@ class BundleMaker(Form, Base):
         if self.isDeadlineCheck():
             if self.isCurrentScene():
                 ep = self.epBox.currentText()
+                if ep == 'Custom':
+                    ep = self.epBox2.text()
                 if ep == '--Episode--':
                     msgBox.showMessage(self, title='Scene Bundle',
                                        msg='Episode name not selected',
                                        icon=QMessageBox.Information)
                     return
                 seq = self.seqBox.currentText()
+                if seq == 'Custom':
+                    seq = self.seqBox2.text()
                 if seq == '--Sequence--':
                     msgBox.showMessage(self, title='Scene Bundle',
                                        msg='Sequence name not selected',
                                        icon=QMessageBox.Information)
                     return
                 sh = self.shBox.currentText()
+                if sh == 'Custom':
+                    sh = self.shBox2.text()
                 if sh == '--Shot--':
                     msgBox.showMessage(self, title='Scene Bundle',
                                        msg='Shot name not selected',
@@ -273,10 +299,13 @@ class BundleMaker(Form, Base):
                                 self.mapTextures()
                                 self.mapCache()
                                 self.saveSceneAs(name)
+                                if self.makeZipButton.isChecked():
+                                    self.archive()
                                 if self.deadlineCheck.isChecked():
-                                    if self.submitToDeadline(name, project, ep, seq, sh):
-                                        if not self.keepBundleButton.isChecked():
-                                            self.removeBundle()
+                                    self.submitToDeadline(name, project, ep, seq, sh)
+                                if not self.keepBundleButton.isChecked():
+                                    cmds.file(new=True, f=True)
+                                    self.removeBundle()
                                 self.statusLabel.setText('Scene bundled successfully...')
                                 qApp.processEvents()
         self.progressBar.hide()
@@ -752,21 +781,23 @@ class BundleMaker(Form, Base):
         refNodes = self.refNodes[:]
         for ref in refNodes:
             try:
-                pc.FileReference(ref).importContents()
+                refPath = ref.path
                 self.refNodes.remove(ref)
+                pc.FileReference(ref).importContents()
             except Exception as e:
-                errors[ref] = str(e)
+                errors[refPath] = str(e)
             c += 1
             self.progressBar.setValue(c)
         if errors:
             detail = 'Could not import following references\r\n'
             for node in errors:
-                detail += '\r\n'+ node.path + '\r\nReason: '+errors[node]
+                detail += '\r\n'+ node + '\r\nReason: '+errors[node]
             if self.isCurrentScene():
                 btn = msgBox.showMessage(self, title='Scene Bundle',
                                             msg='Errors occured while importing references',
                                             ques='Do you want to proceed?',
                                             icon=QMessageBox.Warning,
+                                            details=detail,
                                             btns=QMessageBox.Yes|QMessageBox.No)
                 if btn == QMessageBox.Yes:
                     pass
@@ -859,9 +890,19 @@ class BundleMaker(Form, Base):
         #                                resolve paths                                #
         ###############################################################################
         self.progressBar.setMaximum(0)
-        self.statusLabel.setText('copying directory %s ...'%self.rootPath)
+        self.statusLabel.setText('contacting deadline...')
         qApp.processEvents()
-        poolidx, pool = deadline.getPreferredPool()
+        try:
+            poolidx, pool = deadline.getPreferredPool()
+        except Exception as ex:
+            detail = 'Deadline submission error: '+str(ex)
+            if self.isCurrentScene():
+                msgBox.showMessage(self, title='Scene Bundle',
+                                   msg=str(detail), icon=QMessageBox.Information)
+            else:
+                detail = self.currentFileName() + '\r\n'*2 + detail
+                self.createLog(detail)
+            return False
         bundle_base = deadline.rs_pools[pool]
 
         bundle_loc = deadline.bundle_loc%{'bundle_base':bundle_base,
@@ -876,6 +917,8 @@ class BundleMaker(Form, Base):
         ###############################################################################
         #                                   copying                                   #
         ###############################################################################
+        self.statusLabel.setText('copying directory %s ...'%self.rootPath)
+        qApp.processEvents()
         try:
             shutil.copytree(cmds.workspace(q=1, rd=1), projectPath)
         except Exception as e:
@@ -897,7 +940,7 @@ class BundleMaker(Form, Base):
         ###############################################################################
         self.statusLabel.setText('creating jobs ')
         qApp.processEvents()
-        jobName = '_'.join([project, episode, sequence, shot])
+        jobName = '_'.join([project, episode, sequence, shot]) +' - '+ name
         outputPath = deadline.output_loc%{'project':project, 'episode':episode,
                 'sequence':sequence, 'shot':shot}
         filename = os.path.basename(cmds.file(q=1, sn=1))
@@ -972,11 +1015,28 @@ class EditForm(Form1, Base1):
         self.parentWin = parent
         self.inputFields = []
         
-        self.populateBoxes()
+        populateBoxes(self.epBox, self.seqBox, self.shBox)
         self.populate()
         self.epBox.currentIndexChanged.connect(self.switchAllBoxes)
         self.seqBox.currentIndexChanged.connect(self.switchAllBoxes)
         self.shBox.currentIndexChanged.connect(self.switchAllBoxes)
+        addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
+        
+        self.epBox2.setValidator(__validator__)
+        self.seqBox2.setValidator(__validator__)
+        self.shBox2.setValidator(__validator__)
+        
+        addKeyEvent(self.epBox, self.epBox2)
+        addKeyEvent(self.seqBox, self.seqBox2)
+        addKeyEvent(self.shBox, self.shBox2)
+        
+        self.epBox2.textChanged.connect(self.fillAllBoxes)
+        self.seqBox2.textChanged.connect(self.fillAllBoxes)
+        self.shBox2.textChanged.connect(self.fillAllBoxes)
+        
+        self.epBox2.hide()
+        self.seqBox2.hide()
+        self.shBox2.hide()
 
         self.okButton.clicked.connect(self.ok)
         
@@ -1000,6 +1060,12 @@ class EditForm(Form1, Base1):
             iField.epBox.setCurrentIndex(self.getIndexOfBox(iField.epBox, self.epBox.currentText()))
             iField.seqBox.setCurrentIndex(self.getIndexOfBox(iField.seqBox, self.seqBox.currentText()))
             iField.shBox.setCurrentIndex(self.getIndexOfBox(iField.shBox, self.shBox.currentText()))
+            
+    def fillAllBoxes(self):
+        for iField in self.inputFields:
+            iField.epBox2.setText(self.epBox2.text())
+            iField.seqBox2.setText(self.seqBox2.text())
+            iField.shBox2.setText(self.shBox2.text())
 
     def ok(self):
         paths = []
@@ -1051,7 +1117,8 @@ class InputField(Form2, Base2):
         super(InputField, self).__init__(parent)
         self.setupUi(self)
         
-        self.populateBoxes()
+        populateBoxes(self.epBox, self.seqBox, self.shBox)
+        addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
         
         if name:
             self.nameBox.setText(name)
@@ -1065,13 +1132,19 @@ class InputField(Form2, Base2):
             self.setSh(sh)
 
         self.nameBox.setValidator(__validator__)
+        self.epBox2.setValidator(__validator__)
+        self.seqBox2.setValidator(__validator__)
+        self.shBox2.setValidator(__validator__)
+        
+        addKeyEvent(self.epBox, self.epBox2)
+        addKeyEvent(self.seqBox, self.seqBox2)
+        addKeyEvent(self.shBox, self.shBox2)
+        
+        self.epBox2.hide()
+        self.seqBox2.hide()
+        self.shBox2.hide()
 
         self.browseButton.clicked.connect(self.browseFolder)
-        
-    def populateBoxes(self):
-        self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
-        self.epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
-        self.seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
 
     def closeEvent(self, event):
         self.deleteLater()
@@ -1115,15 +1188,48 @@ class InputField(Form2, Base2):
     
     def getEp(self):
         text = self.epBox.currentText()
+        if text == 'Custom':
+            return self.epBox2.text()
         if text != '--Episode--':
             return text
     
     def getSeq(self):
         text = self.seqBox.currentText()
+        if text == 'Custom':
+            return self.seqBox2.text()
         if text != '--Sequence--':
             return text
         
     def getSh(self):
         text = self.shBox.currentText()
+        if text == 'Custom':
+            return self.shBox2.text()
         if text != '--Shot--':
             return text
+        
+def populateBoxes(epBox, seqBox, shBox):
+    shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
+    epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
+    seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
+    
+    for item in [epBox, seqBox, shBox]:
+        item.addItem('Custom')
+        
+def keyPress(box):
+    box.setCurrentIndex(0)
+        
+def addKeyEvent(box1, box2):
+    box2.mouseDoubleClickEvent = lambda event: keyPress(box1)
+        
+def switchBox(box1, box2):
+    if box1.currentText() == 'Custom':
+        box2.show()
+        box1.hide()
+    else:
+        box2.hide()
+        box1.show()
+        
+def addEventToBoxes(epBox, seqBox, shBox, epBox2, seqBox2, shBox2):
+    epBox.currentIndexChanged.connect(lambda: switchBox(epBox, epBox2))
+    seqBox.currentIndexChanged.connect(lambda: switchBox(seqBox, seqBox2))
+    shBox.currentIndexChanged.connect(lambda: switchBox(shBox, shBox2))

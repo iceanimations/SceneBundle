@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>770</width>
+    <width>1050</width>
     <height>375</height>
    </rect>
   </property>
@@ -18,7 +18,7 @@
   </property>
   <property name="maximumSize">
    <size>
-    <width>770</width>
+    <width>16777215</width>
     <height>420</height>
    </size>
   </property>
@@ -110,8 +110,24 @@
       </item>
       <item>
        <widget class="QCheckBox" name="deadlineCheck">
+        <property name="toolTip">
+         <string>Bundle scene and submit to deadline for rendering</string>
+        </property>
         <property name="text">
          <string>Submit To Deadline</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="makeZipButton">
+        <property name="toolTip">
+         <string>Also create zip file from bundle folder</string>
+        </property>
+        <property name="text">
+         <string>Make Zip</string>
         </property>
         <property name="checked">
          <bool>false</bool>
@@ -123,11 +139,14 @@
         <property name="enabled">
          <bool>true</bool>
         </property>
+        <property name="toolTip">
+         <string>Keep the bundle folder after creating zip file or submitting to deadline</string>
+        </property>
         <property name="text">
          <string>Keep Bundle</string>
         </property>
         <property name="checked">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
        </widget>
       </item>
@@ -158,6 +177,16 @@
        </widget>
       </item>
       <item>
+       <widget class="QLineEdit" name="epBox2">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QComboBox" name="seqBox">
         <item>
          <property name="text">
@@ -167,12 +196,32 @@
        </widget>
       </item>
       <item>
+       <widget class="QLineEdit" name="seqBox2">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QComboBox" name="shBox">
         <item>
          <property name="text">
           <string>--Shot--</string>
          </property>
         </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="shBox2">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
        </widget>
       </item>
       <item>
@@ -389,8 +438,8 @@
      <y>84</y>
     </hint>
     <hint type="destinationlabel">
-     <x>348</x>
-     <y>87</y>
+     <x>534</x>
+     <y>94</y>
     </hint>
    </hints>
   </connection>
