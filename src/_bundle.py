@@ -773,12 +773,13 @@ class BundleMaker(Form, Base):
         if errors:
             detail = 'Could not import following references\r\n'
             for node in errors:
-                detail += '\r\n'+ node.path + '\r\nReason: '+errors[node]
+                detail += '\r\n'+ node + '\r\nReason: '+errors[node]
             if self.isCurrentScene():
                 btn = msgBox.showMessage(self, title='Scene Bundle',
                                             msg='Errors occured while importing references',
                                             ques='Do you want to proceed?',
                                             icon=QMessageBox.Warning,
+                                            details=detail,
                                             btns=QMessageBox.Yes|QMessageBox.No)
                 if btn == QMessageBox.Yes:
                     pass
