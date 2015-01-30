@@ -871,9 +871,19 @@ class BundleMaker(Form, Base):
         #                                resolve paths                                #
         ###############################################################################
         self.progressBar.setMaximum(0)
-        self.statusLabel.setText('copying directory %s ...'%self.rootPath)
+        self.statusLabel.setText('contacting deadline...')
         qApp.processEvents()
-        poolidx, pool = deadline.getPreferredPool()
+        try:
+            poolidx, pool = deadline.getPreferredPool()
+        except Exception as ex:
+            detail = 'Deadline submission error: '+str(ex)
+            if self.isCurrentScene():
+                msgBox.showMessage(self, title='Scene Bundle',
+                                   msg=str(detail), icon=QMessageBox.Information)
+            else:
+                detail = self.currentFileName() + '\r\n'*2 + detail
+                self.createLog(detail)
+            return False
         bundle_base = deadline.rs_pools[pool]
 
         bundle_loc = deadline.bundle_loc%{'bundle_base':bundle_base,
@@ -888,6 +898,8 @@ class BundleMaker(Form, Base):
         ###############################################################################
         #                                   copying                                   #
         ###############################################################################
+        self.statusLabel.setText('copying directory %s ...'%self.rootPath)
+        qApp.processEvents()
         try:
             shutil.copytree(cmds.workspace(q=1, rd=1), projectPath)
         except Exception as e:
@@ -909,7 +921,7 @@ class BundleMaker(Form, Base):
         ###############################################################################
         self.statusLabel.setText('creating jobs ')
         qApp.processEvents()
-        jobName = '_'.join([project, episode, sequence, shot])
+        jobName = '_'.join([project, episode, sequence, shot]) +' - '+ name
         outputPath = deadline.output_loc%{'project':project, 'episode':episode,
                 'sequence':sequence, 'shot':shot}
         filename = os.path.basename(cmds.file(q=1, sn=1))
