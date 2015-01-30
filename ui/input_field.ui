@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>684</width>
+    <width>1081</width>
     <height>107</height>
    </rect>
   </property>
@@ -63,6 +63,16 @@
     </widget>
    </item>
    <item>
+    <widget class="QLineEdit" name="epBox2">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QComboBox" name="seqBox">
      <item>
       <property name="text">
@@ -72,12 +82,32 @@
     </widget>
    </item>
    <item>
+    <widget class="QLineEdit" name="seqBox2">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QComboBox" name="shBox">
      <item>
       <property name="text">
        <string>--Shot--</string>
       </property>
      </item>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="shBox2">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
     </widget>
    </item>
   </layout>

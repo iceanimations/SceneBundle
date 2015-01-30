@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>925</width>
+    <width>1054</width>
     <height>285</height>
    </rect>
   </property>
@@ -70,6 +70,16 @@
         </widget>
        </item>
        <item>
+        <widget class="QLineEdit" name="epBox2">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QComboBox" name="seqBox">
          <property name="toolTip">
           <string>Switch all sequences</string>
@@ -82,6 +92,16 @@
         </widget>
        </item>
        <item>
+        <widget class="QLineEdit" name="seqBox2">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QComboBox" name="shBox">
          <property name="toolTip">
           <string>Switch all shots</string>
@@ -91,6 +111,16 @@
            <string>--Shot--</string>
           </property>
          </item>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="shBox2">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
         </widget>
        </item>
       </layout>
@@ -107,7 +137,7 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>905</width>
+        <width>1034</width>
         <height>202</height>
        </rect>
       </property>
@@ -183,7 +213,7 @@
     </hint>
     <hint type="destinationlabel">
      <x>546</x>
-     <y>313</y>
+     <y>284</y>
     </hint>
    </hints>
   </connection>
