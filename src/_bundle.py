@@ -763,10 +763,11 @@ class BundleMaker(Form, Base):
         refNodes = self.refNodes[:]
         for ref in refNodes:
             try:
-                pc.FileReference(ref).importContents()
+                refPath = ref.path
                 self.refNodes.remove(ref)
+                pc.FileReference(ref).importContents()
             except Exception as e:
-                errors[ref] = str(e)
+                errors[path] = str(e)
             c += 1
             self.progressBar.setValue(c)
         if errors:
