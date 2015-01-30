@@ -767,7 +767,7 @@ class BundleMaker(Form, Base):
                 self.refNodes.remove(ref)
                 pc.FileReference(ref).importContents()
             except Exception as e:
-                errors[path] = str(e)
+                errors[refPath] = str(e)
             c += 1
             self.progressBar.setValue(c)
         if errors:
