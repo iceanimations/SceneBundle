@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>969</width>
+    <width>684</width>
     <height>107</height>
    </rect>
   </property>
@@ -31,13 +31,23 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="toolTip">
+      <string>Bundle name</string>
+     </property>
     </widget>
    </item>
    <item>
-    <widget class="QLineEdit" name="pathBox"/>
+    <widget class="QLineEdit" name="pathBox">
+     <property name="toolTip">
+      <string>File path to create bundle from</string>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QToolButton" name="browseButton">
+     <property name="toolTip">
+      <string>Select file</string>
+     </property>
      <property name="text">
       <string>...</string>
      </property>

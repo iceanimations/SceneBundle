@@ -64,6 +64,8 @@ class BundleMaker(Form, Base):
         self.deadlineCheck.setChecked(False)
         self.deadlineCheck.clicked.connect(self.toggleBoxes)
         self.currentSceneButton.clicked.connect(self.toggleBoxes)
+        map(lambda btn: btn.clicked.connect(lambda: self.makeButtonsExclussive(btn)),
+            [self.deadlineCheck, self.makeZipButton, self.keepBundleButton])
         
         self.projectBox.hide()
         self.progressBar.hide()
@@ -76,6 +78,12 @@ class BundleMaker(Form, Base):
         self.logFilePath = osp.join(path, 'log.txt')
 
         appUsageApp.updateDatabase('sceneBundle')
+        
+    def makeButtonsExclussive(self, btn):
+        if not any([self.deadlineCheck.isChecked(),
+                   self.makeZipButton.isChecked(),
+                   self.keepBundleButton.isChecked()]):
+            btn.setChecked(True)
         
     def populateBoxes(self):
         self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
@@ -182,7 +190,7 @@ class BundleMaker(Form, Base):
                                    icon=QMessageBox.Information)
                 return
         if not self.isCurrentScene():
-            if not self.getPath():
+            if not self.getPath(): # Bundle location path
                 return
             total = self.filesBox.count()
             if total == 0:
@@ -273,10 +281,13 @@ class BundleMaker(Form, Base):
                                 self.mapTextures()
                                 self.mapCache()
                                 self.saveSceneAs(name)
+                                if self.makeZipButton.isChecked():
+                                    self.archive()
                                 if self.deadlineCheck.isChecked():
-                                    if self.submitToDeadline(name, project, ep, seq, sh):
-                                        if not self.keepBundleButton.isChecked():
-                                            self.removeBundle()
+                                    self.submitToDeadline(name, project, ep, seq, sh)
+                                if not self.keepBundleButton.isChecked():
+                                    cmds.file(new=True, f=True)
+                                    self.removeBundle()
                                 self.statusLabel.setText('Scene bundled successfully...')
                                 qApp.processEvents()
         self.progressBar.hide()

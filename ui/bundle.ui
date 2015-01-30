@@ -18,7 +18,7 @@
   </property>
   <property name="maximumSize">
    <size>
-    <width>770</width>
+    <width>16777215</width>
     <height>420</height>
    </size>
   </property>
@@ -110,6 +110,9 @@
       </item>
       <item>
        <widget class="QCheckBox" name="deadlineCheck">
+        <property name="toolTip">
+         <string>Bundle scene and submit to deadline for rendering</string>
+        </property>
         <property name="text">
          <string>Submit To Deadline</string>
         </property>
@@ -119,15 +122,31 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="makeZipButton">
+        <property name="toolTip">
+         <string>Also create zip file from bundle folder</string>
+        </property>
+        <property name="text">
+         <string>Make Zip</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="keepBundleButton">
         <property name="enabled">
          <bool>true</bool>
+        </property>
+        <property name="toolTip">
+         <string>Keep the bundle folder after creating zip file or submitting to deadline</string>
         </property>
         <property name="text">
          <string>Keep Bundle</string>
         </property>
         <property name="checked">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
        </widget>
       </item>
