@@ -304,7 +304,7 @@ class BundleMaker(Form, Base):
                                 if self.deadlineCheck.isChecked():
                                     self.submitToDeadline(name, project, ep, seq, sh)
                                 if not self.keepBundleButton.isChecked():
-                                    if not isCurrentScene():
+                                    if not self.isCurrentScene():
                                         cmds.file(new=True, f=True)
                                     self.removeBundle()
                                 self.statusLabel.setText('Scene bundled successfully...')
@@ -948,7 +948,7 @@ class BundleMaker(Form, Base):
         sceneFile = os.path.join( projectPath, "scenes", filename)
 
         try:
-            jobs = deadline.createJobs(pool, outputPath, projectPath, sceneFile, jobName)
+            jobs = deadline.getValidPools(pool, outputPath, projectPath, sceneFile, jobName)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -1076,27 +1076,27 @@ class EditForm(Form1, Base1):
             ep = iField.getEp()
             seq = iField.getSeq()
             sh = iField.getSh()
-            if not name:
+            if name is None:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Name not specified for the bundle',
                                    icon=QMessageBox.Information)
                 return
-            if not path:
+            if path is None:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Path not specified for the bundle',
                                    icon=QMessageBox.Information)
                 return
-            if not ep:
+            if ep is None:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Episode not specified for the bundle',
                                    icon=QMessageBox.Information)
                 return
-            if not seq:
+            if seq is None:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Sequence not specified for the bundle',
                                    icon=QMessageBox.Information)
                 return
-            if not sh:
+            if sh is None:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Shot not specified fot the bundle',
                                    icon=QMessageBox.Information)
