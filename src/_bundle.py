@@ -1120,6 +1120,14 @@ class InputField(Form2, Base2):
         populateBoxes(self.epBox, self.seqBox, self.shBox)
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
         
+        addKeyEvent(self.epBox, self.epBox2)
+        addKeyEvent(self.seqBox, self.seqBox2)
+        addKeyEvent(self.shBox, self.shBox2)
+        
+        self.epBox2.hide()
+        self.seqBox2.hide()
+        self.shBox2.hide()
+        
         if name:
             self.nameBox.setText(name)
         if path:
@@ -1135,14 +1143,6 @@ class InputField(Form2, Base2):
         self.epBox2.setValidator(__validator__)
         self.seqBox2.setValidator(__validator__)
         self.shBox2.setValidator(__validator__)
-        
-        addKeyEvent(self.epBox, self.epBox2)
-        addKeyEvent(self.seqBox, self.seqBox2)
-        addKeyEvent(self.shBox, self.shBox2)
-        
-        self.epBox2.hide()
-        self.seqBox2.hide()
-        self.shBox2.hide()
 
         self.browseButton.clicked.connect(self.browseFolder)
 
@@ -1160,13 +1160,27 @@ class InputField(Form2, Base2):
         del self
         
     def setEp(self, ep):
-        self.epBox.setCurrentIndex(self.getIndexOfBox(self.epBox, ep))
+        index = self.getIndexOfBox(self.epBox, ep)
+        if index == -1:
+            index = self.epBox.count() - 1
+            self.epBox2.setText(ep)
+        self.epBox.setCurrentIndex(index)
     
     def setSeq(self, seq):
-        self.seqBox.setCurrentIndex(self.getIndexOfBox(self.seqBox, seq))
+        index = self.getIndexOfBox(self.seqBox, seq)
+        if index == -1:
+            index = self.seqBox.count() - 1
+            self.seqBox2.setText(seq)
+        self.seqBox.setCurrentIndex(index)
     
     def setSh(self, sh):
-        self.shBox.setCurrentIndex(self.getIndexOfBox(self.shBox, sh))
+        index = self.getIndexOfBox(self.shBox, sh)
+        print index
+        if index == -1:
+            index = self.shBox.count() - 1
+            print index
+            self.shBox2.setText(sh)
+        self.shBox.setCurrentIndex(index)
         
     def getIndexOfBox(self, box, text):
         for i in range(box.count()):
