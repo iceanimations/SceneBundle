@@ -1258,13 +1258,8 @@ class Exceptions(Form3, Base3):
         if paths:
             paths = paths.split(',')
             paths = [path.strip() for path in paths if path]
-            for path in paths:
-                if not osp.exists(path):
-                    msgBox.showMessage(self, title='Scene Bundle',
-                                       msg='System could not find the path specified\n'+
-                                       path, icon=QMessageBox.Information)
-                    return
-        else: paths = []
+        else:
+            paths = []
         self.parentWin.addExceptions(paths)
         self.accept()
         
