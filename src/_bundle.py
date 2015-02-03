@@ -36,7 +36,8 @@ class BundleMaker(Form, Base):
     def __init__(self, parent=qtfy.getMayaWindow()):
         super(BundleMaker, self).__init__(parent)
         self.setupUi(self)
-
+        
+        self.textureExceptions = []
         self.rootPath = None
         self.texturesMapping = {}
         self.refNodes = []
@@ -64,6 +65,7 @@ class BundleMaker(Form, Base):
         self.deadlineCheck.setChecked(False)
         self.deadlineCheck.clicked.connect(self.toggleBoxes)
         self.currentSceneButton.clicked.connect(self.toggleBoxes)
+        self.addExceptionsButton.clicked.connect(self.showExceptionsWindow)
         map(lambda btn: btn.clicked.connect(lambda: self.makeButtonsExclussive(btn)),
             [self.deadlineCheck, self.makeZipButton, self.keepBundleButton])
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
@@ -304,7 +306,8 @@ class BundleMaker(Form, Base):
                                 if self.deadlineCheck.isChecked():
                                     self.submitToDeadline(name, project, ep, seq, sh)
                                 if not self.keepBundleButton.isChecked():
-                                    cmds.file(new=True, f=True)
+                                    if not self.isCurrentScene():
+                                        cmds.file(new=True, f=True)
                                     self.removeBundle()
                                 self.statusLabel.setText('Scene bundled successfully...')
                                 qApp.processEvents()
@@ -492,20 +495,26 @@ class BundleMaker(Form, Base):
             except AttributeError:
                 textureFilePath = node.filename.get()
             if textureFilePath:
-                if '<udim>' in textureFilePath.lower():
-                    fileNames = self.getUDIMFiles(textureFilePath)
-                    if fileNames:
-                        for phile in fileNames:
-                            shutil.copy(phile, folderPath)
-                            self.copyRSFile(phile, folderPath)
-                        relativeFilePath = osp.join(relativePath, re.sub('\.\d+\.', '.<udim>.', osp.basename(fileNames[0])))
-                        self.texturesMapping[node] = relativeFilePath
+                if osp.normcase(osp.normpath(textureFilePath)) not in [osp.normcase(osp.normpath(path)) for path in self.textureExceptions]:
+                    if pc.attributeQuery('excp', n=node, exists=True):
+                        pc.deleteAttr('excp', n=node)
+                    if '<udim>' in textureFilePath.lower():
+                        fileNames = self.getUDIMFiles(textureFilePath)
+                        if fileNames:
+                            for phile in fileNames:
+                                shutil.copy(phile, folderPath)
+                                self.copyRSFile(phile, folderPath)
+                            relativeFilePath = osp.join(relativePath, re.sub('\.\d+\.', '.<udim>.', osp.basename(fileNames[0])))
+                            self.texturesMapping[node] = relativeFilePath
+                    else:
+                        if osp.exists(textureFilePath):
+                            shutil.copy(textureFilePath, folderPath)
+                            self.copyRSFile(textureFilePath, folderPath)
+                            relativeFilePath = osp.join(relativePath, osp.basename(textureFilePath))
+                            self.texturesMapping[node] = relativeFilePath
                 else:
-                    if osp.exists(textureFilePath):
-                        shutil.copy(textureFilePath, folderPath)
-                        self.copyRSFile(textureFilePath, folderPath)
-                        relativeFilePath = osp.join(relativePath, osp.basename(textureFilePath))
-                        self.texturesMapping[node] = relativeFilePath
+                    if not pc.attributeQuery('excp', n=node, exists=True):
+                        pc.addAttr(node, sn='excp', ln='exception', dt='string')
             newName = newName + 1
             self.progressBar.setValue(newName)
             qApp.processEvents()
@@ -947,7 +956,7 @@ class BundleMaker(Form, Base):
         sceneFile = os.path.join( projectPath, "scenes", filename)
 
         try:
-            jobs = deadline.createJobs(pool, outputPath, projectPath, sceneFile, jobName)
+            jobs = deadline.getValidPools(pool, outputPath, projectPath, sceneFile, jobName)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -1005,6 +1014,12 @@ class BundleMaker(Form, Base):
                 self.createLog(detail)
             return False
         return True
+    
+    def showExceptionsWindow(self):
+        Exceptions(self, self.textureExceptions).show()
+    
+    def addExceptions(self, paths):
+        self.textureExceptions = paths
 
 Form1, Base1 = uic.loadUiType(osp.join(ui_path, 'form.ui'))
 class EditForm(Form1, Base1):
@@ -1075,27 +1090,27 @@ class EditForm(Form1, Base1):
             ep = iField.getEp()
             seq = iField.getSeq()
             sh = iField.getSh()
-            if not name:
+            if name is None:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Name not specified for the bundle',
                                    icon=QMessageBox.Information)
                 return
-            if not path:
+            if path is None:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Path not specified for the bundle',
                                    icon=QMessageBox.Information)
                 return
-            if not ep:
+            if ep is None:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Episode not specified for the bundle',
                                    icon=QMessageBox.Information)
                 return
-            if not seq:
+            if seq is None:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Sequence not specified for the bundle',
                                    icon=QMessageBox.Information)
                 return
-            if not sh:
+            if sh is None:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Shot not specified fot the bundle',
                                    icon=QMessageBox.Information)
@@ -1120,6 +1135,14 @@ class InputField(Form2, Base2):
         populateBoxes(self.epBox, self.seqBox, self.shBox)
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
         
+        addKeyEvent(self.epBox, self.epBox2)
+        addKeyEvent(self.seqBox, self.seqBox2)
+        addKeyEvent(self.shBox, self.shBox2)
+        
+        self.epBox2.hide()
+        self.seqBox2.hide()
+        self.shBox2.hide()
+        
         if name:
             self.nameBox.setText(name)
         if path:
@@ -1135,14 +1158,6 @@ class InputField(Form2, Base2):
         self.epBox2.setValidator(__validator__)
         self.seqBox2.setValidator(__validator__)
         self.shBox2.setValidator(__validator__)
-        
-        addKeyEvent(self.epBox, self.epBox2)
-        addKeyEvent(self.seqBox, self.seqBox2)
-        addKeyEvent(self.shBox, self.shBox2)
-        
-        self.epBox2.hide()
-        self.seqBox2.hide()
-        self.shBox2.hide()
 
         self.browseButton.clicked.connect(self.browseFolder)
 
@@ -1160,13 +1175,27 @@ class InputField(Form2, Base2):
         del self
         
     def setEp(self, ep):
-        self.epBox.setCurrentIndex(self.getIndexOfBox(self.epBox, ep))
+        index = self.getIndexOfBox(self.epBox, ep)
+        if index == -1:
+            index = self.epBox.count() - 1
+            self.epBox2.setText(ep)
+        self.epBox.setCurrentIndex(index)
     
     def setSeq(self, seq):
-        self.seqBox.setCurrentIndex(self.getIndexOfBox(self.seqBox, seq))
+        index = self.getIndexOfBox(self.seqBox, seq)
+        if index == -1:
+            index = self.seqBox.count() - 1
+            self.seqBox2.setText(seq)
+        self.seqBox.setCurrentIndex(index)
     
     def setSh(self, sh):
-        self.shBox.setCurrentIndex(self.getIndexOfBox(self.shBox, sh))
+        index = self.getIndexOfBox(self.shBox, sh)
+        print index
+        if index == -1:
+            index = self.shBox.count() - 1
+            print index
+            self.shBox2.setText(sh)
+        self.shBox.setCurrentIndex(index)
         
     def getIndexOfBox(self, box, text):
         for i in range(box.count()):
@@ -1206,6 +1235,38 @@ class InputField(Form2, Base2):
             return self.shBox2.text()
         if text != '--Shot--':
             return text
+        
+Form3, Base3 = uic.loadUiType(osp.join(ui_path, 'exceptions.ui'))
+class Exceptions(Form3, Base3):
+    def __init__(self, parent, paths):
+        super(Exceptions, self).__init__(parent)
+        self.setupUi(self)
+        self.parentWin = parent
+        self.populate(paths)
+        
+        self.addButton.clicked.connect(self.add)
+        self.pathsBox.returnPressed.connect(self.add)
+        
+    def populate(self, paths):
+        self.pathsBox.setText(','.join(paths))
+    
+    def closeEvent(self, event):
+        self.deleteLater()
+        
+    def add(self):
+        paths = self.pathsBox.text()
+        if paths:
+            paths = paths.split(',')
+            paths = [path.strip() for path in paths if path]
+            for path in paths:
+                if not osp.exists(path):
+                    msgBox.showMessage(self, title='Scene Bundle',
+                                       msg='System could not find the path specified\n'+
+                                       path, icon=QMessageBox.Information)
+                    return
+        else: paths = []
+        self.parentWin.addExceptions(paths)
+        self.accept()
         
 def populateBoxes(epBox, seqBox, shBox):
     shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
