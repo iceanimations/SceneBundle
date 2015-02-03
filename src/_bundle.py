@@ -423,18 +423,24 @@ class BundleMaker(Form, Base):
         return nodeName.replace(':', '_').replace('|', '_')
 
     def getFileNodes(self):
-        return pc.ls(type=['file', 'aiImage'])
+        return pc.ls(type='file')
 
     def getUDIMFiles(self, path):
         dirname = osp.dirname(path)
         if not osp.exists(dirname):
             return []
         fileName = osp.basename(path)
-        try:
-            first, byProduct, last = fileName.split('.')
-        except:
-            return []
-        pattern = first +'\.\d+\.'+ last
+        if '<udim>' in fileName.lower():
+            try:
+                first, last = fileName.split('<udim>')
+            except:
+                return []
+        if '<f>' in fileName:
+            try:
+                first, last = fileName.split('<f>')
+            except:
+                return []
+        pattern = first +'\d+'+ last
         goodFiles = []
         fileNames = os.listdir(dirname)
         for fName in fileNames:
@@ -455,7 +461,7 @@ class BundleMaker(Form, Base):
             except:
                 filePath = imaya.getFullpathFromAttr(node.filename)
             if filePath:
-                if '<udim>' in filePath.lower():
+                if '<udim>' in filePath.lower() or '<f>' in filePath.lower():
                     fileNames = self.getUDIMFiles(filePath)
                     if not fileNames:
                         badTexturePaths.append(filePath)
@@ -498,13 +504,14 @@ class BundleMaker(Form, Base):
                 if osp.normcase(osp.normpath(textureFilePath)) not in [osp.normcase(osp.normpath(path)) for path in self.textureExceptions]:
                     if pc.attributeQuery('excp', n=node, exists=True):
                         pc.deleteAttr('excp', n=node)
-                    if '<udim>' in textureFilePath.lower():
+                    if '<udim>' in textureFilePath.lower() or '<f>' in textureFilePath.lower():
                         fileNames = self.getUDIMFiles(textureFilePath)
                         if fileNames:
                             for phile in fileNames:
                                 shutil.copy(phile, folderPath)
                                 self.copyRSFile(phile, folderPath)
-                            relativeFilePath = osp.join(relativePath, re.sub('\.\d+\.', '.<udim>.', osp.basename(fileNames[0])))
+                            relativeFilePath = osp.join(relativePath, re.sub('\d+', '<udim>', osp.basename(fileNames[0])))
+                            relativeFilePath = osp.join(relativePath, re.sub('\d+', '<f>', osp.basename(fileNames[0])))
                             self.texturesMapping[node] = relativeFilePath
                     else:
                         if osp.exists(textureFilePath):
@@ -527,6 +534,9 @@ class BundleMaker(Form, Base):
     def copyRSFile(self, path, path2):
         directoryPath, ext = osp.splitext(path)
         directoryPath += '.rstexbin'
+        if osp.exists(directoryPath):
+            shutil.copy(directoryPath, path2)
+        directoryPath += '.tx'
         if osp.exists(directoryPath):
             shutil.copy(directoryPath, path2)
 
@@ -1257,7 +1267,7 @@ class Exceptions(Form3, Base3):
         paths = self.pathsBox.text()
         if paths:
             paths = paths.split(',')
-            paths = [path.strip() for path in paths if path]
+            paths = [path.strip().strip("\"") for path in paths if path]
         else:
             paths = []
         self.parentWin.addExceptions(paths)
