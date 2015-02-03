@@ -42,11 +42,10 @@ def getLast3(path):
     b3 = osp.basename(osp.dirname(osp.dirname(path)))
     return osp.join(b3, b2, b1)
 
-for node in pc.ls(type=["aiImage", "file"]):
-    try:
-        node.fileTextureName.set(osp.join(rootPath, getLast3(node.fileTextureName.get())).replace('\\\\', '/'))
-    except:
-        node.filename.set(osp.join(rootPath, getLast3(node.filename.get())).replace('\\\\', '/'))
+for node in pc.ls(type="file"):
+    if pc.attributeQuery("excp", n=node, exists=True):
+        continue
+    node.fileTextureName.set(osp.join(rootPath, getLast3(node.fileTextureName.get())).replace('\\\\', '/'))
 
 msg=False
 for node in pc.ls(type="cacheFile"):

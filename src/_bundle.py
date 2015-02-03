@@ -36,7 +36,8 @@ class BundleMaker(Form, Base):
     def __init__(self, parent=qtfy.getMayaWindow()):
         super(BundleMaker, self).__init__(parent)
         self.setupUi(self)
-
+        
+        self.textureExceptions = []
         self.rootPath = None
         self.texturesMapping = {}
         self.refNodes = []
@@ -64,6 +65,7 @@ class BundleMaker(Form, Base):
         self.deadlineCheck.setChecked(False)
         self.deadlineCheck.clicked.connect(self.toggleBoxes)
         self.currentSceneButton.clicked.connect(self.toggleBoxes)
+        self.addExceptionsButton.clicked.connect(self.showExceptionsWindow)
         map(lambda btn: btn.clicked.connect(lambda: self.makeButtonsExclussive(btn)),
             [self.deadlineCheck, self.makeZipButton, self.keepBundleButton])
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
@@ -492,20 +494,26 @@ class BundleMaker(Form, Base):
             except AttributeError:
                 textureFilePath = node.filename.get()
             if textureFilePath:
-                if '<udim>' in textureFilePath.lower():
-                    fileNames = self.getUDIMFiles(textureFilePath)
-                    if fileNames:
-                        for phile in fileNames:
-                            shutil.copy(phile, folderPath)
-                            self.copyRSFile(phile, folderPath)
-                        relativeFilePath = osp.join(relativePath, re.sub('\.\d+\.', '.<udim>.', osp.basename(fileNames[0])))
-                        self.texturesMapping[node] = relativeFilePath
+                if osp.normcase(osp.normpath(textureFilePath)) not in [osp.normcase(osp.normpath(path)) for path in self.textureExceptions]:
+                    if pc.attributeQuery('excp', n=node, exists=True):
+                        pc.deleteAttr('excp', n=node)
+                    if '<udim>' in textureFilePath.lower():
+                        fileNames = self.getUDIMFiles(textureFilePath)
+                        if fileNames:
+                            for phile in fileNames:
+                                shutil.copy(phile, folderPath)
+                                self.copyRSFile(phile, folderPath)
+                            relativeFilePath = osp.join(relativePath, re.sub('\.\d+\.', '.<udim>.', osp.basename(fileNames[0])))
+                            self.texturesMapping[node] = relativeFilePath
+                    else:
+                        if osp.exists(textureFilePath):
+                            shutil.copy(textureFilePath, folderPath)
+                            self.copyRSFile(textureFilePath, folderPath)
+                            relativeFilePath = osp.join(relativePath, osp.basename(textureFilePath))
+                            self.texturesMapping[node] = relativeFilePath
                 else:
-                    if osp.exists(textureFilePath):
-                        shutil.copy(textureFilePath, folderPath)
-                        self.copyRSFile(textureFilePath, folderPath)
-                        relativeFilePath = osp.join(relativePath, osp.basename(textureFilePath))
-                        self.texturesMapping[node] = relativeFilePath
+                    if not pc.attributeQuery('excp', n=node, exists=True):
+                        pc.addAttr(node, sn='excp', ln='exception', dt='string')
             newName = newName + 1
             self.progressBar.setValue(newName)
             qApp.processEvents()
@@ -1005,6 +1013,12 @@ class BundleMaker(Form, Base):
                 self.createLog(detail)
             return False
         return True
+    
+    def showExceptionsWindow(self):
+        Exceptions(self, self.textureExceptions).show()
+    
+    def addExceptions(self, paths):
+        self.textureExceptions = paths
 
 Form1, Base1 = uic.loadUiType(osp.join(ui_path, 'form.ui'))
 class EditForm(Form1, Base1):
@@ -1220,6 +1234,38 @@ class InputField(Form2, Base2):
             return self.shBox2.text()
         if text != '--Shot--':
             return text
+        
+Form3, Base3 = uic.loadUiType(osp.join(ui_path, 'exceptions.ui'))
+class Exceptions(Form3, Base3):
+    def __init__(self, parent, paths):
+        super(Exceptions, self).__init__(parent)
+        self.setupUi(self)
+        self.parentWin = parent
+        self.populate(paths)
+        
+        self.addButton.clicked.connect(self.add)
+        self.pathsBox.returnPressed.connect(self.add)
+        
+    def populate(self, paths):
+        self.pathsBox.setText(','.join(paths))
+    
+    def closeEvent(self, event):
+        self.deleteLater()
+        
+    def add(self):
+        paths = self.pathsBox.text()
+        if paths:
+            paths = paths.split(',')
+            paths = [path.strip() for path in paths if path]
+            for path in paths:
+                if not osp.exists(path):
+                    msgBox.showMessage(self, title='Scene Bundle',
+                                       msg='System could not find the path specified\n'+
+                                       path, icon=QMessageBox.Information)
+                    return
+        else: paths = []
+        self.parentWin.addExceptions(paths)
+        self.accept()
         
 def populateBoxes(epBox, seqBox, shBox):
     shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])

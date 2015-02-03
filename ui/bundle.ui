@@ -59,6 +59,16 @@
         </property>
        </spacer>
       </item>
+      <item>
+       <widget class="QPushButton" name="addExceptionsButton">
+        <property name="toolTip">
+         <string>Add exceptions for textures (these textures will be used from their original location during render)</string>
+        </property>
+        <property name="text">
+         <string>Add Exceptions</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </item>
     <item>
