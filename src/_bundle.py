@@ -956,7 +956,7 @@ class BundleMaker(Form, Base):
         sceneFile = os.path.join( projectPath, "scenes", filename)
 
         try:
-            jobs = deadline.getValidPools(pool, outputPath, projectPath, sceneFile, jobName)
+            jobs = deadline.createJobs(pool, outputPath, projectPath, sceneFile, jobName)
         except Exception as e:
             import traceback
             traceback.print_exc()
