@@ -17,7 +17,7 @@
    <item>
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>Add texture paths seperated by comma (No spaces)</string>
+      <string>Add texture paths separated by comma (No spaces)</string>
      </property>
     </widget>
    </item>
