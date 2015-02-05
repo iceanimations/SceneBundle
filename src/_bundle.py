@@ -432,12 +432,22 @@ class BundleMaker(Form, Base):
         fileName = osp.basename(path)
         if '<udim>' in fileName.lower():
             try:
-                first, last = fileName.split('<udim>')
+                parts = fileName.split('<udim>')
+                if len(parts) != 2:
+                    parts = fileName.split('<UDIM>')
+                    if len(parts) != 2:
+                        return []
+                first, last = parts
             except:
                 return []
-        if '<f>' in fileName:
+        if '<f>' in fileName.lower():
             try:
-                first, last = fileName.split('<f>')
+                parts = fileName.split('<f>')
+                if len(parts) != 2:
+                    parts = fileName.split('<F>')
+                    if len(parts) != 2:
+                        return []
+                first, last = parts
             except:
                 return []
         pattern = first +'\d+'+ last
