@@ -450,7 +450,7 @@ class BundleMaker(Form, Base):
                 first, last = parts
             except:
                 return []
-        pattern = first +'\d+'+ last
+        pattern = first +'\d{4}'+ last
         goodFiles = []
         fileNames = os.listdir(dirname)
         for fName in fileNames:
@@ -521,9 +521,9 @@ class BundleMaker(Form, Base):
                                 shutil.copy(phile, folderPath)
                                 self.copyRSFile(phile, folderPath)
                             if '<udim>' in textureFilePath.lower():
-                                relativeFilePath = osp.join(relativePath, re.sub('\d+\.', '<UDIM>.', osp.basename(fileNames[0])))
+                                relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', '<UDIM>.', osp.basename(fileNames[0])))
                             else:
-                                relativeFilePath = osp.join(relativePath, re.sub('\d+\.', '<f>.', osp.basename(fileNames[0])))
+                                relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', '<f>.', osp.basename(fileNames[0])))
                             relativeFilePath = relativeFilePath.replace('\\', '/')
                             self.texturesMapping[node] = relativeFilePath
                     else:
