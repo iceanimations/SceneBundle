@@ -8,6 +8,7 @@ reload(dl)
 
 import ideadline.maya as dlm
 reload(dlm)
+import pymel.core as pc
 
 variables = ['bundle_base', 'poolidx', 'project', 'episode', 'sequence', 'shot']
 num_pools = 3
