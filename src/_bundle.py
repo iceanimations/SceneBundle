@@ -810,12 +810,14 @@ class BundleMaker(Form, Base):
         c=0
         self.progressBar.setMaximum(len(self.refNodes))
         errors = {}
-        refNodes = self.refNodes[:]
-        for ref in refNodes:
+        while self.refNodes:
             try:
-                refPath = ref.path
-                self.refNodes.remove(ref)
-                pc.FileReference(ref).importContents()
+                ref = self.refNodes.pop()
+                if ref.parent() is None:
+                    refPath = ref.path
+                    ref.importContents()
+                else:
+                    self.refNodes.insert(0, ref)
             except Exception as e:
                 errors[refPath] = str(e)
             c += 1

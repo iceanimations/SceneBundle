@@ -32,7 +32,11 @@ def getPreferredPool():
 
 def createJobs(pool=None, outputPath=None, projectPath=None, sceneFile=None,
         jobName=None):
-    submitter = dlm.DeadlineMayaSubmitter()
+    try:
+        renderable_cam = [cam for cam in pc.ls(cameras=True) if cam.renderable.get() == True][0]
+    except IndexError as ie:
+        renderable_cam = None
+    submitter = dlm.DeadlineMayaSubmitter(camera=renderable_cam)
     if pool:
         submitter.pool=pool
     if outputPath:
