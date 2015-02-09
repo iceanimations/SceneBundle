@@ -928,7 +928,7 @@ class BundleMaker(Form, Base):
         self.statusLabel.setText('contacting deadline...')
         qApp.processEvents()
         try:
-            poolidx, pool = deadline.getPreferredPool()
+            pool = deadline.getPreferredPool()
         except Exception as ex:
             detail = 'Deadline submission error: '+str(ex)
             if self.isCurrentScene():
@@ -938,7 +938,7 @@ class BundleMaker(Form, Base):
                 detail = self.currentFileName() + '\r\n'*2 + detail
                 self.createLog(detail)
             return False
-        bundle_base = deadline.rs_pools[pool]
+        bundle_base = deadline.getBundleBase( pool )
 
         bundle_loc = deadline.bundle_loc%{'bundle_base':bundle_base,
                 'project':project, 'episode':episode, 'sequence':sequence, 'shot':shot}
@@ -980,7 +980,7 @@ class BundleMaker(Form, Base):
                 'sequence':sequence, 'shot':shot}
         filename = os.path.basename(cmds.file(q=1, sn=1))
         sceneFile = os.path.join( projectPath, "scenes", filename)
-
+getValidPools
         try:
             jobs = deadline.createJobs(pool, outputPath, projectPath, sceneFile, jobName)
         except Exception as e:
