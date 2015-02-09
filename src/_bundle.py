@@ -849,10 +849,11 @@ class BundleMaker(Form, Base):
         self.progressBar.setMaximum(len(self.texturesMapping))
         c = 0
         for node in self.texturesMapping:
+            fullPath = osp.join(self.rootPath, self.texturesMapping[node]).replace('\\', '/')
             try:
-                node.fileTextureName.set(self.texturesMapping[node])
+                node.fileTextureName.set(fullPath)
             except AttributeError:
-                node.filename.set(self.texturesMapping[node])
+                node.filename.set(fullPath)
             c += 1
             self.progressBar.setValue(c)
             qApp.processEvents()
