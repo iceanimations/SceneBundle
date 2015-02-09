@@ -980,7 +980,6 @@ class BundleMaker(Form, Base):
                 'sequence':sequence, 'shot':shot}
         filename = os.path.basename(cmds.file(q=1, sn=1))
         sceneFile = os.path.join( projectPath, "scenes", filename)
-getValidPools
         try:
             jobs = deadline.createJobs(pool, outputPath, projectPath, sceneFile, jobName)
         except Exception as e:

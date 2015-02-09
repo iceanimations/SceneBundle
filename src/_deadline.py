@@ -10,7 +10,6 @@ reload(dl)
 
 import ideadline.maya as dlm
 reload(dlm)
-import pymel.core as pc
 import imaya
 
 variables = ['bundle_base', 'poolidx', 'project', 'episode', 'sequence', 'shot']
@@ -39,7 +38,7 @@ all_pools.update(default_pools)
 def getPreferredPool():
     renderer = imaya.currentRenderer()
 
-    if renderer == 'redshift'
+    if renderer == 'redshift':
         validPools = getValidPools(rs_pools)
         if validPools:
             poolframes = getFramesPendingOnPools(validPools)
@@ -48,13 +47,13 @@ def getPreferredPool():
     elif renderer == 'arnold':
         validPools = getValidPools(arnold_pools)
         if validPools:
-            return random.choice(validPools.keys())
+            return random.choice(validPools)
 
     return random.choice(default_pools.keys())
 
 def createJobs(pool=None, outputPath=None, projectPath=None, sceneFile=None,
         jobName=None):
-    submitter = dlm.DeadlineMayaSubmitter(camera=renderable_cam)
+    submitter = dlm.DeadlineMayaSubmitter()
     if pool:
         submitter.pool=pool
     if outputPath:
