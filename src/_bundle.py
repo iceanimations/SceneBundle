@@ -423,18 +423,34 @@ class BundleMaker(Form, Base):
         return nodeName.replace(':', '_').replace('|', '_')
 
     def getFileNodes(self):
-        return pc.ls(type=['file', 'aiImage'])
+        return pc.ls(type='file')
 
     def getUDIMFiles(self, path):
         dirname = osp.dirname(path)
         if not osp.exists(dirname):
             return []
         fileName = osp.basename(path)
-        try:
-            first, byProduct, last = fileName.split('.')
-        except:
-            return []
-        pattern = first +'\.\d+\.'+ last
+        if '<udim>' in fileName.lower():
+            try:
+                parts = fileName.split('<udim>')
+                if len(parts) != 2:
+                    parts = fileName.split('<UDIM>')
+                    if len(parts) != 2:
+                        return []
+                first, last = parts
+            except:
+                return []
+        if '<f>' in fileName.lower():
+            try:
+                parts = fileName.split('<f>')
+                if len(parts) != 2:
+                    parts = fileName.split('<F>')
+                    if len(parts) != 2:
+                        return []
+                first, last = parts
+            except:
+                return []
+        pattern = first +'\d{4}'+ last
         goodFiles = []
         fileNames = os.listdir(dirname)
         for fName in fileNames:
@@ -455,7 +471,7 @@ class BundleMaker(Form, Base):
             except:
                 filePath = imaya.getFullpathFromAttr(node.filename)
             if filePath:
-                if '<udim>' in filePath.lower():
+                if '<udim>' in filePath.lower() or '<f>' in filePath.lower():
                     fileNames = self.getUDIMFiles(filePath)
                     if not fileNames:
                         badTexturePaths.append(filePath)
@@ -498,13 +514,17 @@ class BundleMaker(Form, Base):
                 if osp.normcase(osp.normpath(textureFilePath)) not in [osp.normcase(osp.normpath(path)) for path in self.textureExceptions]:
                     if pc.attributeQuery('excp', n=node, exists=True):
                         pc.deleteAttr('excp', n=node)
-                    if '<udim>' in textureFilePath.lower():
+                    if '<udim>' in textureFilePath.lower() or '<f>' in textureFilePath.lower():
                         fileNames = self.getUDIMFiles(textureFilePath)
                         if fileNames:
                             for phile in fileNames:
                                 shutil.copy(phile, folderPath)
                                 self.copyRSFile(phile, folderPath)
-                            relativeFilePath = osp.join(relativePath, re.sub('\.\d+\.', '.<udim>.', osp.basename(fileNames[0])))
+                            if '<udim>' in textureFilePath.lower():
+                                relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', '<UDIM>.', osp.basename(fileNames[0])))
+                            else:
+                                relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', '<f>.', osp.basename(fileNames[0])))
+                            relativeFilePath = relativeFilePath.replace('\\', '/')
                             self.texturesMapping[node] = relativeFilePath
                     else:
                         if osp.exists(textureFilePath):
@@ -527,6 +547,9 @@ class BundleMaker(Form, Base):
     def copyRSFile(self, path, path2):
         directoryPath, ext = osp.splitext(path)
         directoryPath += '.rstexbin'
+        if osp.exists(directoryPath):
+            shutil.copy(directoryPath, path2)
+        directoryPath += '.tx'
         if osp.exists(directoryPath):
             shutil.copy(directoryPath, path2)
 
@@ -787,12 +810,14 @@ class BundleMaker(Form, Base):
         c=0
         self.progressBar.setMaximum(len(self.refNodes))
         errors = {}
-        refNodes = self.refNodes[:]
-        for ref in refNodes:
+        while self.refNodes:
             try:
-                refPath = ref.path
-                self.refNodes.remove(ref)
-                pc.FileReference(ref).importContents()
+                ref = self.refNodes.pop()
+                if ref.parent() is None:
+                    refPath = ref.path
+                    ref.importContents()
+                else:
+                    self.refNodes.insert(0, ref)
             except Exception as e:
                 errors[refPath] = str(e)
             c += 1
@@ -824,10 +849,11 @@ class BundleMaker(Form, Base):
         self.progressBar.setMaximum(len(self.texturesMapping))
         c = 0
         for node in self.texturesMapping:
+            fullPath = osp.join(self.rootPath, self.texturesMapping[node]).replace('\\', '/')
             try:
-                node.fileTextureName.set(self.texturesMapping[node])
+                node.fileTextureName.set(fullPath)
             except AttributeError:
-                node.filename.set(self.texturesMapping[node])
+                node.filename.set(fullPath)
             c += 1
             self.progressBar.setValue(c)
             qApp.processEvents()
@@ -902,7 +928,7 @@ class BundleMaker(Form, Base):
         self.statusLabel.setText('contacting deadline...')
         qApp.processEvents()
         try:
-            poolidx, pool = deadline.getPreferredPool()
+            pool = deadline.getPreferredPool()
         except Exception as ex:
             detail = 'Deadline submission error: '+str(ex)
             if self.isCurrentScene():
@@ -912,7 +938,7 @@ class BundleMaker(Form, Base):
                 detail = self.currentFileName() + '\r\n'*2 + detail
                 self.createLog(detail)
             return False
-        bundle_base = deadline.rs_pools[pool]
+        bundle_base = deadline.getBundleBase( pool )
 
         bundle_loc = deadline.bundle_loc%{'bundle_base':bundle_base,
                 'project':project, 'episode':episode, 'sequence':sequence, 'shot':shot}
@@ -954,7 +980,6 @@ class BundleMaker(Form, Base):
                 'sequence':sequence, 'shot':shot}
         filename = os.path.basename(cmds.file(q=1, sn=1))
         sceneFile = os.path.join( projectPath, "scenes", filename)
-
         try:
             jobs = deadline.createJobs(pool, outputPath, projectPath, sceneFile, jobName)
         except Exception as e:
@@ -1257,14 +1282,9 @@ class Exceptions(Form3, Base3):
         paths = self.pathsBox.text()
         if paths:
             paths = paths.split(',')
-            paths = [path.strip() for path in paths if path]
-            for path in paths:
-                if not osp.exists(path):
-                    msgBox.showMessage(self, title='Scene Bundle',
-                                       msg='System could not find the path specified\n'+
-                                       path, icon=QMessageBox.Information)
-                    return
-        else: paths = []
+            paths = [path.strip().strip("\"") for path in paths if path]
+        else:
+            paths = []
         self.parentWin.addExceptions(paths)
         self.accept()
         
