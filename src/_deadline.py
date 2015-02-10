@@ -74,7 +74,7 @@ def createJobs(pool=None, outputPath=None, projectPath=None, sceneFile=None,
     jobs = submitter.createJobs()
 
     for job in jobs[:]:
-        if re.match('.*depth.*', job.pluginInfo["RenderLayer"], re.I):
+        if re.match('.*depth.*', str(job.pluginInfo["RenderLayer"]), re.I):
             jobs.remove(job)
             continue
         renderer = job.pluginInfo.get('Renderer', '')
