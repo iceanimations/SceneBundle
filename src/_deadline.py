@@ -1,7 +1,5 @@
 import math
 import os
-from collections import OrderedDict, namedtuple
-from ConfigParser import RawConfigParser
 import random
 import time
 
@@ -21,39 +19,42 @@ job_priority = 25
 job_status = "Active"
 configfilepath = os.path.dirname(__file__)
 
-
-rs_pools = OrderedDict([('rs'+str(idx), bundle_base%{'poolidx':idx})
-        for idx in range(1, num_pools+1) ])
-
-arnold_pools = {'hp':[bundle_base%{'poolidx':idx} for idx in range(1,
-    num_pools+1)]}
-default_pools = {'none':[bundle_base%{'poolidx':idx} for idx in range(1,
-    num_pools+1)]}
-
 random.seed(time.time())
-all_pools = rs_pools.copy()
-all_pools.update(arnold_pools)
-all_pools.update(default_pools)
+
+renderer_pools = {
+    'redshift': { 'rs'+str(idx): [bundle_base%{'poolidx':idx}]
+            for idx in range(1, num_pools+1) },
+    'arnold': {'hp':[bundle_base%{'poolidx':idx} for idx in range(1,
+        num_pools+1)]},
+    'default': {'none':[bundle_base%{'poolidx':idx} for idx in range(1,
+    num_pools+1)]}
+}
+
+all_pools = {}
+for key, value in renderer_pools.items():
+    all_pools.update( value )
 
 def getPreferredPool():
     renderer = imaya.currentRenderer()
+    mypools = renderer_pools.get(renderer, renderer_pools['default'])
 
     if renderer == 'redshift':
-        validPools = getValidPools(rs_pools)
+        validPools = getValidPools(mypools)
         if validPools:
             poolframes = getFramesPendingOnPools(validPools)
             return min(poolframes.keys(), key=lambda x:poolframes[x])
 
     elif renderer == 'arnold':
-        validPools = getValidPools(arnold_pools)
+        validPools = getValidPools(mypools)
         if validPools:
             return random.choice(validPools)
 
-    return random.choice(default_pools.keys())
+    return random.choice(mypools.keys())
 
 def createJobs(pool=None, outputPath=None, projectPath=None, sceneFile=None,
         jobName=None):
     submitter = dlm.DeadlineMayaSubmitter()
+    basepath = detectBasepathFromProjectPath(projectPath)
     if pool:
         submitter.pool=pool
     if outputPath:
@@ -64,17 +65,49 @@ def createJobs(pool=None, outputPath=None, projectPath=None, sceneFile=None,
         submitter.sceneFile = sceneFile
     if jobName:
         submitter.jobName = jobName
-    print jobName
-    return submitter.createJobs()
+    jobs = submitter.createJobs()
+
+    for job in jobs:
+        renderer = job.pluginInfo.get('Renderer', '')
+        mypools = renderer_pools.get(renderer, renderer_pools['default'])
+        if pool not in mypools:
+            newpool = getPreferredPoolByBasepath(basepath, mypools)
+            job.jobInfo['Pool']=newpool
+
+    return jobs
+
+def getPreferredPoolByBasepath(basepath, mypools=all_pools):
+    for pool, path in mypools.items():
+        if basepath in path:
+            return pool
+    try:
+        return random.choice(mypools.keys())
+    except:
+        return random.choice(renderer_pools['default'].keys())
+
+def detectBasepathFromProjectPath(projectPath, mypools=all_pools):
+    for pool, paths in mypools.items():
+        for path in paths:
+            if path in projectPath:
+                return path
+    return projectPath
 
 def getBundleBase(pool):
     base = all_pools[pool]
-    if isinstance(base, list):
-        return random.choice(base)
-    return base
+    if not base:
+        raise Exception, 'No basepaths for pool %s'%pool
+    return random.choice(base)
 
-def getValidPools(mypools=default_pools):
-    return [pool for pool in dl.pools() if pool in mypools]
+def getValidPools(mypools=all_pools):
+    validPools = []
+    for pool in dl.pools():
+        bases = mypools.get(pool)
+        if bases:
+            for base in bases:
+                if base and os.path.exists(base) and os.path.isdir(base):
+                    validPools.append(pool)
+                    break
+    return validPools
 
 def getFramesPendingInJob(job):
     totalFrames = len(job["Frames"].split(","))
@@ -86,7 +119,7 @@ def getFramesPendingOnPools(pools,
     jobs = dl.getJobs()
     jobs = dl.filterItems(jobs,
             [("Status", status) for status in statuses] )
-    frames = OrderedDict()
+    frames = dict()
     for pool in pools:
         pooljobs = dl.filterItems(jobs,[("PoolOverride", pool)])
         frames[pool]= sum([getFramesPendingInJob(job) for job in pooljobs])

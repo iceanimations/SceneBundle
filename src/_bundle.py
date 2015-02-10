@@ -36,7 +36,7 @@ class BundleMaker(Form, Base):
     def __init__(self, parent=qtfy.getMayaWindow()):
         super(BundleMaker, self).__init__(parent)
         self.setupUi(self)
-        
+
         self.textureExceptions = []
         self.rootPath = None
         self.texturesMapping = {}
@@ -69,7 +69,7 @@ class BundleMaker(Form, Base):
         map(lambda btn: btn.clicked.connect(lambda: self.makeButtonsExclussive(btn)),
             [self.deadlineCheck, self.makeZipButton, self.keepBundleButton])
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
-        
+
         self.projectBox.hide()
         self.progressBar.hide()
         self.epBox2.hide()
@@ -77,7 +77,7 @@ class BundleMaker(Form, Base):
         self.shBox2.hide()
         self.hideBoxes()
         populateBoxes(self.epBox, self.seqBox, self.shBox)
-        
+
         addKeyEvent(self.epBox, self.epBox2)
         addKeyEvent(self.seqBox, self.seqBox2)
         addKeyEvent(self.shBox, self.shBox2)
@@ -92,29 +92,29 @@ class BundleMaker(Form, Base):
         self.logFilePath = osp.join(path, 'log.txt')
 
         appUsageApp.updateDatabase('sceneBundle')
-        
+
     def makeButtonsExclussive(self, btn):
         if not any([self.deadlineCheck.isChecked(),
                    self.makeZipButton.isChecked(),
                    self.keepBundleButton.isChecked()]):
             btn.setChecked(True)
-        
+
     def populateBoxes(self):
         self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
         self.epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
         self.seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
-        
+
     def toggleBoxes(self):
         if self.isCurrentScene() and self.isDeadlineCheck():
             self.showBoxes()
         else:
             self.hideBoxes()
-    
+
     def showBoxes(self):
         self.epBox.show()
         self.seqBox.show()
         self.shBox.show()
-    
+
     def hideBoxes(self):
         self.epBox.hide()
         self.seqBox.hide()
@@ -190,7 +190,7 @@ class BundleMaker(Form, Base):
 
     def isCurrentScene(self):
         return self.currentSceneButton.isChecked()
-    
+
     def isDeadlineCheck(self):
         return self.deadlineCheck.isChecked()
 
@@ -654,7 +654,7 @@ class BundleMaker(Form, Base):
             if cacheFiles:
                 cacheXMLFilePath, cacheMCFilePath = cacheFiles
                 newName = newName + 1
-                relativePath = osp.join(osp.basename(cacheFolder), str(newName))
+                osp.join(osp.basename(cacheFolder), str(newName))
                 folderPath = osp.join(cacheFolder, str(newName))
                 os.mkdir(folderPath)
                 try:
@@ -922,7 +922,7 @@ class BundleMaker(Form, Base):
     def submitToDeadline(self, name, project, episode, sequence, shot):
         ''' hello world '''
         ###############################################################################
-        #                                resolve paths                                #
+        #                                choose pools                                 #
         ###############################################################################
         self.progressBar.setMaximum(0)
         self.statusLabel.setText('contacting deadline...')
@@ -930,6 +930,8 @@ class BundleMaker(Form, Base):
         try:
             pool = deadline.getPreferredPool()
         except Exception as ex:
+            import traceback
+            traceback.print_exc()
             detail = 'Deadline submission error: '+str(ex)
             if self.isCurrentScene():
                 msgBox.showMessage(self, title='Scene Bundle',
@@ -938,10 +940,20 @@ class BundleMaker(Form, Base):
                 detail = self.currentFileName() + '\r\n'*2 + detail
                 self.createLog(detail)
             return False
-        bundle_base = deadline.getBundleBase( pool )
 
-        bundle_loc = deadline.bundle_loc%{'bundle_base':bundle_base,
-                'project':project, 'episode':episode, 'sequence':sequence, 'shot':shot}
+        ###############################################################################
+        #                      copying and resolving paths                            #
+        ###############################################################################
+        self.statusLabel.setText('copying directory %s ...'%self.rootPath)
+        qApp.processEvents()
+
+        bundle_base = deadline.getBundleBase( pool )
+        bundle_loc = deadline.bundle_loc%{
+                'bundle_base':bundle_base,
+                'project':project,
+                'episode':episode,
+                'sequence':sequence,
+                'shot':shot}
 
         count = 0
         projectPath = os.path.join( bundle_loc, "%03d"%(count), name )
@@ -949,11 +961,6 @@ class BundleMaker(Form, Base):
             count += 1
             projectPath = os.path.join( bundle_loc, "%03d"%(count), name )
 
-        ###############################################################################
-        #                                   copying                                   #
-        ###############################################################################
-        self.statusLabel.setText('copying directory %s ...'%self.rootPath)
-        qApp.processEvents()
         try:
             shutil.copytree(cmds.workspace(q=1, rd=1), projectPath)
         except Exception as e:
@@ -1039,10 +1046,10 @@ class BundleMaker(Form, Base):
                 self.createLog(detail)
             return False
         return True
-    
+
     def showExceptionsWindow(self):
         Exceptions(self, self.textureExceptions).show()
-    
+
     def addExceptions(self, paths):
         self.textureExceptions = paths
 
@@ -1054,32 +1061,32 @@ class EditForm(Form1, Base1):
 
         self.parentWin = parent
         self.inputFields = []
-        
+
         populateBoxes(self.epBox, self.seqBox, self.shBox)
         self.populate()
         self.epBox.currentIndexChanged.connect(self.switchAllBoxes)
         self.seqBox.currentIndexChanged.connect(self.switchAllBoxes)
         self.shBox.currentIndexChanged.connect(self.switchAllBoxes)
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
-        
+
         self.epBox2.setValidator(__validator__)
         self.seqBox2.setValidator(__validator__)
         self.shBox2.setValidator(__validator__)
-        
+
         addKeyEvent(self.epBox, self.epBox2)
         addKeyEvent(self.seqBox, self.seqBox2)
         addKeyEvent(self.shBox, self.shBox2)
-        
+
         self.epBox2.textChanged.connect(self.fillAllBoxes)
         self.seqBox2.textChanged.connect(self.fillAllBoxes)
         self.shBox2.textChanged.connect(self.fillAllBoxes)
-        
+
         self.epBox2.hide()
         self.seqBox2.hide()
         self.shBox2.hide()
 
         self.okButton.clicked.connect(self.ok)
-        
+
     def populateBoxes(self):
         self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
         self.epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
@@ -1094,13 +1101,13 @@ class EditForm(Form1, Base1):
             iField = InputField(self, name, path, ep, seq, sh)
             self.itemsLayout.addWidget(iField)
             self.inputFields.append(iField)
-            
+
     def switchAllBoxes(self):
         for iField in self.inputFields:
             iField.epBox.setCurrentIndex(self.getIndexOfBox(iField.epBox, self.epBox.currentText()))
             iField.seqBox.setCurrentIndex(self.getIndexOfBox(iField.seqBox, self.seqBox.currentText()))
             iField.shBox.setCurrentIndex(self.getIndexOfBox(iField.shBox, self.shBox.currentText()))
-            
+
     def fillAllBoxes(self):
         for iField in self.inputFields:
             iField.epBox2.setText(self.epBox2.text())
@@ -1143,7 +1150,7 @@ class EditForm(Form1, Base1):
             paths.append(' | '.join([name, path, ep, seq, sh]))
         self.parentWin.setPaths(paths)
         self.accept()
-        
+
     def getIndexOfBox(self, box, text):
         for i in range(box.count()):
             if box.itemText(i) == text:
@@ -1156,18 +1163,18 @@ class InputField(Form2, Base2):
     def __init__(self, parent=None, name=None, path=None, ep=None, seq=None, sh=None):
         super(InputField, self).__init__(parent)
         self.setupUi(self)
-        
+
         populateBoxes(self.epBox, self.seqBox, self.shBox)
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
-        
+
         addKeyEvent(self.epBox, self.epBox2)
         addKeyEvent(self.seqBox, self.seqBox2)
         addKeyEvent(self.shBox, self.shBox2)
-        
+
         self.epBox2.hide()
         self.seqBox2.hide()
         self.shBox2.hide()
-        
+
         if name:
             self.nameBox.setText(name)
         if path:
@@ -1195,24 +1202,20 @@ class InputField(Form2, Base2):
         if filename:
             self.pathBox.setText(filename)
 
-    def closeEvent(self, event):
-        self.deleteLater()
-        del self
-        
     def setEp(self, ep):
         index = self.getIndexOfBox(self.epBox, ep)
         if index == -1:
             index = self.epBox.count() - 1
             self.epBox2.setText(ep)
         self.epBox.setCurrentIndex(index)
-    
+
     def setSeq(self, seq):
         index = self.getIndexOfBox(self.seqBox, seq)
         if index == -1:
             index = self.seqBox.count() - 1
             self.seqBox2.setText(seq)
         self.seqBox.setCurrentIndex(index)
-    
+
     def setSh(self, sh):
         index = self.getIndexOfBox(self.shBox, sh)
         print index
@@ -1221,7 +1224,7 @@ class InputField(Form2, Base2):
             print index
             self.shBox2.setText(sh)
         self.shBox.setCurrentIndex(index)
-        
+
     def getIndexOfBox(self, box, text):
         for i in range(box.count()):
             if box.itemText(i) == text:
@@ -1239,28 +1242,28 @@ class InputField(Form2, Base2):
 
     def getPath(self):
         return self.pathBox.text()
-    
+
     def getEp(self):
         text = self.epBox.currentText()
         if text == 'Custom':
             return self.epBox2.text()
         if text != '--Episode--':
             return text
-    
+
     def getSeq(self):
         text = self.seqBox.currentText()
         if text == 'Custom':
             return self.seqBox2.text()
         if text != '--Sequence--':
             return text
-        
+
     def getSh(self):
         text = self.shBox.currentText()
         if text == 'Custom':
             return self.shBox2.text()
         if text != '--Shot--':
             return text
-        
+
 Form3, Base3 = uic.loadUiType(osp.join(ui_path, 'exceptions.ui'))
 class Exceptions(Form3, Base3):
     def __init__(self, parent, paths):
@@ -1268,16 +1271,16 @@ class Exceptions(Form3, Base3):
         self.setupUi(self)
         self.parentWin = parent
         self.populate(paths)
-        
+
         self.addButton.clicked.connect(self.add)
         self.pathsBox.returnPressed.connect(self.add)
-        
+
     def populate(self, paths):
         self.pathsBox.setText(','.join(paths))
-    
+
     def closeEvent(self, event):
         self.deleteLater()
-        
+
     def add(self):
         paths = self.pathsBox.text()
         if paths:
@@ -1287,21 +1290,21 @@ class Exceptions(Form3, Base3):
             paths = []
         self.parentWin.addExceptions(paths)
         self.accept()
-        
+
 def populateBoxes(epBox, seqBox, shBox):
     shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
     epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
     seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
-    
+
     for item in [epBox, seqBox, shBox]:
         item.addItem('Custom')
-        
+
 def keyPress(box):
     box.setCurrentIndex(0)
-        
+
 def addKeyEvent(box1, box2):
     box2.mouseDoubleClickEvent = lambda event: keyPress(box1)
-        
+
 def switchBox(box1, box2):
     if box1.currentText() == 'Custom':
         box2.show()
@@ -1309,7 +1312,7 @@ def switchBox(box1, box2):
     else:
         box2.hide()
         box1.show()
-        
+
 def addEventToBoxes(epBox, seqBox, shBox, epBox2, seqBox2, shBox2):
     epBox.currentIndexChanged.connect(lambda: switchBox(epBox, epBox2))
     seqBox.currentIndexChanged.connect(lambda: switchBox(seqBox, seqBox2))
