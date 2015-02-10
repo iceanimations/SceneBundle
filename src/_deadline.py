@@ -2,6 +2,7 @@ import math
 import os
 import random
 import time
+import re
 
 import ideadline as dl
 reload(dl)
@@ -16,7 +17,8 @@ bundle_base = r'\\hp-001\drive%(poolidx)d'
 output_loc = r'\\ice-lac\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
 bundle_loc = r'%(bundle_base)s\%(project)s\%(episode)s\%(sequence)s\%(shot)s'
 job_priority = 25
-job_status = "Active"
+chunk_size = 50
+submitAsSuspended = False
 configfilepath = os.path.dirname(__file__)
 
 random.seed(time.time())
@@ -65,9 +67,16 @@ def createJobs(pool=None, outputPath=None, projectPath=None, sceneFile=None,
         submitter.sceneFile = sceneFile
     if jobName:
         submitter.jobName = jobName
+
+    submitter.submitAsSuspended = submitAsSuspended
+    submitter.priority = job_priority
+    submitter.chunkSize = chunk_size
     jobs = submitter.createJobs()
 
-    for job in jobs:
+    for job in jobs[:]:
+        if re.match('.*depth.*', str(job.pluginInfo["RenderLayer"]), re.I):
+            jobs.remove(job)
+            continue
         renderer = job.pluginInfo.get('Renderer', '')
         mypools = renderer_pools.get(renderer, renderer_pools['default'])
         if pool not in mypools:
