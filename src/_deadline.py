@@ -14,27 +14,75 @@ import imaya
 variables = ['bundle_base', 'poolidx', 'project', 'episode', 'sequence', 'shot']
 num_pools = 3
 bundle_base = r'\\hp-001\drive%(poolidx)d'
-output_loc = r'\\ice-lac\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
-bundle_loc = r'%(bundle_base)s\%(project)s\%(episode)s\%(sequence)s\%(shot)s'
-job_priority = 25
-chunk_size = 50
-submitAsSuspended = False
-configfilepath = os.path.dirname(__file__)
+
+config = {}
+
+configfile = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+        'config', '_deadline.yml')
+try:
+    import yaml
+    with open(configfile) as f:
+        config = yaml.load(f)
+except Exception as e:
+    print "Error not read config file (%s) ... using defaults"%str(e)
+
+if not config:
+    config['priority'] = 25
+    config['chunkSize'] = 50
+    config['submitAsSuspended'] = False
+    config['submitEachRenderLayer'] = True
+    config['submitEachCamera'] = False
+    config['submitSceneFile'] = False
+    config['ignoreDefaultCamera'] = False
+
+    config['output_loc'] = r'\\ice-lac\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
+    config['bundle_loc'] = r'%(bundle_base)s\%(project)s\%(episode)s\%(sequence)s\%(shot)s'
+    config['illegal_layer_names'] = ['.*depth.*']
+    config['illegal_camera_names'] = []
+    config['pools'] = {
+        'none':{
+            'bases':[bundle_base%{'poolidx':idx} for idx in range(1, num_pools+1)],
+            'base_selection': 'random_choice'
+        }
+    }
+    config['pool_selection'] = 'random_choice'
+
+    config['overrides'] = [
+            { # first override
+                'Conditions':[[ 'Renderer', 'redshift' ]],
+                'match_all': True,
+                'settings': {
+                    'pools': {
+                        'rs'+str(idx): {
+                            'bases':[bundle_base%{'poolidx':idx}],
+                            'base_selection':'random_choice' }
+                        for idx in range(1, num_pools+1)
+                        },
+                    'pool_selection': 'min_frames_pending' }
+            },
+            { # second override
+                'Conditions':[[ 'renderer', 'arnold' ]],
+                'match_all': True,
+                'settings': {
+                    'pools': {
+                        'hp': {
+                            'bases':[bundle_base%{'poolidx':idx} for idx in range(1,
+                            num_pools+1)],
+                            'base_selection': 'random_choice'
+                        }
+                    }
+                }
+            }
+    ]
+
+#all_pools = config['pools'].copy
+#for key, value in [override['settings']['pools'].items() for override in
+        #config['overrides'] if override['settings'].has_key('pools')]:
+    #all_pools.update( value )
 
 random.seed(time.time())
 
-renderer_pools = {
-    'redshift': { 'rs'+str(idx): [bundle_base%{'poolidx':idx}]
-            for idx in range(1, num_pools+1) },
-    'arnold': {'hp':[bundle_base%{'poolidx':idx} for idx in range(1,
-        num_pools+1)]},
-    'default': {'none':[bundle_base%{'poolidx':idx} for idx in range(1,
-    num_pools+1)]}
-}
-
 all_pools = {}
-for key, value in renderer_pools.items():
-    all_pools.update( value )
 
 def getPreferredPool():
     renderer = imaya.currentRenderer()
@@ -69,14 +117,35 @@ def createJobs(pool=None, outputPath=None, projectPath=None, sceneFile=None,
         submitter.jobName = jobName
 
     submitter.submitAsSuspended = submitAsSuspended
-    submitter.priority = job_priority
-    submitter.chunkSize = chunk_size
+    submitter.submitEachRenderLayer = submitEachRenderLayer
+    submitter.submitEachCamera = submitEachCamera
+    submitter.submitSceneFile = submitSceneFile
+    submitter.ignoreDefaultCamera = ignoreDefaultCamera
+
+    submitter.priority = priority
+    submitter.chunkSize = chunkSize
+
     jobs = submitter.createJobs()
 
     for job in jobs[:]:
-        if re.match('.*depth.*', str(job.pluginInfo["RenderLayer"]), re.I):
-            jobs.remove(job)
+        job_deleted = False
+
+        for pattern in illegal_layer_names:
+            if re.match(pattern, str(job.pluginInfo['RenderLayer']), re.I):
+                jobs.remove(job)
+                job_deleted = True
+                break
+        if job_deleted:
             continue
+
+        for pattern in illegal_camera_names:
+            if re.match(pattern, str(job.pluginInfo['Camera']), re.I):
+                jobs.remove(job)
+                job_deleted = True
+                break
+        if job_deleted:
+            continue
+
         renderer = job.pluginInfo.get('Renderer', '')
         mypools = renderer_pools.get(renderer, renderer_pools['default'])
         if pool not in mypools:
@@ -134,6 +203,6 @@ def getFramesPendingOnPools(pools,
         frames[pool]= sum([getFramesPendingInJob(job) for job in pooljobs])
     return frames
 
-
 if __name__ == '__main__':
     print getFramesPendingOnPools(dl.pools())
+
