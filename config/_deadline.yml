@@ -32,9 +32,11 @@ submitSceneFile: false
 illegal_layer_names: [.*depth.*]
 illegal_camera_names: []
 
-#default path settings
+#default path and name settings
+#variable names can be bundle_base, project, episode, sequence, shot, name
 bundle_loc: '%(bundle_base)s\%(project)s\%(episode)s\%(sequence)s\%(shot)s'
-output_loc: \\ice-lac\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s
+output_loc: '\\ice-lac\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
+job_name: '%(project)s_%(episode)s_%(sequence)s_%(shot)s - %(name)'
 
 #default pool to basepath mapping
 pools:
@@ -59,7 +61,7 @@ overrides:
 # In case of overlap between them, overrides mentioned later will prevail
 
 # Override 1: case if renderer is redshift
-- Conditions:
+- conditions:
   - [renderer, redshift] #only one type of condition valid at this time
   match_all: true
   settings:
@@ -73,7 +75,7 @@ overrides:
     pool_selection: min_frames_pending
 
 # Override 2: case if renderer is arnold
-- Conditions:
+- conditions:
   - [renderer, arnold]
   match_all: true
   settings:
