@@ -20,7 +20,7 @@
 ##############################################################################
 
 #default submission settings
-chunkSize: 30
+chunkSize: 50
 ignoreDefaultCamera: false
 priority: 25
 submitAsSuspended: false
@@ -99,13 +99,13 @@ overrides:
     chunkSize: 15
 
 
-# Example: if project name contains mansour
-# and episode is a non standard string,
-# then use the test folder for output
-- conditions:
-  - [project, matches, '(?i).*mansour.*']
-  - [episode, not startswith, 'EP']
-  match_all: true
-  settings:
-    output_loc: '\\ice-lac\Storage\Projects\external\%(project)s\tests\%(episode)s\%(sequence)s\%(shot)s'
+## Example: if project name contains mansour (caseinsensitive)
+## and episode is a non standard string,
+## then use the tests folder for output
+#- conditions:
+  #- [project, matches, '(?i).*mansour.*']
+  #- [episode, not startswith, 'EP']
+  #match_all: true
+  #settings:
+    #output_loc: '\\ice-lac\Storage\Projects\external\%(project)s\tests\%(episode)s\%(sequence)s\%(shot)s'
 

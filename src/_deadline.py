@@ -131,9 +131,8 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
                         break
 
                 except Exception as e:
-                    import traceback
-                    traceback.print_exc()
-                    print e
+                    print 'ignoring condition %r due to error %r' %(conditions,
+                            e)
 
             if applyOverride:
                 for key, value in override.get('settings', {}).items():
@@ -257,7 +256,6 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
         # else choose according to scheme
         if method == 'min_frames_pending':
             poolframes = self.getFramesPendingOnPools()
-            print poolframes
             newpool = min(poolframes.keys(), key=lambda x:poolframes[x])
             self.chosen_pools.append(newpool)
             return newpool
@@ -274,13 +272,11 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
         if not hasattr(self, 'deadline_jobs'):
             self.deadline_jobs = dl.getJobs()
         jobs = self.deadline_jobs
-        print len(jobs), statuses
         jobs = dl.filterItems(jobs,
                 [("Status", status) for status in statuses] )
         frames = dict()
         for pool in self.conf['pools']:
             pooljobs = dl.filterItems(jobs,[("PoolOverride", pool)])
-            print pool, len(pooljobs)
             frames[pool]= sum([self.getFramesPendingInJob(job) for job in pooljobs])
         return frames
 
