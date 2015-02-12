@@ -126,12 +126,12 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
             self.syncWithConf()
 
         for pattern in self.conf.get('illegal_layer_names', []):
-            if re.match(pattern, str(self.currentLayer), re.I):
+            if re.match(pattern, str(self._currentLayer), re.I):
                 return False
 
 
         for pattern in self.conf.get('illegal_camera_names', []):
-            if re.match(pattern, str(self.currentCamera), re.I):
+            if re.match(pattern, str(self._currentCamera), re.I):
                 return False
 
         return True
@@ -207,6 +207,7 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
         bases = self.conf['pools'][self.pool].get('bases')
         if not bases:
             raise Exception, 'No basepaths for pool %s'%self.pool
+        # see if a valid base is already selected, stick to it
         for chosen_path in self.project_paths:
             for base in bases:
                 if base in chosen_path:
@@ -216,9 +217,21 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
     def getPreferredPool(self):
         pools = self.conf['pools']
         method = self.conf.get('pool_selection')
+
+        #if a valid pools is already selected stick to it
         for chosen_pool in self.chosen_pools:
             if chosen_pool in pools.keys():
                 return chosen_pool
+
+        # if a valid base is already selected, select its pool
+        for pool, pool_settings in pools.items():
+            bases = pool_settings['bases']
+            for base in bases:
+                for path in self.project_paths:
+                    if base in path:
+                        return pool
+
+        # else choose according to scheme
         if method == 'min_frames_pending':
             poolframes = self.getFramesPendingOnPools(pools.keys())
             newpool = min(poolframes.keys(), key=lambda x:poolframes[x])
@@ -228,6 +241,7 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
             return random.choice(pools.keys())
 
     def getFramesPendingInJob(self, job):
+        ''' read job dict to find out number of pending frames '''
         totalFrames = len(job["Frames"].split(","))
         ratio = 1-float(job["CompletedChunks"])/int(job["TaskCount"])
         return int(math.ceil(totalFrames * ratio))
@@ -270,76 +284,4 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
             valid_pools = config['pools']
 
         self.conf['pools'] = valid_pools
-
-all_pools = {}
-
-def createJobs(pool=None, outputPath=None, projectPath=None, sceneFile=None,
-        jobName=None):
-    submitter = dlm.DeadlineMayaSubmitter()
-    basepath = detectBasepathFromProjectPath(projectPath)
-    if pool:
-        submitter.pool=pool
-    if outputPath:
-        submitter.outputPath = outputPath
-    if projectPath:
-        submitter.projectPath = projectPath
-    if sceneFile:
-        submitter.sceneFile = sceneFile
-    if jobName:
-        submitter.jobName = jobName
-
-    submitter.submitAsSuspended = submitAsSuspended
-    submitter.submitEachRenderLayer = submitEachRenderLayer
-    submitter.submitEachCamera = submitEachCamera
-    submitter.submitSceneFile = submitSceneFile
-    submitter.ignoreDefaultCamera = ignoreDefaultCamera
-
-    submitter.priority = priority
-    submitter.chunkSize = chunkSize
-
-    jobs = submitter.createJobs()
-
-    for job in jobs[:]:
-        job_deleted = False
-
-        for pattern in illegal_layer_names:
-            if re.match(pattern, str(job.pluginInfo['RenderLayer']), re.I):
-                jobs.remove(job)
-                job_deleted = True
-                break
-        if job_deleted:
-            continue
-
-        for pattern in illegal_camera_names:
-            if re.match(pattern, str(job.pluginInfo['Camera']), re.I):
-                jobs.remove(job)
-                job_deleted = True
-                break
-        if job_deleted:
-            continue
-
-        renderer = job.pluginInfo.get('Renderer', '')
-        mypools = renderer_pools.get(renderer, renderer_pools['default'])
-        if pool not in mypools:
-            newpool = getPreferredPoolByBasepath(basepath, mypools)
-            job.jobInfo['Pool']=newpool
-
-    return jobs
-
-def getPreferredPoolByBasepath(basepath, mypools=all_pools):
-    for pool, path in mypools.items():
-        if basepath in path:
-            return pool
-    try:
-        return random.choice(mypools.keys())
-    except:
-        return random.choice(renderer_pools['default'].keys())
-
-def detectBasepathFromProjectPath(projectPath, mypools=all_pools):
-    for pool, paths in mypools.items():
-        for path in paths:
-            if path in projectPath:
-                return path
-    return projectPath
-
 
