@@ -3,6 +3,7 @@ import os
 import random
 import time
 import re
+import shutil
 
 import ideadline as dl
 reload(dl)
@@ -183,6 +184,10 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
         self.projectPath = self.getNewProjectPath()
         filename = os.path.basename(imaya.cmds.file(q=1, sn=1))
         self.sceneFile = os.path.join( self.projectPath, "scenes", filename)
+
+    def copyBundles(self):
+        for path in self.project_paths:
+            shutil.copytree(imaya.cmds.workspace(q=1, rd=1), path)
 
     def createJobs(self):
         self.chosen_pools = []
