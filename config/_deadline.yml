@@ -1,0 +1,111 @@
+##############################################################################
+#                                                                            #
+# This is the config file for deadline submission in scene Bundle. Changing  #
+# contents of this file with change deadline submission behaviour on all     #
+# bundles made henceforth                                                    #
+#                                                                            #
+# Modify only if you understand                                              #
+#                                                                            #
+#                                                                            #
+# This is yaml format ... indentation is important ... avoid using TABs      #
+#                                                                            #
+#                                                                            #
+# Copyright 2015, ICE Animations (Pvt.) Ltd.                                 #
+#                                                                            #
+##############################################################################
+
+
+##############################################################################
+#                              default settings                              #
+##############################################################################
+
+#default submission settings
+chunkSize: 50
+ignoreDefaultCamera: false
+priority: 25
+submitAsSuspended: false
+submitEachCamera: false
+submitEachRenderLayer: true
+submitSceneFile: false
+
+#default job filtering settings
+illegal_layer_names: [.*depth.*]
+illegal_camera_names: []
+
+#default path and name settings
+#variable names can be bundle_base, project, episode, sequence, shot, name
+bundle_loc: '%(bundle_base)s\%(project)s\%(episode)s\%(sequence)s\%(shot)s'
+output_loc: '\\ice-lac\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
+job_name: '%(project)s_%(episode)s_%(sequence)s_%(shot)s - %(name)s'
+
+#default pool to basepath mapping
+pools:
+  none: #exact name of pool as in deadline
+    # bases are the location that a bundle must be copied
+    bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
+
+    # in case of more than one base, one shall be chosen randomly
+    ## only one selection method at this point
+    base_selection: random_choice 
+
+# pool selection can be done randomly or by the method min_frames_pending
+pool_selection: random_choice
+
+
+##############################################################################
+#                                 overrides                                  #
+##############################################################################
+
+# Overrides are applied on default settings in order on the conditions
+# mentioned. In case of overlap between them, overrides mentioned later will
+# prevail
+#
+# Conditions:
+# [<conditionType>, <matchMethod>, <value>]
+#
+# conditionTypes in [renderer, project, episode, shot, sequence, name]
+#
+# matchMethods in ['eq', 'in', 'contains', 'not in', 'not contains', 'startswith',
+# 'not startswith', 'endswith', 'not endswith', 'matches', 'not matches']
+#
+# [renderer, arnold] is equivalent to [renderer, eq, arnold]
+#
+
+overrides:
+
+# Override 1: case if renderer is redshift
+- conditions:
+  - [renderer, redshift]
+  match_all: true
+  settings:
+    pools:
+      rs1:
+        bases: [\\hp-001\drive1]
+      rs2:
+        bases: [\\hp-001\drive2]
+      rs3:
+        bases: [\\hp-001\drive3]
+    pool_selection: min_frames_pending
+
+# Override 2: case if renderer is arnold
+- conditions:
+  - [renderer, arnold]
+  match_all: true
+  settings:
+    pools:
+      hp:
+        bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
+        base_selection: random_choice
+    chunkSize: 15
+
+
+## Example: if project name contains mansour (caseinsensitive)
+## and episode is a non standard string,
+## then use the tests folder for output
+#- conditions:
+  #- [project, matches, '(?i).*mansour.*']
+  #- [episode, not startswith, 'EP']
+  #match_all: true
+  #settings:
+    #output_loc: '\\ice-lac\Storage\Projects\external\%(project)s\tests\%(episode)s\%(sequence)s\%(shot)s'
+
