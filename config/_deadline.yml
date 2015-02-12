@@ -20,7 +20,7 @@
 ##############################################################################
 
 #default submission settings
-chunkSize: 50
+chunkSize: 30
 ignoreDefaultCamera: false
 priority: 25
 submitAsSuspended: false
@@ -36,7 +36,7 @@ illegal_camera_names: []
 #variable names can be bundle_base, project, episode, sequence, shot, name
 bundle_loc: '%(bundle_base)s\%(project)s\%(episode)s\%(sequence)s\%(shot)s'
 output_loc: '\\ice-lac\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
-job_name: '%(project)s_%(episode)s_%(sequence)s_%(shot)s - %(name)'
+job_name: '%(project)s_%(episode)s_%(sequence)s_%(shot)s - %(name)s'
 
 #default pool to basepath mapping
 pools:
@@ -56,13 +56,26 @@ pool_selection: random_choice
 #                                 overrides                                  #
 ##############################################################################
 
+# Overrides are applied on default settings in order on the conditions
+# mentioned. In case of overlap between them, overrides mentioned later will
+# prevail
+#
+# Conditions:
+# [<conditionType>, <matchMethod>, <value>]
+#
+# conditionTypes in [renderer, project, episode, shot, sequence, name]
+#
+# matchMethods in ['eq', 'in', 'contains', 'not in', 'not contains', 'startswith',
+# 'not startswith', 'endswith', 'not endswith', 'matches', 'not matches']
+#
+# [renderer, arnold] is equivalent to [renderer, eq, arnold]
+#
+
 overrides:
-# Overrides are applied in order on the conditions mentioned
-# In case of overlap between them, overrides mentioned later will prevail
 
 # Override 1: case if renderer is redshift
 - conditions:
-  - [renderer, redshift] #only one type of condition valid at this time
+  - [renderer, redshift]
   match_all: true
   settings:
     pools:
@@ -84,3 +97,15 @@ overrides:
         bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
         base_selection: random_choice
     chunkSize: 15
+
+
+# Example: if project name contains mansour
+# and episode is a non standard string,
+# then use the test folder for output
+- conditions:
+  - [project, matches, '(?i).*mansour.*']
+  - [episode, not startswith, 'EP']
+  match_all: true
+  settings:
+    output_loc: '\\ice-lac\Storage\Projects\external\%(project)s\tests\%(episode)s\%(sequence)s\%(shot)s'
+

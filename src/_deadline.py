@@ -38,7 +38,7 @@ if not config:
 
     config['output_loc'] = r'\\ice-lac\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
     config['bundle_loc'] = r'%(bundle_base)s\%(project)s\%(episode)s\%(sequence)s\%(shot)s'
-    config['job_name'] = '%(project)s_%(episode)s_%(sequence)s_%(shot)s - %(name)'
+    config['job_name'] = '%(project)s_%(episode)s_%(sequence)s_%(shot)s - %(name)s'
     config['illegal_layer_names'] = ['.*depth.*']
     config['illegal_camera_names'] = []
     config['pools'] = {
@@ -99,28 +99,46 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
             match_all = bool(override.get('match_all', True))
             applyOverride = False
             conditions = override['conditions']
+
             for cond in conditions:
                 try:
                     operand1 = None
                     operand2 = cond[1]
                     method = 'eq'
+
                     if len(cond) == 3:
                         method = cond[1]
                         operand2 = cond[2]
+
                     if cond[0] == 'renderer':
                         operand1 = imaya.currentRenderer()
+                    elif cond[0] == 'project':
+                        operand1 = self.project
+                    elif cond[0] == 'episode':
+                        operand1 = self.episode
+                    elif cond[0] == 'sequence':
+                        operand1 = self.sequence
+                    elif cond[0] == 'shot':
+                        operand1 = self.shot
+                    elif cond[0] == 'name':
+                        operand1 = self.name
                     else:
                         raise ValueError, 'Unknown condition'
+
                     applyOverride = dl.matchValue(operand1, operand2, method)
                     if (not applyOverride and match_all) or (applyOverride and
                             not match_all):
                         break
+
                 except Exception as e:
+                    import traceback
+                    traceback.print_exc()
                     print e
 
             if applyOverride:
                 for key, value in override.get('settings', {}).items():
                     self.conf[key]=value
+
         self.validatePools()
 
         if sync:
@@ -178,7 +196,7 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
             'name': self.name
         }
         self.bundle_loc = self.conf['bundle_loc'] % self.vardict
-        self.jobName = self.conf['jobname'] % self.vardict
+        self.jobName = self.conf['job_name'] % self.vardict
         self.outputPath = self.conf['output_loc']% self.vardict
 
         self.projectPath = self.getNewProjectPath()
@@ -192,7 +210,7 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
     def createJobs(self):
         self.chosen_pools = []
         self.project_paths = []
-        super(DeadlineBundleSubmitter, self).createJobs()
+        return super(DeadlineBundleSubmitter, self).createJobs()
 
     def getNewProjectPath(self):
         count = 0
@@ -238,7 +256,8 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
 
         # else choose according to scheme
         if method == 'min_frames_pending':
-            poolframes = self.getFramesPendingOnPools(pools.keys())
+            poolframes = self.getFramesPendingOnPools()
+            print poolframes
             newpool = min(poolframes.keys(), key=lambda x:poolframes[x])
             self.chosen_pools.append(newpool)
             return newpool
@@ -255,11 +274,13 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
         if not hasattr(self, 'deadline_jobs'):
             self.deadline_jobs = dl.getJobs()
         jobs = self.deadline_jobs
+        print len(jobs), statuses
         jobs = dl.filterItems(jobs,
                 [("Status", status) for status in statuses] )
         frames = dict()
         for pool in self.conf['pools']:
             pooljobs = dl.filterItems(jobs,[("PoolOverride", pool)])
+            print pool, len(pooljobs)
             frames[pool]= sum([self.getFramesPendingInJob(job) for job in pooljobs])
         return frames
 
