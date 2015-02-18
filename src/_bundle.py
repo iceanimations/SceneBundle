@@ -926,13 +926,15 @@ class BundleMaker(Form, Base):
     def submitToDeadline(self, name, project, episode, sequence, shot):
         ''' hello world '''
         ###############################################################################
-        #                                choose pools                                 #
+        #                       configuring Deadline submitter                        #
         ###############################################################################
         self.progressBar.setMaximum(0)
-        self.statusLabel.setText('contacting deadline...')
+        self.statusLabel.setText('configuring deadline submitter...')
         qApp.processEvents()
         try:
-            pool = deadline.getPreferredPool()
+            subm = deadline.DeadlineBundleSubmitter(name, project, episode,
+                    sequence, shot)
+            subm.configure()
         except Exception as ex:
             import traceback
             traceback.print_exc()
@@ -946,53 +948,12 @@ class BundleMaker(Form, Base):
             return False
 
         ###############################################################################
-        #                      copying and resolving paths                            #
-        ###############################################################################
-        self.statusLabel.setText('copying directory %s ...'%self.rootPath)
-        qApp.processEvents()
-
-        bundle_base = deadline.getBundleBase( pool )
-        bundle_loc = deadline.bundle_loc%{
-                'bundle_base':bundle_base,
-                'project':project,
-                'episode':episode,
-                'sequence':sequence,
-                'shot':shot}
-
-        count = 0
-        projectPath = os.path.join( bundle_loc, "%03d"%(count), name )
-        while os.path.exists(projectPath):
-            count += 1
-            projectPath = os.path.join( bundle_loc, "%03d"%(count), name )
-
-        try:
-            shutil.copytree(cmds.workspace(q=1, rd=1), projectPath)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            detail = "\nError in copying to directory" + projectPath
-            detail += "\n" + str(e)
-            if self.isCurrentScene():
-                msgBox.showMessage(self, title='Scene Bundle',
-                                    msg='Cannot copy to rendering server\n' + str(e),
-                                    icon=QMessageBox.Information)
-            else:
-                detail = self.currentFileName() + '\r\n'*2 + detail
-                self.createLog(detail)
-            return False
-
-        ###############################################################################
         #                                creating jobs                                #
         ###############################################################################
         self.statusLabel.setText('creating jobs ')
         qApp.processEvents()
-        jobName = '_'.join([project, episode, sequence, shot]) +' - '+ name
-        outputPath = deadline.output_loc%{'project':project, 'episode':episode,
-                'sequence':sequence, 'shot':shot}
-        filename = os.path.basename(cmds.file(q=1, sn=1))
-        sceneFile = os.path.join( projectPath, "scenes", filename)
         try:
-            jobs = deadline.createJobs(pool, outputPath, projectPath, sceneFile, jobName)
+            jobs = subm.createJobs()
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -1000,12 +961,38 @@ class BundleMaker(Form, Base):
             detail += "\n" + str(e)
             if self.isCurrentScene():
                 msgBox.showMessage(self, title='Scene Bundle',
-                            msg='Cannot create jobs to rendering server\n' + str(e),
+                            msg='Cannot create jobs to deadline\n' + str(e),
                             icon=QMessageBox.Information)
             else:
                 detail = self.currentFileName() + '\r\n'*2 + detail
                 self.createLog(detail)
             return False
+
+        ###############################################################################
+        #                           copying to directories                            #
+        ###############################################################################
+        self.progressBar.setMaximum(len(subm.project_paths))
+        for pi, projectPath in enumerate(subm.project_paths):
+            try:
+                self.statusLabel.setText('copying %s to directory %s ...'%(
+                    self.rootPath, projectPath))
+                qApp.processEvents()
+                shutil.copytree(cmds.workspace(q=1, rd=1), projectPath)
+                self.progressBar.setValue(pi)
+                qApp.processEvents()
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                detail = "\nError in copying to directory" + projectPath
+                detail += "\n" + str(e)
+                if self.isCurrentScene():
+                    msgBox.showMessage(self, title='Scene Bundle',
+                                    msg='Cannot copy to rendering server\n'+str(e),
+                                    icon=QMessageBox.Information)
+                else:
+                    detail = self.currentFileName() + '\r\n'*2 + detail
+                    self.createLog(detail)
+                return False
 
         ###############################################################################
         #                               submitting jobs                               #
