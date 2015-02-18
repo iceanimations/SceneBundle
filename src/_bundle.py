@@ -68,6 +68,9 @@ class BundleMaker(Form, Base):
         self.addExceptionsButton.clicked.connect(self.showExceptionsWindow)
         map(lambda btn: btn.clicked.connect(lambda: self.makeButtonsExclussive(btn)),
             [self.deadlineCheck, self.makeZipButton, self.keepBundleButton])
+        boxes = [self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2, self.nameBox]
+        map(lambda box: box.currentIndexChanged.connect(lambda: fillName(*boxes)), [self.epBox, self.seqBox, self.shBox])
+        map(lambda box: box.textChanged.connect(lambda: fillName(*boxes)), [self.epBox2, self.seqBox2, self.shBox2])
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
 
         self.projectBox.hide()
@@ -98,6 +101,7 @@ class BundleMaker(Form, Base):
                    self.makeZipButton.isChecked(),
                    self.keepBundleButton.isChecked()]):
             btn.setChecked(True)
+        self.toggleBoxes()
 
     def populateBoxes(self):
         self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
@@ -1190,6 +1194,9 @@ class InputField(Form2, Base2):
         self.epBox2.setValidator(__validator__)
         self.seqBox2.setValidator(__validator__)
         self.shBox2.setValidator(__validator__)
+        boxes = [self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2, self.nameBox]
+        map(lambda box: box.currentIndexChanged.connect(lambda: fillName(*boxes)), [self.epBox, self.seqBox, self.shBox])
+        map(lambda box: box.textChanged.connect(lambda: fillName(*boxes)), [self.epBox2, self.seqBox2, self.shBox2])
 
         self.browseButton.clicked.connect(self.browseFolder)
 
@@ -1290,6 +1297,21 @@ class Exceptions(Form3, Base3):
             paths = []
         self.parentWin.addExceptions(paths)
         self.accept()
+        
+def fillName(epBox, seqBox, shBox, epBox2, seqBox2, shBox2, nameBox):
+    ep = epBox.currentText()
+    seq = seqBox.currentText()
+    sh = shBox.currentText()
+    name = ''
+    if ep != '--Episode--':
+        name += epBox2.text() if ep == 'Custom' else ep
+    if seq != '--Sequence--':
+        name += '_'
+        name += seqBox2.text() if seq == 'Custom' else seq
+    if sh != '--Shot--':
+        name += '_'
+        name += shBox2.text() if sh == 'Custom' else sh
+    nameBox.setText(name)
 
 def populateBoxes(epBox, seqBox, shBox):
     shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
