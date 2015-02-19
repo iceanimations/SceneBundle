@@ -6,6 +6,7 @@ Created on Nov 5, 2014
 import qtify_maya_window as qtfy
 from uiContainer import uic
 import msgBox
+reload(msgBox)
 from PyQt4.QtGui import QMessageBox, QFileDialog, qApp, QIcon, QRegExpValidator
 from PyQt4.QtCore import Qt, QPropertyAnimation, QRect, QEasingCurve, QRegExp
 import os.path as osp
@@ -62,7 +63,6 @@ class BundleMaker(Form, Base):
         self.removeButton.clicked.connect(self.removeSelected)
         self.selectButton.clicked.connect(self.filesBox.selectAll)
         self.filesBox.doubleClicked.connect(self.showEditForm)
-        self.deadlineCheck.setChecked(False)
         self.deadlineCheck.clicked.connect(self.toggleBoxes)
         self.currentSceneButton.clicked.connect(self.toggleBoxes)
         self.addExceptionsButton.clicked.connect(self.showExceptionsWindow)
@@ -73,7 +73,7 @@ class BundleMaker(Form, Base):
         map(lambda box: box.textChanged.connect(lambda: fillName(*boxes)), [self.epBox2, self.seqBox2, self.shBox2])
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
 
-        self.projectBox.hide()
+        #self.projectBox.hide()
         self.progressBar.hide()
         self.epBox2.hide()
         self.seqBox2.hide()
@@ -226,7 +226,7 @@ class BundleMaker(Form, Base):
             for i in range(total):
                 self.statusLabel.setText('Opening scene '+ str(i+1) +' of '+ str(total))
                 item = self.filesBox.item(i)
-                item.setBackground(Qt.gray)
+                item.setBackground(Qt.darkGray)
                 qApp.processEvents()
                 name, filename, ep, seq, sh = item.text().split(' | ')
                 if osp.splitext(filename)[-1] in ['.ma', '.mb']:
@@ -310,8 +310,8 @@ class BundleMaker(Form, Base):
                                 if self.deadlineCheck.isChecked():
                                     self.submitToDeadline(name, project, ep, seq, sh)
                                 if not self.keepBundleButton.isChecked():
-                                    if not self.isCurrentScene():
-                                        cmds.file(new=True, f=True)
+                                    #if not self.isCurrentScene():
+                                    cmds.file(new=True, f=True)
                                     self.removeBundle()
                                 self.statusLabel.setText('Scene bundled successfully...')
                                 qApp.processEvents()
@@ -1076,6 +1076,12 @@ class EditForm(Form1, Base1):
         self.epBox2.hide()
         self.seqBox2.hide()
         self.shBox2.hide()
+        
+        if not self.parentWin.isDeadlineCheck():
+            self.epBox.hide()
+            self.seqBox.hide()
+            self.shBox.hide()
+            
 
         self.okButton.clicked.connect(self.ok)
 
@@ -1114,31 +1120,32 @@ class EditForm(Form1, Base1):
             ep = iField.getEp()
             seq = iField.getSeq()
             sh = iField.getSh()
-            if name is None:
+            if not name:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Name not specified for the bundle',
                                    icon=QMessageBox.Information)
                 return
-            if path is None:
+            if not path:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='Path not specified for the bundle',
                                    icon=QMessageBox.Information)
                 return
-            if ep is None:
-                msgBox.showMessage(self, title='Scene Bundle',
-                                   msg='Episode not specified for the bundle',
-                                   icon=QMessageBox.Information)
-                return
-            if seq is None:
-                msgBox.showMessage(self, title='Scene Bundle',
-                                   msg='Sequence not specified for the bundle',
-                                   icon=QMessageBox.Information)
-                return
-            if sh is None:
-                msgBox.showMessage(self, title='Scene Bundle',
-                                   msg='Shot not specified fot the bundle',
-                                   icon=QMessageBox.Information)
-                return
+            if self.parentWin.isDeadlineCheck():
+                if not ep:
+                    msgBox.showMessage(self, title='Scene Bundle',
+                                       msg='Episode not specified for the bundle',
+                                       icon=QMessageBox.Information)
+                    return
+                if not seq:
+                    msgBox.showMessage(self, title='Scene Bundle',
+                                       msg='Sequence not specified for the bundle',
+                                       icon=QMessageBox.Information)
+                    return
+                if not sh:
+                    msgBox.showMessage(self, title='Scene Bundle',
+                                       msg='Shot not specified fot the bundle',
+                                       icon=QMessageBox.Information)
+                    return
             paths.append(' | '.join([name, path, ep, seq, sh]))
         self.parentWin.setPaths(paths)
         self.accept()
@@ -1177,6 +1184,11 @@ class InputField(Form2, Base2):
             self.setSeq(seq)
         if sh:
             self.setSh(sh)
+            
+        if not parent.parentWin.isDeadlineCheck():
+            self.epBox.hide()
+            self.seqBox.hide()
+            self.shBox.hide()
 
         self.nameBox.setValidator(__validator__)
         self.epBox2.setValidator(__validator__)
@@ -1242,22 +1254,25 @@ class InputField(Form2, Base2):
         text = self.epBox.currentText()
         if text == 'Custom':
             return self.epBox2.text()
-        if text != '--Episode--':
-            return text
+        if text == '--Episode--':
+            text = ''
+        return text
 
     def getSeq(self):
         text = self.seqBox.currentText()
         if text == 'Custom':
             return self.seqBox2.text()
-        if text != '--Sequence--':
-            return text
+        if text == '--Sequence--':
+            text = ''
+        return text
 
     def getSh(self):
         text = self.shBox.currentText()
         if text == 'Custom':
             return self.shBox2.text()
-        if text != '--Shot--':
-            return text
+        if text == '--Shot--':
+            text = ''
+        return text
 
 Form3, Base3 = uic.loadUiType(osp.join(ui_path, 'exceptions.ui'))
 class Exceptions(Form3, Base3):
@@ -1303,7 +1318,7 @@ def fillName(epBox, seqBox, shBox, epBox2, seqBox2, shBox2, nameBox):
 
 def populateBoxes(epBox, seqBox, shBox):
     shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
-    epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
+    epBox.addItems(['EP'+str(val).zfill(2) for val in range(1, 27)])
     seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
 
     for item in [epBox, seqBox, shBox]:

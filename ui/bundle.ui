@@ -127,7 +127,7 @@
          <string>Submit To Deadline</string>
         </property>
         <property name="checked">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
        </widget>
       </item>
@@ -156,7 +156,7 @@
          <string>Keep Bundle</string>
         </property>
         <property name="checked">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
        </widget>
       </item>
