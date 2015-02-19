@@ -524,8 +524,9 @@ class BundleMaker(Form, Base):
                             for phile in fileNames:
                                 shutil.copy(phile, folderPath)
                                 self.copyRSFile(phile, folderPath)
-                            if '<udim>' in textureFilePath.lower():
-                                relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', '<UDIM>.', osp.basename(fileNames[0])))
+                            match = re.search('(?i)<udim>\.', textureFilePath)
+                            if match:
+                                relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', match.group(), osp.basename(fileNames[0])))
                             else:
                                 relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', '<f>.', osp.basename(fileNames[0])))
                             relativeFilePath = relativeFilePath.replace('\\', '/')
