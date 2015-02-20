@@ -1318,7 +1318,7 @@ def fillName(epBox, seqBox, shBox, epBox2, seqBox2, shBox2, nameBox):
 
 def populateBoxes(epBox, seqBox, shBox):
     shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
-    epBox.addItems(['EP'+str(val).zfill(2) for val in range(1, 27)])
+    epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
     seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
 
     for item in [epBox, seqBox, shBox]:
