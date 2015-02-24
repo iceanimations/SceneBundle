@@ -41,6 +41,7 @@ class BundleMaker(Form, Base):
         self.textureExceptions = []
         self.rootPath = None
         self.texturesMapping = {}
+        self.collectedTextures = {}
         self.refNodes = []
         self.cacheMapping = {}
         self.logFile = None
@@ -516,27 +517,32 @@ class BundleMaker(Form, Base):
                 textureFilePath = node.filename.get()
             if textureFilePath:
                 if osp.normcase(osp.normpath(textureFilePath)) not in [osp.normcase(osp.normpath(path)) for path in self.textureExceptions]:
-                    if pc.attributeQuery('excp', n=node, exists=True):
-                        pc.deleteAttr('excp', n=node)
-                    if '<udim>' in textureFilePath.lower() or '<f>' in textureFilePath.lower():
-                        fileNames = self.getUDIMFiles(textureFilePath)
-                        if fileNames:
-                            for phile in fileNames:
-                                shutil.copy(phile, folderPath)
-                                self.copyRSFile(phile, folderPath)
-                            match = re.search('(?i)<udim>\.', textureFilePath)
-                            if match:
-                                relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', match.group(), osp.basename(fileNames[0])))
-                            else:
-                                relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', '<f>.', osp.basename(fileNames[0])))
-                            relativeFilePath = relativeFilePath.replace('\\', '/')
-                            self.texturesMapping[node] = relativeFilePath
+                    if textureFilePath not in self.collectedTextures.keys():
+                        if pc.attributeQuery('excp', n=node, exists=True):
+                            pc.deleteAttr('excp', n=node)
+                        if '<udim>' in textureFilePath.lower() or '<f>' in textureFilePath.lower():
+                            fileNames = self.getUDIMFiles(textureFilePath)
+                            if fileNames:
+                                for phile in fileNames:
+                                    shutil.copy(phile, folderPath)
+                                    self.copyRSFile(phile, folderPath)
+                                match = re.search('(?i)<udim>\.', textureFilePath)
+                                if match:
+                                    relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', match.group(), osp.basename(fileNames[0])))
+                                else:
+                                    relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', '<f>.', osp.basename(fileNames[0])))
+                                relativeFilePath = relativeFilePath.replace('\\', '/')
+                                self.texturesMapping[node] = relativeFilePath
+                        else:
+                            if osp.exists(textureFilePath):
+                                shutil.copy(textureFilePath, folderPath)
+                                self.copyRSFile(textureFilePath, folderPath)
+                                relativeFilePath = osp.join(relativePath, osp.basename(textureFilePath))
+                                self.texturesMapping[node] = relativeFilePath
+                        self.collectedTextures[textureFilePath] = relativeFilePath
                     else:
-                        if osp.exists(textureFilePath):
-                            shutil.copy(textureFilePath, folderPath)
-                            self.copyRSFile(textureFilePath, folderPath)
-                            relativeFilePath = osp.join(relativePath, osp.basename(textureFilePath))
-                            self.texturesMapping[node] = relativeFilePath
+                        self.texturesMapping[node] = self.collectedTextures[textureFilePath]
+                        os.rmdir(folderPath)
                 else:
                     if not pc.attributeQuery('excp', n=node, exists=True):
                         pc.addAttr(node, sn='excp', ln='exception', dt='string')
