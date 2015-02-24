@@ -423,6 +423,7 @@ class BundleMaker(Form, Base):
         self.cacheMapping.clear()
         del self.refNodes[:]
         self.texturesMapping.clear()
+        self.collectedTextures.clear()
 
     def getNiceName(self, nodeName):
         return nodeName.replace(':', '_').replace('|', '_')
