@@ -632,6 +632,9 @@ class BundleMaker(Form, Base):
         for node in cacheNodes:
             files = node.getFileName()
             if files:
+                if len(files) != 2:
+                    badCachePaths.append(files[0])
+                    continue
                 cacheXMLFilePath, cacheMCFilePath = files
                 if not osp.exists(cacheXMLFilePath):
                     badCachePaths.append(cacheXMLFilePath)
