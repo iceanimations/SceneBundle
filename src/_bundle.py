@@ -363,6 +363,7 @@ class BundleMaker(Form, Base):
                                 errors = {}
                                 try:
                                     shutil.rmtree(dest)
+                                    print 'hello'
                                 except Exception as ex:
                                     errors[dest] = str(ex)
                                 if errors:
@@ -511,7 +512,8 @@ class BundleMaker(Form, Base):
         for node in textureFileNodes:
             folderPath = osp.join(imagesPath, str(newName))
             relativePath = osp.join(osp.basename(imagesPath), str(newName))
-            os.mkdir(folderPath)
+            if not osp.exists(folderPath):
+                os.mkdir(folderPath)
             try:
                 textureFilePath = node.fileTextureName.get()
             except AttributeError:
@@ -534,12 +536,14 @@ class BundleMaker(Form, Base):
                                     relativeFilePath = osp.join(relativePath, re.sub('\d{4}\.', '<f>.', osp.basename(fileNames[0])))
                                 relativeFilePath = relativeFilePath.replace('\\', '/')
                                 self.texturesMapping[node] = relativeFilePath
+                            else: continue
                         else:
                             if osp.exists(textureFilePath):
                                 shutil.copy(textureFilePath, folderPath)
                                 self.copyRSFile(textureFilePath, folderPath)
                                 relativeFilePath = osp.join(relativePath, osp.basename(textureFilePath))
                                 self.texturesMapping[node] = relativeFilePath
+                            else: continue
                         self.collectedTextures[textureFilePath] = relativeFilePath
                     else:
                         self.texturesMapping[node] = self.collectedTextures[textureFilePath]
