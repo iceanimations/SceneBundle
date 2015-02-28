@@ -302,14 +302,14 @@ class BundleMaker(Form, Base):
                         pc.workspace(ws, o=True)
                         if self.collectParticleCache():
                             pc.workspace(self.rootPath, o=True)
+                            self.mapTextures()
+                            self.mapCache()
                             if self.keepReferencesButton.isChecked():
                                 if not self.copyRef():
                                     return
                             else:
                                 if not self.importReferences():
                                     return
-                            self.mapTextures()
-                            self.mapCache()
                             self.saveSceneAs(name)
                             if self.makeZipButton.isChecked():
                                 self.archive()
@@ -367,7 +367,6 @@ class BundleMaker(Form, Base):
                                 errors = {}
                                 try:
                                     shutil.rmtree(dest)
-                                    print 'hello'
                                 except Exception as ex:
                                     errors[dest] = str(ex)
                                 if errors:
@@ -799,11 +798,14 @@ class BundleMaker(Form, Base):
             for ref in self.refNodes:
                 try:
                     newPath = osp.join(refsPath, osp.basename(ref.path))
+                    print newPath
                     if osp.exists(osp.normpath(newPath)):
                         ref.replaceWith(newPath.replace('\\', '/'))
                         continue
                     shutil.copy(ref.path, refsPath)
+                    print 'copied...'
                     ref.replaceWith(newPath.replace('\\', '/'))
+                    print 'replaced....'
                 except Exception as ex:
                     errors[ref] = str(ex)
                 c += 1
