@@ -302,20 +302,24 @@ class BundleMaker(Form, Base):
                         pc.workspace(ws, o=True)
                         if self.collectParticleCache():
                             pc.workspace(self.rootPath, o=True)
-                            if self.importReferences():
-                                self.mapTextures()
-                                self.mapCache()
-                                self.saveSceneAs(name)
-                                if self.makeZipButton.isChecked():
-                                    self.archive()
-                                if self.deadlineCheck.isChecked():
-                                    self.submitToDeadline(name, project, ep, seq, sh)
-                                if not self.keepBundleButton.isChecked():
-                                    #if not self.isCurrentScene():
-                                    cmds.file(new=True, f=True)
-                                    self.removeBundle()
-                                self.statusLabel.setText('Scene bundled successfully...')
-                                qApp.processEvents()
+                            if self.keepReferencesButton.isChecked():
+                                if not self.copyRef():
+                                    return
+                            else:
+                                if not self.importReferences():
+                                    return
+                            self.mapTextures()
+                            self.mapCache()
+                            self.saveSceneAs(name)
+                            if self.makeZipButton.isChecked():
+                                self.archive()
+                            if self.deadlineCheck.isChecked():
+                                self.submitToDeadline(name, project, ep, seq, sh)
+                            if not self.keepBundleButton.isChecked():
+                                cmds.file(new=True, f=True)
+                                self.removeBundle()
+                            self.statusLabel.setText('Scene bundled successfully...')
+                            qApp.processEvents()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         qApp.processEvents()
@@ -589,11 +593,10 @@ class BundleMaker(Form, Base):
             badRefs = {}
             for ref in refNodes:
                 try:
-                    if ref.isLoaded():
-                        if not osp.exists(ref.path):
-                            badRefs[ref] = 'Does not exist in file system'
-                            continue
-                        self.refNodes.append(ref)
+                    if not osp.exists(ref.path):
+                        badRefs[ref] = 'Does not exist in file system'
+                        continue
+                    self.refNodes.append(ref)
                 except Exception as ex:
                     badRefs[ref] = str(ex)
                 self.progressBar.setValue(c)
@@ -795,9 +798,12 @@ class BundleMaker(Form, Base):
             errors = {}
             for ref in self.refNodes:
                 try:
-                    if osp.exists(osp.join(refsPath, osp.basename(ref.path))):
+                    newPath = osp.join(refsPath, osp.basename(ref.path))
+                    if osp.exists(osp.normpath(newPath)):
+                        ref.replaceWith(newPath.replace('\\', '/'))
                         continue
                     shutil.copy(ref.path, refsPath)
+                    ref.replaceWith(newPath.replace('\\', '/'))
                 except Exception as ex:
                     errors[ref] = str(ex)
                 c += 1
@@ -821,6 +827,7 @@ class BundleMaker(Form, Base):
                 else:
                     detail = self.currentFileName() +'\r\n'*2 + detail
                     self.createLog(detail)
+        self.progressBar.setValue(0)
         return True
 
     def importReferences(self):
