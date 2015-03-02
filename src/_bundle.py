@@ -254,6 +254,7 @@ class BundleMaker(Form, Base):
 
     def createLog(self, details):
         if self.logFile:
+            details = self.currentFileName() +'\r\n'*2 + details
             self.logFile.write(details)
             self.logFile.write('\r\n'+'-'*100+'\r\n'*3)
 
@@ -505,7 +506,6 @@ class BundleMaker(Form, Base):
                 else:
                     return
             else:
-                detail = self.currentFileName() +'\r\n'*2 + detail
                 self.createLog(detail)
         newName = 0
         self.statusLabel.setText('collecting textures...')
@@ -618,7 +618,6 @@ class BundleMaker(Form, Base):
                         pass
                     else: return False
                 else:
-                    detail = self.currentFileName() +'\r\n'*2 + detail
                     self.createLog(detail)
         else:
             self.statusLabel.setText('No references found in the scene...')
@@ -662,7 +661,6 @@ class BundleMaker(Form, Base):
                 else:
                     return
             else:
-                detail = self.currentFileName() +'\r\n'*2 + detail
                 self.createLog(detail)
         self.statusLabel.setText('collecting cache files...')
         qApp.processEvents()
@@ -701,7 +699,6 @@ class BundleMaker(Form, Base):
                     pass
                 else: return
             else:
-                detail = self.currentFileName() +'\r\n'*2 + detail
                 self.createLog(detail)
         self.progressBar.setValue(0)
         qApp.processEvents()
@@ -777,7 +774,6 @@ class BundleMaker(Form, Base):
                             pass
                         else: return
                     else:
-                        detail = self.currentFileName() +'\r\n'*2 + detail
                         self.createLog(detail)
                 self.progressBar.setValue(0)
                 self.statusLabel.setText('particle cache collected successfully')
@@ -827,7 +823,6 @@ class BundleMaker(Form, Base):
                         pass
                     else: return False
                 else:
-                    detail = self.currentFileName() +'\r\n'*2 + detail
                     self.createLog(detail)
         self.progressBar.setValue(0)
         return True
@@ -866,7 +861,6 @@ class BundleMaker(Form, Base):
                 else:
                     return False
             else:
-                detail = self.currentFileName() + '\r\n'*2 + detail
                 self.createLog(detail)
         self.progressBar.setValue(0)
         return True
@@ -922,7 +916,6 @@ class BundleMaker(Form, Base):
                         icon=QMessageBox.Information)
             else:
                 detail = "\nArchiving Error: " + str(e)
-                detail = self.currentFileName() +'\r\n'*2 + detail
                 self.createLog(detail)
             return False
         return True
@@ -967,7 +960,6 @@ class BundleMaker(Form, Base):
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg=str(detail), icon=QMessageBox.Information)
             else:
-                detail = self.currentFileName() + '\r\n'*2 + detail
                 self.createLog(detail)
             return False
 
@@ -988,7 +980,6 @@ class BundleMaker(Form, Base):
                             msg='Cannot create jobs to deadline\n' + str(e),
                             icon=QMessageBox.Information)
             else:
-                detail = self.currentFileName() + '\r\n'*2 + detail
                 self.createLog(detail)
             return False
 
@@ -1014,7 +1005,6 @@ class BundleMaker(Form, Base):
                                     msg='Cannot copy to rendering server\n'+str(e),
                                     icon=QMessageBox.Information)
                 else:
-                    detail = self.currentFileName() + '\r\n'*2 + detail
                     self.createLog(detail)
                 return False
 
@@ -1040,7 +1030,6 @@ class BundleMaker(Form, Base):
                                         msg='Cannot submit Job ' + str(e),
                                         icon=QMessageBox.Information)
                 else:
-                    detail = self.currentFileName() + '\r\n'*2 + detail
                     self.createLog(detail)
                 return False
         self.progressBar.setValue(0)
