@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1050</width>
+    <width>1152</width>
     <height>375</height>
    </rect>
   </property>
@@ -127,7 +127,7 @@
          <string>Submit To Deadline</string>
         </property>
         <property name="checked">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
        </widget>
       </item>
@@ -156,7 +156,20 @@
          <string>Keep Bundle</string>
         </property>
         <property name="checked">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="keepReferencesButton">
+        <property name="enabled">
          <bool>true</bool>
+        </property>
+        <property name="toolTip">
+         <string>If checked, copies the references in the bundle otherwise imports them</string>
+        </property>
+        <property name="text">
+         <string>Keep References</string>
         </property>
        </widget>
       </item>
