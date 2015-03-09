@@ -19,6 +19,7 @@ import pymel.core as pc
 import maya.cmds as cmds
 import appUsageApp
 import imaya
+reload(imaya)
 from . import _archiving as arch
 from . import _deadline as deadline
 reload(deadline)
@@ -286,11 +287,11 @@ class BundleMaker(Form, Base):
                                        icon=QMessageBox.Information)
                     return
                 name = self.getName()
-        if cmds.file(q=True, modified=True) and self.isCurrentScene():
-            msgBox.showMessage(self, title='Scene Bundle',
-                               msg='Your scene contains unsaved changes, save them before proceeding',
-                               icon=QMessageBox.Warning)
-            return
+        #if cmds.file(q=True, modified=True) and self.isCurrentScene():
+        #    msgBox.showMessage(self, title='Scene Bundle',
+        #                       msg='Your scene contains unsaved changes, save them before proceeding',
+        #                       icon=QMessageBox.Warning)
+        #    return
         ws = pc.workspace(o=True, q=True)
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
@@ -518,9 +519,9 @@ class BundleMaker(Form, Base):
             if not osp.exists(folderPath):
                 os.mkdir(folderPath)
             try:
-                textureFilePath = node.fileTextureName.get()
+                textureFilePath = imaya.getFullpathFromAttr(node.fileTextureName)
             except AttributeError:
-                textureFilePath = node.filename.get()
+                textureFilePath = imaya.getFullpathFromAttr(node.filename)
             if textureFilePath:
                 if osp.normcase(osp.normpath(textureFilePath)) not in [osp.normcase(osp.normpath(path)) for path in self.textureExceptions]:
                     if textureFilePath not in self.collectedTextures.keys():
