@@ -555,6 +555,8 @@ class BundleMaker(Form, Base):
                 else:
                     if not pc.attributeQuery('excp', n=node, exists=True):
                         pc.addAttr(node, sn='excp', ln='exception', dt='string')
+            else:
+                continue
             newName = newName + 1
             self.progressBar.setValue(newName)
             qApp.processEvents()
@@ -795,14 +797,11 @@ class BundleMaker(Form, Base):
             for ref in self.refNodes:
                 try:
                     newPath = osp.join(refsPath, osp.basename(ref.path))
-                    print newPath
                     if osp.exists(osp.normpath(newPath)):
                         ref.replaceWith(newPath.replace('\\', '/'))
                         continue
                     shutil.copy(ref.path, refsPath)
-                    print 'copied...'
                     ref.replaceWith(newPath.replace('\\', '/'))
-                    print 'replaced....'
                 except Exception as ex:
                     errors[ref] = str(ex)
                 c += 1
