@@ -523,6 +523,11 @@ class BundleMaker(Form, Base):
             except AttributeError:
                 textureFilePath = imaya.getFullpathFromAttr(node.filename)
             if textureFilePath:
+                try:
+                    if node.useFrameExtension.get():
+                        self.textureExceptions.append(textureFilePath)
+                except AttributeError:
+                    pass
                 if osp.normcase(osp.normpath(textureFilePath)) not in [osp.normcase(osp.normpath(path)) for path in self.textureExceptions]:
                     if textureFilePath not in self.collectedTextures.keys():
                         if pc.attributeQuery('excp', n=node, exists=True):
@@ -551,10 +556,11 @@ class BundleMaker(Form, Base):
                         self.collectedTextures[textureFilePath] = relativeFilePath
                     else:
                         self.texturesMapping[node] = self.collectedTextures[textureFilePath]
-                        os.rmdir(folderPath)
+                        continue
                 else:
                     if not pc.attributeQuery('excp', n=node, exists=True):
                         pc.addAttr(node, sn='excp', ln='exception', dt='string')
+                        continue
             else:
                 continue
             newName = newName + 1
