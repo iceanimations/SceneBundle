@@ -462,7 +462,7 @@ class BundleMaker(Form, Base):
                 first, last = parts
             except:
                 return []
-        pattern = first +'\d{4}'+ last
+        pattern = first +'\d+'+ last
         goodFiles = []
         fileNames = os.listdir(dirname)
         for fName in fileNames:
