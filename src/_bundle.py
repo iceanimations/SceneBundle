@@ -682,6 +682,8 @@ class BundleMaker(Form, Base):
         for node in cacheNodes:
             cacheFiles = node.getFileName()
             if cacheFiles:
+                if len(cacheFiles) != 2:
+                    continue
                 cacheXMLFilePath, cacheMCFilePath = cacheFiles
                 newName = newName + 1
                 osp.join(osp.basename(cacheFolder), str(newName))
