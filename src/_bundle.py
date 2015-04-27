@@ -316,7 +316,7 @@ class BundleMaker(Form, Base):
                             if self.makeZipButton.isChecked():
                                 self.archive()
                             if self.deadlineCheck.isChecked():
-                                if zdepthButton.isChecked():
+                                if self.zdepthButton.isChecked():
                                     util.turnZdepthOn()
                                 self.submitToDeadline(name, project, ep, seq, sh)
                             if not self.keepBundleButton.isChecked():
