@@ -476,21 +476,5 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>deadlineCheck</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>zdepthButton</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>143</x>
-     <y>85</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>557</x>
-     <y>88</y>
-    </hint>
-   </hints>
-  </connection>
  </connections>
 </ui>
