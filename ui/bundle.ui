@@ -175,6 +175,9 @@
       </item>
       <item>
        <widget class="QCheckBox" name="zdepthButton">
+        <property name="toolTip">
+         <string>Turns zdepth on and all other layers off</string>
+        </property>
         <property name="text">
          <string>Render zdepth only</string>
         </property>
