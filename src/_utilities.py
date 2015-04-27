@@ -138,3 +138,9 @@ def findUIObjectByLabel(parentUI, objType, label, case=True):
         print parentUI, e
         return None
 
+def turnZdepthOn():
+    for layer in pc.ls(type=pc.nt.RenderLayer):
+        if 'depth' in layer.name():
+            layer.renderable.set(1)
+        else:
+            layer.renderable.set(0)
