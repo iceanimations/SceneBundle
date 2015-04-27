@@ -7,6 +7,7 @@ Created on Nov 25, 2014
 import os
 import sys
 import sys as pc
+import pymel.core as pm
 
 mapFiles = '''#ICE_BundleScript
 #version==0.2
@@ -139,7 +140,7 @@ def findUIObjectByLabel(parentUI, objType, label, case=True):
         return None
 
 def turnZdepthOn():
-    for layer in pc.ls(type=pc.nt.RenderLayer):
+    for layer in pm.ls(type=pm.nt.RenderLayer):
         if 'depth' in layer.name():
             layer.renderable.set(1)
         else:
