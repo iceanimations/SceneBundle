@@ -80,7 +80,7 @@ class BundleMaker(Form, Base):
         self.epBox2.hide()
         self.seqBox2.hide()
         self.shBox2.hide()
-        self.zdepthButton.isChecked()
+        #self.zdepthButton.isChecked()
         self.hideBoxes()
         populateBoxes(self.epBox, self.seqBox, self.shBox)
 
@@ -298,6 +298,9 @@ class BundleMaker(Form, Base):
         self.bundleButton.setEnabled(False)
         qApp.processEvents()
         if self.createProjectFolder(name):
+            if self.deadlineCheck.isChecked():
+                if self.zdepthButton.isChecked():
+                    util.turnZdepthOn()
             pc.workspace(self.rootPath, o=True)
             if self.collectTextures():
                 if self.collectReferences():
@@ -317,8 +320,6 @@ class BundleMaker(Form, Base):
                             if self.makeZipButton.isChecked():
                                 self.archive()
                             if self.deadlineCheck.isChecked():
-                                if self.zdepthButton.isChecked():
-                                    util.turnZdepthOn()
                                 self.submitToDeadline(name, project, ep, seq, sh)
                             if not self.keepBundleButton.isChecked():
                                 cmds.file(new=True, f=True)
