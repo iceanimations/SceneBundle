@@ -80,6 +80,7 @@ class BundleMaker(Form, Base):
         self.epBox2.hide()
         self.seqBox2.hide()
         self.shBox2.hide()
+        self.zdepthButton.isChecked()
         self.hideBoxes()
         populateBoxes(self.epBox, self.seqBox, self.shBox)
 
