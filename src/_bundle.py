@@ -80,6 +80,7 @@ class BundleMaker(Form, Base):
         self.epBox2.hide()
         self.seqBox2.hide()
         self.shBox2.hide()
+        self.zdepthButton.isChecked()
         self.hideBoxes()
         populateBoxes(self.epBox, self.seqBox, self.shBox)
 
@@ -297,6 +298,9 @@ class BundleMaker(Form, Base):
         self.bundleButton.setEnabled(False)
         qApp.processEvents()
         if self.createProjectFolder(name):
+            if self.deadlineCheck.isChecked():
+                if self.zdepthButton.isChecked():
+                    util.turnZdepthOn()
             pc.workspace(self.rootPath, o=True)
             if self.collectTextures():
                 if self.collectReferences():
@@ -462,7 +466,7 @@ class BundleMaker(Form, Base):
                 first, last = parts
             except:
                 return []
-        pattern = first +'\d{4}'+ last
+        pattern = first +'\d+'+ last
         goodFiles = []
         fileNames = os.listdir(dirname)
         for fName in fileNames:
@@ -523,6 +527,11 @@ class BundleMaker(Form, Base):
             except AttributeError:
                 textureFilePath = imaya.getFullpathFromAttr(node.filename)
             if textureFilePath:
+                try:
+                    if node.useFrameExtension.get():
+                        self.textureExceptions.append(textureFilePath)
+                except AttributeError:
+                    pass
                 if osp.normcase(osp.normpath(textureFilePath)) not in [osp.normcase(osp.normpath(path)) for path in self.textureExceptions]:
                     if textureFilePath not in self.collectedTextures.keys():
                         if pc.attributeQuery('excp', n=node, exists=True):
@@ -551,10 +560,13 @@ class BundleMaker(Form, Base):
                         self.collectedTextures[textureFilePath] = relativeFilePath
                     else:
                         self.texturesMapping[node] = self.collectedTextures[textureFilePath]
-                        os.rmdir(folderPath)
+                        continue
                 else:
                     if not pc.attributeQuery('excp', n=node, exists=True):
                         pc.addAttr(node, sn='excp', ln='exception', dt='string')
+                        continue
+            else:
+                continue
             newName = newName + 1
             self.progressBar.setValue(newName)
             qApp.processEvents()
@@ -672,6 +684,8 @@ class BundleMaker(Form, Base):
         for node in cacheNodes:
             cacheFiles = node.getFileName()
             if cacheFiles:
+                if len(cacheFiles) != 2:
+                    continue
                 cacheXMLFilePath, cacheMCFilePath = cacheFiles
                 newName = newName + 1
                 osp.join(osp.basename(cacheFolder), str(newName))
@@ -795,14 +809,11 @@ class BundleMaker(Form, Base):
             for ref in self.refNodes:
                 try:
                     newPath = osp.join(refsPath, osp.basename(ref.path))
-                    print newPath
                     if osp.exists(osp.normpath(newPath)):
                         ref.replaceWith(newPath.replace('\\', '/'))
                         continue
                     shutil.copy(ref.path, refsPath)
-                    print 'copied...'
                     ref.replaceWith(newPath.replace('\\', '/'))
-                    print 'replaced....'
                 except Exception as ex:
                     errors[ref] = str(ex)
                 c += 1

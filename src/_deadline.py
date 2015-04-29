@@ -39,7 +39,8 @@ if not config:
     config['output_loc'] = r'\\ice-lac\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
     config['bundle_loc'] = r'%(bundle_base)s\%(project)s\%(episode)s\%(sequence)s\%(shot)s'
     config['job_name'] = '%(project)s_%(episode)s_%(sequence)s_%(shot)s - %(name)s'
-    config['illegal_layer_names'] = ['.*depth.*']
+    #config['illegal_layer_names'] = ['.*depth.*']
+    config['illegal_layer_names'] = []
     config['illegal_camera_names'] = []
     config['pools'] = {
         'none':{

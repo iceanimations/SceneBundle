@@ -174,6 +174,16 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="zdepthButton">
+        <property name="toolTip">
+         <string>Turns zdepth on and all other layers off</string>
+        </property>
+        <property name="text">
+         <string>Render zdepth only</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QComboBox" name="projectBox">
         <property name="currentIndex">
          <number>0</number>
@@ -461,8 +471,8 @@
      <y>84</y>
     </hint>
     <hint type="destinationlabel">
-     <x>534</x>
-     <y>94</y>
+     <x>768</x>
+     <y>98</y>
     </hint>
    </hints>
   </connection>
