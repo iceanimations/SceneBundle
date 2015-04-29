@@ -80,7 +80,7 @@ class BundleMaker(Form, Base):
         self.epBox2.hide()
         self.seqBox2.hide()
         self.shBox2.hide()
-        self.zdepthButton.isChecked()
+        self.zdepthButton.hide()
         self.hideBoxes()
         populateBoxes(self.epBox, self.seqBox, self.shBox)
 
@@ -288,11 +288,6 @@ class BundleMaker(Form, Base):
                                        icon=QMessageBox.Information)
                     return
                 name = self.getName()
-        #if cmds.file(q=True, modified=True) and self.isCurrentScene():
-        #    msgBox.showMessage(self, title='Scene Bundle',
-        #                       msg='Your scene contains unsaved changes, save them before proceeding',
-        #                       icon=QMessageBox.Warning)
-        #    return
         ws = pc.workspace(o=True, q=True)
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
