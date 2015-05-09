@@ -704,6 +704,7 @@ class BundleMaker(Form, Base):
                                          msg='Could not collect some of the cache files. '+
                                          'This would result in loss of animation',
                                          ques='Do you want to proceed?',
+                                         details=detail,
                                          btns=QMessageBox.Yes|QMessageBox.No,
                                          icon=QMessageBox.Warning)
                 if btn == QMessageBox.Yes:
