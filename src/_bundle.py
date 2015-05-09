@@ -98,6 +98,9 @@ class BundleMaker(Form, Base):
         self.logFilePath = osp.join(path, 'log.txt')
 
         appUsageApp.updateDatabase('sceneBundle')
+        
+    def setStatus(self, msg):
+        self.setStatus(msg)
 
     def makeButtonsExclussive(self, btn):
         if not any([self.deadlineCheck.isChecked(),
@@ -227,7 +230,7 @@ class BundleMaker(Form, Base):
                                        icon=QMessageBox.Information)
                     return
             for i in range(total):
-                self.statusLabel.setText('Opening scene '+ str(i+1) +' of '+ str(total))
+                self.setStatus('Opening scene '+ str(i+1) +' of '+ str(total))
                 item = self.filesBox.item(i)
                 item.setBackground(Qt.darkGray)
                 qApp.processEvents()
@@ -239,8 +242,6 @@ class BundleMaker(Form, Base):
             self.createBundle(project=pro)
         self.closeLogFile()
         self.showLogFileMessage()
-
-        #cmds.file(new=True, f=True)
 
     def showLogFileMessage(self):
         with open(self.logFilePath, 'rb') as f:
@@ -319,7 +320,7 @@ class BundleMaker(Form, Base):
                             if not self.keepBundleButton.isChecked():
                                 cmds.file(new=True, f=True)
                                 self.removeBundle()
-                            self.statusLabel.setText('Scene bundled successfully...')
+                            self.setStatus('Scene bundled successfully...')
                             qApp.processEvents()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
@@ -473,7 +474,7 @@ class BundleMaker(Form, Base):
         return cmds.file(location=True, q=True)
 
     def collectTextures(self):
-        self.statusLabel.setText('Checking texture files...')
+        self.setStatus('Checking texture files...')
         textureFileNodes = self.getFileNodes()
         badTexturePaths = []
         for node in textureFileNodes:
@@ -508,7 +509,7 @@ class BundleMaker(Form, Base):
             else:
                 self.createLog(detail)
         newName = 0
-        self.statusLabel.setText('collecting textures...')
+        self.setStatus('collecting textures...')
         qApp.processEvents()
         imagesPath = osp.join(self.rootPath, 'sourceImages')
         self.progressBar.setMaximum(len(textureFileNodes))
@@ -567,7 +568,7 @@ class BundleMaker(Form, Base):
             qApp.processEvents()
         self.progressBar.setValue(0)
         qApp.processEvents()
-        self.statusLabel.setText('All textures collected successfully...')
+        self.setStatus('All textures collected successfully...')
         qApp.processEvents()
         return True
 
@@ -592,7 +593,7 @@ class BundleMaker(Form, Base):
         return nodes
 
     def collectReferences(self):
-        self.statusLabel.setText('collecting references info...')
+        self.setStatus('collecting references info...')
         refNodes = self.getRefNodes()
         self.progressBar.setMaximum(len(refNodes))
         if refNodes:
@@ -628,7 +629,7 @@ class BundleMaker(Form, Base):
                 else:
                     self.createLog(detail)
         else:
-            self.statusLabel.setText('No references found in the scene...')
+            self.setStatus('No references found in the scene...')
             qApp.processEvents()
         return True
 
@@ -636,11 +637,11 @@ class BundleMaker(Form, Base):
         return pc.ls(type=pc.nt.CacheFile)
 
     def collectCaches(self):
-        self.statusLabel.setText('Prepering to collect cache files...')
+        self.setStatus('Prepering to collect cache files...')
         qApp.processEvents()
         cacheNodes = self.getCacheNodes()
         badCachePaths = []
-        self.statusLabel.setText('checking cache files...')
+        self.setStatus('checking cache files...')
         qApp.processEvents()
         for node in cacheNodes:
             files = node.getFileName()
@@ -670,7 +671,7 @@ class BundleMaker(Form, Base):
                     return
             else:
                 self.createLog(detail)
-        self.statusLabel.setText('collecting cache files...')
+        self.setStatus('collecting cache files...')
         qApp.processEvents()
         cacheFolder = osp.join(self.rootPath, 'cache')
         newName = 0
@@ -725,7 +726,7 @@ class BundleMaker(Form, Base):
             return osp.join(pcp, node.cd.get())
 
     def collectMCFIs(self):
-        self.statusLabel.setText('Collecting mcfi files')
+        self.setStatus('Collecting mcfi files')
         qApp.processEvents()
         path = pc.workspace(en=pc.workspace(fre='diskCache'))
         targetPath = osp.join(self.rootPath, 'data')
@@ -747,7 +748,7 @@ class BundleMaker(Form, Base):
 
     def collectParticleCache(self):
         self.collectMCFIs()
-        self.statusLabel.setText('Collecting particle cache...')
+        self.setStatus('Collecting particle cache...')
         qApp.processEvents()
         path = self.getParticleCacheDirectory()
         if path:
@@ -786,14 +787,14 @@ class BundleMaker(Form, Base):
                     else:
                         self.createLog(detail)
                 self.progressBar.setValue(0)
-                self.statusLabel.setText('particle cache collected successfully')
+                self.setStatus('particle cache collected successfully')
                 qApp.processEvents()
             else:
-                self.statusLabel.setText('No particle cache found...')
+                self.setStatus('No particle cache found...')
         return True
 
     def copyRef(self):
-        self.statusLabel.setText('copying references...')
+        self.setStatus('copying references...')
         qApp.processEvents()
         c = 0
         self.progressBar.setMaximum(len(self.refNodes))
@@ -835,7 +836,7 @@ class BundleMaker(Form, Base):
         return True
 
     def importReferences(self):
-        self.statusLabel.setText('importing references ...')
+        self.setStatus('importing references ...')
         qApp.processEvents()
         c=0
         self.progressBar.setMaximum(len(self.refNodes))
@@ -873,7 +874,7 @@ class BundleMaker(Form, Base):
         return True
 
     def mapTextures(self):
-        self.statusLabel.setText('Mapping collected textures...')
+        self.setStatus('Mapping collected textures...')
         qApp.processEvents()
         self.progressBar.setMaximum(len(self.texturesMapping))
         c = 0
@@ -891,7 +892,7 @@ class BundleMaker(Form, Base):
 
 
     def mapCache(self):
-        self.statusLabel.setText('Mapping cache files...')
+        self.setStatus('Mapping cache files...')
         qApp.processEvents()
         self.progressBar.setMaximum(len(self.cacheMapping))
         c = 0
@@ -912,7 +913,7 @@ class BundleMaker(Form, Base):
 
     def archive(self):
         archiver = arch.getFormats().values()[0]
-        self.statusLabel.setText(
+        self.setStatus(
                 'Creating Archive %s ...'%(self.rootPath+archiver.ext))
         try:
             arch.make_archive(self.rootPath, archiver.name,
@@ -928,19 +929,19 @@ class BundleMaker(Form, Base):
         return True
 
     def exportScene(self):
-        self.statusLabel.setText('Exporting scene...')
+        self.setStatus('Exporting scene...')
         qApp.processEvents()
         self.createScriptNode()
         scenePath = osp.join(self.rootPath, 'scenes', str(self.nameBox.text()))
         pc.exportAll(scenePath, type=cmds.file(q=True, type=True)[0],
                      f=True, pr=True)
-        self.statusLabel.setText('Scene bundled successfully...')
+        self.setStatus('Scene bundled successfully...')
         qApp.processEvents()
 
     def saveSceneAs(self, name=None):
         if not name:
             name = self.nameBox.text()
-        self.statusLabel.setText('Saving Scene in New Location')
+        self.setStatus('Saving Scene in New Location')
         qApp.processEvents()
         self.createScriptNode()
         scenePath = osp.join(self.rootPath, 'scenes', name)
@@ -953,7 +954,7 @@ class BundleMaker(Form, Base):
         #                       configuring Deadline submitter                        #
         ###############################################################################
         self.progressBar.setMaximum(0)
-        self.statusLabel.setText('configuring deadline submitter...')
+        self.setStatus('configuring deadline submitter...')
         qApp.processEvents()
         try:
             subm = deadline.DeadlineBundleSubmitter(name, project, episode,
@@ -973,7 +974,7 @@ class BundleMaker(Form, Base):
         ###############################################################################
         #                                creating jobs                                #
         ###############################################################################
-        self.statusLabel.setText('creating jobs ')
+        self.setStatus('creating jobs ')
         qApp.processEvents()
         try:
             jobs = subm.createJobs()
@@ -996,7 +997,7 @@ class BundleMaker(Form, Base):
         self.progressBar.setMaximum(len(subm.project_paths))
         for pi, projectPath in enumerate(subm.project_paths):
             try:
-                self.statusLabel.setText('copying %s to directory %s ...'%(
+                self.setStatus('copying %s to directory %s ...'%(
                     self.rootPath, projectPath))
                 qApp.processEvents()
                 shutil.copytree(cmds.workspace(q=1, rd=1), projectPath)
@@ -1019,10 +1020,10 @@ class BundleMaker(Form, Base):
         #                               submitting jobs                               #
         ###############################################################################
         self.progressBar.setMaximum(len(jobs))
-        self.statusLabel.setText('creating jobs ')
+        self.setStatus('creating jobs ')
         qApp.processEvents()
         for ji, job in enumerate(jobs):
-            self.statusLabel.setText('submitting job %d of %d' % (ji+1, len(jobs)))
+            self.setStatus('submitting job %d of %d' % (ji+1, len(jobs)))
             self.progressBar.setValue(ji)
             qApp.processEvents()
             try:
@@ -1044,7 +1045,7 @@ class BundleMaker(Form, Base):
         return True
 
     def removeBundle(self):
-        self.statusLabel.setText('Removing directory %s ...'%self.rootPath)
+        self.setStatus('Removing directory %s ...'%self.rootPath)
         try:
             shutil.rmtree(self.rootPath)
         except Exception as e:
