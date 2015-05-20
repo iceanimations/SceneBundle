@@ -261,7 +261,7 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
             self.chosen_pools.append(newpool)
             return newpool
         elif method == 'user_sequential':
-            choice=0
+            choice=random.choice(range(len(pools.keys())))
             seqFile = os.path.join(os.path.expanduser('~'), '.sceneBundleChoice')
             print seqFile
             try:
