@@ -100,7 +100,7 @@ class BundleMaker(Form, Base):
         appUsageApp.updateDatabase('sceneBundle')
         
     def setStatus(self, msg):
-        self.setStatus(msg)
+        self.statusLabel.setText(msg)
 
     def makeButtonsExclussive(self, btn):
         if not any([self.deadlineCheck.isChecked(),
@@ -317,10 +317,10 @@ class BundleMaker(Form, Base):
                                 self.archive()
                             if self.deadlineCheck.isChecked():
                                 self.submitToDeadline(name, project, ep, seq, sh)
+                            self.statusLabel.setText('Closing scene ...')
+                            qApp.processEvents()
+                            cmds.file(new=True, f=True)
                             if not self.keepBundleButton.isChecked():
-                                self.statusLabel.setText('Closing scene ...')
-                                qApp.processEvents()
-                                cmds.file(new=True, f=True)
                                 self.statusLabel.setText('removing bundle ...')
                                 qApp.processEvents()
                                 self.removeBundle()
