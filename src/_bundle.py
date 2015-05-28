@@ -964,7 +964,6 @@ class BundleMaker(Form, Base):
         try:
             subm = deadline.DeadlineBundleSubmitter(name, project, episode,
                     sequence, shot)
-            subm.configure()
         except Exception as ex:
             import traceback
             traceback.print_exc()
