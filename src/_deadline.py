@@ -32,7 +32,7 @@ if not config:
     config['chunkSize'] = 50
     config['submitAsSuspended'] = False
     config['submitEachRenderLayer'] = True
-    config['submitEachCamera'] = False
+    config['submitEachCamera'] = True
     config['submitSceneFile'] = False
     config['ignoreDefaultCamera'] = False
 
