@@ -1036,11 +1036,12 @@ class BundleMaker(Form, Base):
             try:
                 job.submit()
             except Exception as e:
+                continue
                 import traceback
                 traceback.print_exc()
                 detail = "\nError in submitting Job" + job.jobInfo["Name"]
                 detail += "\n" + str(e)
-                if self.isCurrentScene():
+                if self.isCurrentScene() and False:
                     msgBox.showMessage(self, title='Scene Bundle',
                                         msg='Cannot submit Job ' + str(e),
                                         icon=QMessageBox.Information)
