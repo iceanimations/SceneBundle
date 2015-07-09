@@ -236,7 +236,10 @@ class BundleMaker(Form, Base):
                 qApp.processEvents()
                 name, filename, ep, seq, sh = item.text().split(' | ')
                 if osp.splitext(filename)[-1] in ['.ma', '.mb']:
-                    cmds.file(filename, o=True, f=True, prompt=False)
+                    try:
+                        cmds.file(filename, o=True, f=True, prompt=False)
+                    except:
+                        pass
                     self.createBundle(name=name, project=pro, ep=ep, seq=seq, sh=sh)
         else:
             self.createBundle(project=pro)
@@ -317,11 +320,11 @@ class BundleMaker(Form, Base):
                                 self.archive()
                             if self.deadlineCheck.isChecked():
                                 self.submitToDeadline(name, project, ep, seq, sh)
-                            self.statusLabel.setText('Closing scene ...')
+                            self.setStatus('Closing scene ...')
                             qApp.processEvents()
                             cmds.file(new=True, f=True)
                             if not self.keepBundleButton.isChecked():
-                                self.statusLabel.setText('removing bundle ...')
+                                self.setStatus('removing bundle ...')
                                 qApp.processEvents()
                                 self.removeBundle()
                             self.setStatus('Scene bundled successfully...')
