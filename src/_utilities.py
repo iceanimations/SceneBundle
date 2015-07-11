@@ -145,3 +145,27 @@ def turnZdepthOn():
             layer.renderable.set(1)
         else:
             layer.renderable.set(0)
+
+reconnectAiAOVScript = """
+global proc reconnectAiAOVs()
+{
+    string $aiAOVs[] = `ls -type aiAOV`;
+    string $outputs[];
+    string $thisAOV;
+    for ($thisAOV in $aiAOVs)
+    {
+        $outputs = `listConnections -t aiOptions $thisAOV `;
+        if (!size( $outputs )){
+            connectAttr -f -na ($thisAOV + ".message") defaultArnoldRenderOptions.aovList;
+        }
+
+    }
+}
+reconnectAiAOVs();
+"""
+
+def createReconnectAiAOVScript():
+    return pc.scriptNode(name='reconnectAiAOV', bs=reconnectAiAOVScript,
+            stp='mel', st=1)
+
+

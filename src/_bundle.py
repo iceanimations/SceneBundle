@@ -191,6 +191,11 @@ class BundleMaker(Form, Base):
         else:
             script = pc.scriptNode(name='ICE_BundleScript', st=1, bs=mapFiles,
                     stp='python')
+        try:
+            util.createReconnectAiAOVScript()
+        except Exception as e:
+            pc.warning('cannot create reconnect script: %s' % e)
+
         return script
 
     def closeEvent(self, event):
@@ -1036,7 +1041,6 @@ class BundleMaker(Form, Base):
             try:
                 job.submit()
             except Exception as e:
-                continue
                 import traceback
                 traceback.print_exc()
                 detail = "\nError in submitting Job" + job.jobInfo["Name"]
