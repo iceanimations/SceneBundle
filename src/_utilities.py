@@ -165,7 +165,7 @@ reconnectAiAOVs();
 """
 
 def createReconnectAiAOVScript():
-    return pc.scriptNode(name='reconnectAiAOV', bs=reconnectAiAOVScript,
+    return pm.scriptNode(name='reconnectAiAOV', bs=reconnectAiAOVScript,
             stp='mel', st=1)
 
 
