@@ -35,8 +35,9 @@ mapFiles = util.mapFiles
 
 Form, Base = uic.loadUiType(osp.join(ui_path, 'bundle.ui'))
 class BundleMaker(Form, Base):
-    def __init__(self, parent=qtfy.getMayaWindow()):
+    def __init__(self, parent=qtfy.getMayaWindow(), standalone=False):
         super(BundleMaker, self).__init__(parent)
+        self.standalone = standalone
         self.setupUi(self)
 
         self.textureExceptions = []
@@ -76,6 +77,8 @@ class BundleMaker(Form, Base):
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
 
         #self.projectBox.hide()
+        if self.standalone:
+            self.currentSceneButton.setEnabled(False)
         self.progressBar.hide()
         self.epBox2.hide()
         self.seqBox2.hide()
@@ -98,6 +101,8 @@ class BundleMaker(Form, Base):
         self.logFilePath = osp.join(path, 'log.txt')
 
         appUsageApp.updateDatabase('sceneBundle')
+
+
         
     def setStatus(self, msg):
         self.statusLabel.setText(msg)
