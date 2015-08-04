@@ -9,6 +9,7 @@ import msgBox
 reload(msgBox)
 from PyQt4.QtGui import QMessageBox, QFileDialog, qApp, QIcon, QRegExpValidator
 from PyQt4.QtCore import Qt, QPropertyAnimation, QRect, QEasingCurve, QRegExp
+import PyQt4.QtCore as core
 import os.path as osp
 import shutil
 import os
@@ -32,6 +33,19 @@ _regexp = QRegExp('[a-zA-Z0-9_]*')
 __validator__ = QRegExpValidator(_regexp)
 
 mapFiles = util.mapFiles
+
+
+_settings = core.QSettings('ICE Animations', 'Scene Bundle')
+_bundle_path = _settings.value('bundle_path', os.path.expanduser('~'))
+def retrieveBundlePath():
+    path = _settings.value('bundle_path')
+    if path:
+        return path
+    else:
+        return os.path.expanduser('~')
+def saveBundlePath(value):
+    _settings.setValue('bundle_path', value)
+
 
 Form, Base = uic.loadUiType(osp.join(ui_path, 'bundle.ui'))
 class BundleMaker(Form, Base):
@@ -85,6 +99,7 @@ class BundleMaker(Form, Base):
         self.shBox2.hide()
         self.zdepthButton.hide()
         self.hideBoxes()
+        self.pathBox.setText(retrieveBundlePath())
         populateBoxes(self.epBox, self.seqBox, self.shBox)
 
         addKeyEvent(self.epBox, self.epBox2)
@@ -355,6 +370,7 @@ class BundleMaker(Form, Base):
         path = str(self.pathBox.text())
         if path:
             if osp.exists(path):
+                saveBundlePath(path)
                 return path
             else:
                 msgBox.showMessage(self, title='Scene Bundle',
@@ -430,7 +446,8 @@ class BundleMaker(Form, Base):
                                icon=QMessageBox.Information)
 
     def browseFolder(self):
-        path = QFileDialog.getExistingDirectory(self, 'Select Folder', '')
+        path = QFileDialog.getExistingDirectory(self, 'Select Folder',
+                self.getPath())
         if path:
             self.pathBox.setText(path)
 
