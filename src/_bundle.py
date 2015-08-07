@@ -9,6 +9,7 @@ import msgBox
 reload(msgBox)
 from PyQt4.QtGui import QMessageBox, QFileDialog, qApp, QIcon, QRegExpValidator
 from PyQt4.QtCore import Qt, QPropertyAnimation, QRect, QEasingCurve, QRegExp
+import PyQt4.QtCore as core
 import os.path as osp
 import shutil
 import os
@@ -33,8 +34,33 @@ __validator__ = QRegExpValidator(_regexp)
 
 mapFiles = util.mapFiles
 
+
+class Setting(object):
+    def __init__(self, keystring, default):
+        self.keystring = keystring
+        self.default = default
+
+    def __get__(self, instance, owner):
+        return instance.value(self.keystring, self.default)
+
+    def __set__(self, instance, value):
+        instance.setValue(self.keystring, value)
+
+class BundleSettings(core.QSettings):
+    bundle_path = Setting('bundle_path', os.path.expanduser('~'))
+    bundle_project = Setting('bundle_project', None)
+    bundle_sequence = Setting('bundle_sequence', None)
+    bundle_episode = Setting('bundle_episode', None)
+    bundle_custom_sequence = Setting('bundle_custom_sequence', '')
+    bundle_custom_episode = Setting('bundle_custom_episode', '')
+
+    def __init__(self, organization='ICE Animations', product='Scene Bundle'):
+        super(BundleSettings, self).__init__(organization, product)
+
+
 Form, Base = uic.loadUiType(osp.join(ui_path, 'bundle.ui'))
 class BundleMaker(Form, Base):
+    settings = BundleSettings()
     def __init__(self, parent=qtfy.getMayaWindow(), standalone=False):
         super(BundleMaker, self).__init__(parent)
         self.standalone = standalone
@@ -51,6 +77,7 @@ class BundleMaker(Form, Base):
         self.animation = QPropertyAnimation(self, 'geometry')
         self.animation.setDuration(500)
         self.animation.setEasingCurve(QEasingCurve.OutBounce)
+
 
         self.addButton.setIcon(QIcon(osp.join(ic_path, 'ic_plus.png')))
         self.removeButton.setIcon(QIcon(osp.join(ic_path, 'ic_minus.png')))
@@ -80,12 +107,16 @@ class BundleMaker(Form, Base):
         if self.standalone:
             self.currentSceneButton.setEnabled(False)
         self.progressBar.hide()
+        self.zdepthButton.hide()
+        self.pathBox.setText(self.settings.bundle_path)
+        setComboBoxText(self.projectBox, self.settings.bundle_project)
+        populateBoxes(self.epBox, self.seqBox, self.shBox)
+        self.setBoxesFromSettings()
+        self.hideBoxes()
         self.epBox2.hide()
         self.seqBox2.hide()
         self.shBox2.hide()
-        self.zdepthButton.hide()
-        self.hideBoxes()
-        populateBoxes(self.epBox, self.seqBox, self.shBox)
+
 
         addKeyEvent(self.epBox, self.epBox2)
         addKeyEvent(self.seqBox, self.seqBox2)
@@ -118,6 +149,13 @@ class BundleMaker(Form, Base):
         self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
         self.epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
         self.seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
+
+    def setBoxesFromSettings(self):
+        setComboBoxText(self.seqBox, self.settings.bundle_sequence)
+        setComboBoxText(self.epBox, self.settings.bundle_episode)
+        setComboBoxText(self.projectBox, self.settings.bundle_project)
+        self.seqBox2.setText(self.settings.bundle_custom_sequence)
+        self.epBox2.setText(self.settings.bundle_custom_episode)
 
     def toggleBoxes(self):
         if self.isCurrentScene() and self.isDeadlineCheck():
@@ -302,6 +340,11 @@ class BundleMaker(Form, Base):
                                        msg='Shot name not selected',
                                        icon=QMessageBox.Information)
                     return
+                self.settings.bundle_episode = self.epBox.currentText()
+                self.settings.bundle_custom_episode = self.epBox2.text()
+                self.settings.bundle_sequence = self.seqBox.currentText()
+                self.settings.bundle_custom_sequence = self.seqBox2.text()
+                self.settings.bundle_project = self.projectBox.currentText()
                 name = self.getName()
         ws = pc.workspace(o=True, q=True)
         self.progressBar.show()
@@ -356,6 +399,7 @@ class BundleMaker(Form, Base):
         path = str(self.pathBox.text())
         if path:
             if osp.exists(path):
+                self.settings.bundle_path = path
                 return path
             else:
                 msgBox.showMessage(self, title='Scene Bundle',
@@ -431,7 +475,8 @@ class BundleMaker(Form, Base):
                                icon=QMessageBox.Information)
 
     def browseFolder(self):
-        path = QFileDialog.getExistingDirectory(self, 'Select Folder', '')
+        path = QFileDialog.getExistingDirectory(self, 'Select Folder',
+                self.getPath())
         if path:
             self.pathBox.setText(path)
 
@@ -1375,6 +1420,11 @@ def switchBox(box1, box2):
     else:
         box2.hide()
         box1.show()
+
+def setComboBoxText(box, value):
+    for idx in range(box.count()):
+        if value == box.itemText(idx):
+            box.setCurrentIndex(idx)
 
 def addEventToBoxes(epBox, seqBox, shBox, epBox2, seqBox2, shBox2):
     epBox.currentIndexChanged.connect(lambda: switchBox(epBox, epBox2))
