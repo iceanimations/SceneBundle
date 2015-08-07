@@ -247,7 +247,8 @@ class BundleMaker(Form, Base):
                 name, filename, ep, seq, sh = item.text().split(' | ')
                 if osp.splitext(filename)[-1] in ['.ma', '.mb']:
                     try:
-                        cmds.file(filename, o=True, f=True, prompt=False)
+                        #cmds.file(filename, o=True, f=True, prompt=False)
+                        imaya.openFile(filename)
                     except:
                         pass
                     self.createBundle(name=name, project=pro, ep=ep, seq=seq, sh=sh)
