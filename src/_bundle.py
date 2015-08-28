@@ -736,7 +736,7 @@ class BundleMaker(Form, Base):
                 self.createLog(detail)
         self.setStatus('collecting cache files...')
         qApp.processEvents()
-        cacheFolder = osp.join(self.rootPath, 'cache')
+        cacheFolder = osp.join(self.rootPath, 'data')
         newName = 0
         self.progressBar.setMaximum(len(cacheNodes))
         errors = {}
@@ -747,9 +747,10 @@ class BundleMaker(Form, Base):
                     continue
                 cacheXMLFilePath, cacheMCFilePath = cacheFiles
                 newName = newName + 1
-                osp.join(osp.basename(cacheFolder), str(newName))
-                folderPath = osp.join(cacheFolder, str(newName))
-                os.mkdir(folderPath)
+                #osp.join(osp.basename(cacheFolder), str(newName))
+                #folderPath = osp.join(cacheFolder, str(newName))
+                folderPath = cacheFolder
+                #os.mkdir(folderPath)
                 try:
                     shutil.copy(cacheXMLFilePath, folderPath)
                     shutil.copy(cacheMCFilePath, folderPath)
