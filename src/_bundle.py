@@ -550,17 +550,26 @@ class BundleMaker(Form, Base):
                     fileNames = self.getUDIMFiles(filePath)
                     if not fileNames:
                         badTexturePaths.append(filePath)
+                        continue
                 else:
                     if not osp.exists(filePath):
                         badTexturePaths.append(filePath)
+                        continue
+                try:
+                    if pc.lockNode(node, q=True, lock=True)[0]:
+                        pc.lockNode(node, lock=False)
+                    if pc.getAttr(node.ftn, l=True):
+                        pc.setAttr(node.ftn, l=False)
+                except Exception as ex:
+                    badTexturePaths.append('Could not unlock: '+ filePath)
 
         if badTexturePaths:
-            detail = 'Following textures do not exist\r\n'
+            detail = 'Following textures do not exist or could not unlock a locked attribute\r\n'
             for texture in badTexturePaths:
                 detail += '\r\n'+ texture
             if self.isCurrentScene():
                 btn = msgBox.showMessage(self, title='Scene Bundle',
-                                         msg='Some textures used in the scene not found in the file system',
+                                         msg='Errors occurred while collecting textures',
                                          ques='Do you want to proceed?',
                                          details=detail,
                                          icon=QMessageBox.Information,
@@ -949,11 +958,14 @@ class BundleMaker(Form, Base):
                 node.fileTextureName.set(fullPath)
             except AttributeError:
                 node.filename.set(fullPath)
+            except RuntimeError:
+                pass
             c += 1
             self.progressBar.setValue(c)
             qApp.processEvents()
         self.progressBar.setValue(0)
         qApp.processEvents()
+        
 
 
     def mapCache(self):
