@@ -376,7 +376,8 @@ class BundleMaker(Form, Base):
                                 self.submitToDeadline(name, project, ep, seq, sh)
                             self.setStatus('Closing scene ...')
                             qApp.processEvents()
-                            cmds.file(new=True, f=True)
+                            if self.isCurrentScene():
+                                cmds.file(new=True, f=True)
                             if not self.keepBundleButton.isChecked():
                                 self.setStatus('removing bundle ...')
                                 qApp.processEvents()
