@@ -165,13 +165,19 @@ class BundleMaker(Form, Base):
 
     def showBoxes(self):
         self.epBox.show()
+        switchBox(self.epBox, self.epBox2)
         self.seqBox.show()
+        switchBox(self.seqBox, self.seqBox2)
         self.shBox.show()
+        switchBox(self.shBox, self.shBox2)
 
     def hideBoxes(self):
         self.epBox.hide()
+        self.epBox2.hide()
         self.seqBox.hide()
+        self.seqBox2.hide()
         self.shBox.hide()
+        self.shBox2.hide()
 
     def openLogFile(self):
         try:
