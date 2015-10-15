@@ -1408,15 +1408,20 @@ def fillName(epBox, seqBox, shBox, epBox2, seqBox2, shBox2, nameBox):
     ep = epBox.currentText()
     seq = seqBox.currentText()
     sh = shBox.currentText()
-    name = ''
+    names = []
     if ep != '--Episode--':
-        name += epBox2.text() if ep == 'Custom' else ep
+        text = epBox2.text() if ep == 'Custom' else ep
+        if text:
+            names.append(text)
     if seq != '--Sequence--':
-        name += '_'
-        name += seqBox2.text() if seq == 'Custom' else seq
+        text = seqBox2.text() if seq == 'Custom' else seq
+        if text:
+            names.append(text)
     if sh != '--Shot--':
-        name += '_'
-        name += shBox2.text() if sh == 'Custom' else sh
+        text = shBox2.text() if sh == 'Custom' else sh
+        if text:
+            names.append(text)
+    name = '_'.join(names) if names else '_'
     nameBox.setText(name)
 
 def populateBoxes(epBox, seqBox, shBox):
