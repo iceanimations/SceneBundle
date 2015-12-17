@@ -195,6 +195,11 @@
         </item>
         <item>
          <property name="text">
+          <string>Dubai_Park</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
           <string>Ding_Dong</string>
          </property>
         </item>
