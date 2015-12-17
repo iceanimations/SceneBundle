@@ -193,31 +193,6 @@
           <string>--Project--</string>
          </property>
         </item>
-        <item>
-         <property name="text">
-          <string>Dubai_Park</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Ding_Dong</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Al_Mansour_Season_02</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Captain_Khalfan</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Lavalantula</string>
-         </property>
-        </item>
        </widget>
       </item>
       <item>

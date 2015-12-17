@@ -19,6 +19,7 @@ import _utilities as util
 import pymel.core as pc
 import maya.cmds as cmds
 import appUsageApp
+import yaml
 import imaya
 reload(imaya)
 from . import _archiving as arch
@@ -28,12 +29,30 @@ reload(deadline)
 root_path = osp.dirname(osp.dirname(__file__))
 ui_path = osp.join(root_path, 'ui')
 ic_path = osp.join(root_path, 'icons')
+conf_path = osp.join(root_path, 'config')
 
 _regexp = QRegExp('[a-zA-Z0-9_]*')
 __validator__ = QRegExpValidator(_regexp)
 
 mapFiles = util.mapFiles
 
+projects_list = [
+    'Dubai_Park',
+    'Ding_Dong',
+    'Al_Mansour_Season_02',
+    'Captain_Khalfan',
+    'Lavalantula',
+]
+
+try:
+    _project_conf = osp.join(conf_path, '_projects.yml')
+    with open(_project_conf) as f:
+        projects_list = yaml.load(f)
+except IOError as e:
+    print 'Cannot read projects config file ... using defaults', e
+
+def populateProjectsBox(box):
+    box.addItems(projects_list)
 
 class Setting(object):
     def __init__(self, keystring, default):
@@ -111,6 +130,7 @@ class BundleMaker(Form, Base):
         self.pathBox.setText(self.settings.bundle_path)
         setComboBoxText(self.projectBox, self.settings.bundle_project)
         populateBoxes(self.epBox, self.seqBox, self.shBox)
+        populateProjectsBox(self.projectBox)
         self.setBoxesFromSettings()
         self.hideBoxes()
         self.epBox2.hide()
