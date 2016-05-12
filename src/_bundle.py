@@ -21,6 +21,8 @@ import maya.cmds as cmds
 import appUsageApp
 import imaya
 reload(imaya)
+import iutil
+reload(iutil)
 from . import _archiving as arch
 from . import _deadline as deadline
 reload(deadline)
@@ -356,34 +358,35 @@ class BundleMaker(Form, Base):
                     util.turnZdepthOn()
             pc.workspace(self.rootPath, o=True)
             if self.collectTextures():
-                if self.collectReferences():
-                    if self.collectCaches():
-                        pc.workspace(ws, o=True)
-                        if self.collectParticleCache():
-                            pc.workspace(self.rootPath, o=True)
-                            self.mapTextures()
-                            self.mapCache()
-                            if self.keepReferencesButton.isChecked():
-                                if not self.copyRef():
-                                    return
-                            else:
-                                if not self.importReferences():
-                                    return
-                            self.saveSceneAs(name)
-                            if self.makeZipButton.isChecked():
-                                self.archive()
-                            if self.deadlineCheck.isChecked():
-                                self.submitToDeadline(name, project, ep, seq, sh)
-                            if self.isCurrentScene():
-                                self.setStatus('Closing scene ...')
+                if self.collectRedshiftProxies():
+                    if self.collectReferences():
+                        if self.collectCaches():
+                            pc.workspace(ws, o=True)
+                            if self.collectParticleCache():
+                                pc.workspace(self.rootPath, o=True)
+                                self.mapTextures()
+                                self.mapCache()
+                                if self.keepReferencesButton.isChecked():
+                                    if not self.copyRef():
+                                        return
+                                else:
+                                    if not self.importReferences():
+                                        return
+                                self.saveSceneAs(name)
+                                if self.makeZipButton.isChecked():
+                                    self.archive()
+                                if self.deadlineCheck.isChecked():
+                                    self.submitToDeadline(name, project, ep, seq, sh)
+                                if self.isCurrentScene():
+                                    self.setStatus('Closing scene ...')
+                                    qApp.processEvents()
+                                    cmds.file(new=True, f=True)
+                                if not self.keepBundleButton.isChecked():
+                                    self.setStatus('removing bundle ...')
+                                    qApp.processEvents()
+                                    self.removeBundle()
+                                self.setStatus('Scene bundled successfully...')
                                 qApp.processEvents()
-                                cmds.file(new=True, f=True)
-                            if not self.keepBundleButton.isChecked():
-                                self.setStatus('removing bundle ...')
-                                qApp.processEvents()
-                                self.removeBundle()
-                            self.setStatus('Scene bundled successfully...')
-                            qApp.processEvents()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         qApp.processEvents()
@@ -643,6 +646,70 @@ class BundleMaker(Form, Base):
         qApp.processEvents()
         self.setStatus('All textures collected successfully...')
         qApp.processEvents()
+        return True
+    
+    def collectRedshiftProxies(self):
+        try:
+            nodes = pc.ls(type=pc.nt.RedshiftProxyMesh)
+        except AttributeError:
+            return True
+        if nodes:
+            badPaths = []
+            for node in nodes:
+                path = node.fileName.get()
+                if not osp.exists(path):
+                    badPaths.append(path)
+            if badPaths:
+                detail = 'Could not find following proxy files\r\n'+'\r\n'.join(badPaths)
+                if self.isCurrentScene():
+                    btn = msgBox.showMessage(self, title='Scene Bundle',
+                                             msg='Some proxies not found in the file system',
+                                             ques='Do you want to continue?',
+                                             details=detail,
+                                             icon=QMessageBox.Warning,
+                                             btns=QMessageBox.Yes|QMessageBox.No)
+                    if btn == QMessageBox.No: return False
+                else:
+                    self.createLog(detail)
+            self.setStatus('Collecting Redshift Proxies...')
+            nodesLen = len(nodes)
+            proxyPath = osp.join(self.rootPath, 'proxies')
+            if not osp.exists(proxyPath):
+                os.mkdir(proxyPath)
+            self.progressBar.setMaximum(nodesLen)
+            qApp.processEvents()
+            for i, node in enumerate(nodes):
+                path = node.fileName.get()
+                if osp.basename(osp.dirname(path)) == 'low_res':
+                    lowRes = True
+                    mainPath = iutil.dirname(path, 3)
+                else:
+                    lowRes = False
+                    mainPath = iutil.dirname(path, 2)
+                assetName = osp.basename(mainPath)
+                texturePath = osp.join(mainPath, 'texture')
+                if lowRes:
+                    texturePath = osp.join(texturePath, 'low_res')
+                assetPath = osp.join(proxyPath, assetName)
+                if not osp.exists(assetPath):
+                    os.mkdir(assetPath)
+                relPath = osp.dirname(osp.relpath(path, mainPath))
+                iutil.mkdir(assetPath, relPath)
+                newProxyPath = osp.join(assetPath, relPath)
+                newTexturePath = osp.join(assetPath, 'texture')
+                if lowRes: newTexturePath = osp.join(newTexturePath, 'low_res')
+                if osp.exists(path):
+                    if not osp.exists(osp.join(newProxyPath, osp.basename(path))):
+                        shutil.copy(path, newProxyPath)
+                        if osp.exists(texturePath):
+                            iutil.mkdir(assetPath, 'texture' if not lowRes else osp.join('texture', 'low_res'))
+                            files = [osp.join(texturePath, phile) for phile in os.listdir(texturePath) if osp.isfile(osp.join(texturePath, phile)) and not phile.endswith('.link')]
+                            for phile in files:
+                                shutil.copy(phile, newTexturePath)
+                    node.fileName.set(osp.join(newProxyPath, osp.basename(path)))
+                self.progressBar.setValue(i+1)
+                qApp.processEvents()
+            self.progressBar.setValue(0)
         return True
 
     def copyRSFile(self, path, path2):
