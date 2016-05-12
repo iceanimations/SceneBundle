@@ -19,6 +19,7 @@ import _utilities as util
 import pymel.core as pc
 import maya.cmds as cmds
 import appUsageApp
+import yaml
 import imaya
 reload(imaya)
 import iutil
@@ -30,12 +31,30 @@ reload(deadline)
 root_path = osp.dirname(osp.dirname(__file__))
 ui_path = osp.join(root_path, 'ui')
 ic_path = osp.join(root_path, 'icons')
+conf_path = osp.join(root_path, 'config')
 
 _regexp = QRegExp('[a-zA-Z0-9_]*')
 __validator__ = QRegExpValidator(_regexp)
 
 mapFiles = util.mapFiles
 
+projects_list = [
+    'Dubai_Park',
+    'Ding_Dong',
+    'Al_Mansour_Season_02',
+    'Captain_Khalfan',
+    'Lavalantula',
+]
+
+try:
+    _project_conf = osp.join(conf_path, '_projects.yml')
+    with open(_project_conf) as f:
+        projects_list = yaml.load(f)
+except IOError as e:
+    print 'Cannot read projects config file ... using defaults', e
+
+def populateProjectsBox(box):
+    box.addItems(projects_list)
 
 class Setting(object):
     def __init__(self, keystring, default):
@@ -113,6 +132,7 @@ class BundleMaker(Form, Base):
         self.pathBox.setText(self.settings.bundle_path)
         setComboBoxText(self.projectBox, self.settings.bundle_project)
         populateBoxes(self.epBox, self.seqBox, self.shBox)
+        populateProjectsBox(self.projectBox)
         self.setBoxesFromSettings()
         self.hideBoxes()
         self.epBox2.hide()
@@ -167,13 +187,19 @@ class BundleMaker(Form, Base):
 
     def showBoxes(self):
         self.epBox.show()
+        switchBox(self.epBox, self.epBox2)
         self.seqBox.show()
+        switchBox(self.seqBox, self.seqBox2)
         self.shBox.show()
+        switchBox(self.shBox, self.shBox2)
 
     def hideBoxes(self):
         self.epBox.hide()
+        self.epBox2.hide()
         self.seqBox.hide()
+        self.seqBox2.hide()
         self.shBox.hide()
+        self.shBox2.hide()
 
     def openLogFile(self):
         try:
@@ -1469,15 +1495,20 @@ def fillName(epBox, seqBox, shBox, epBox2, seqBox2, shBox2, nameBox):
     ep = epBox.currentText()
     seq = seqBox.currentText()
     sh = shBox.currentText()
-    name = ''
+    names = []
     if ep != '--Episode--':
-        name += epBox2.text() if ep == 'Custom' else ep
+        text = epBox2.text() if ep == 'Custom' else ep
+        if text:
+            names.append(text)
     if seq != '--Sequence--':
-        name += '_'
-        name += seqBox2.text() if seq == 'Custom' else seq
+        text = seqBox2.text() if seq == 'Custom' else seq
+        if text:
+            names.append(text)
     if sh != '--Shot--':
-        name += '_'
-        name += shBox2.text() if sh == 'Custom' else sh
+        text = shBox2.text() if sh == 'Custom' else sh
+        if text:
+            names.append(text)
+    name = '_'.join(names) if names else '_'
     nameBox.setText(name)
 
 def populateBoxes(epBox, seqBox, shBox):
