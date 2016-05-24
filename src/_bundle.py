@@ -1223,7 +1223,7 @@ class BundleMaker(Form, Base):
                 msgBox.showMessage(self, title='Scene Bundle', msg=str(e),
                         icon=QMessageBox.Information)
             else:
-                detail = "\nError in Removing Bundle:"
+                detail = "\r\nError in Removing Bundle: "+ str(e)
                 detail = self.currentFileName() + '\r\n'*2 + detail
                 self.createLog(detail)
             return False
