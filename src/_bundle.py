@@ -408,6 +408,7 @@ class BundleMaker(Form, Base):
                                     qApp.processEvents()
                                     cmds.file(new=True, f=True)
                                 if not self.keepBundleButton.isChecked():
+                                    self.deleteCacheNodes()
                                     self.setStatus('removing bundle ...')
                                     qApp.processEvents()
                                     self.removeBundle()
@@ -417,6 +418,9 @@ class BundleMaker(Form, Base):
         self.bundleButton.setEnabled(True)
         qApp.processEvents()
         pc.workspace(ws, o=True)
+        
+    def deleteCacheNodes(self):
+        pc.delete(pc.ls(type='cacheFile'))
 
     def setPaths(self, paths):
         self.filesBox.clear()
