@@ -789,7 +789,7 @@ class BundleMaker(Form, Base):
                                              icon=QMessageBox.Warning,
                                              btns=QMessageBox.Yes|QMessageBox.No,
                                              details=detail)
-                    if btn == QMessageBox.Ok:
+                    if btn == QMessageBox.Yes:
                         pass
                     else: return False
                 else:
