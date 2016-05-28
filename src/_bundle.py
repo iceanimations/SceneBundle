@@ -413,7 +413,7 @@ class BundleMaker(Form, Base):
                                     self.setStatus('Closing scene ...')
                                     qApp.processEvents()
                                     cmds.file(new=True, f=True)
-                                if not self.keepBundleButton.isChecked():
+                                if not self.keepBundleButton.isChecked() and deadlineSuccess:
                                     self.deleteCacheNodes()
                                     self.setStatus('removing bundle ...')
                                     qApp.processEvents()
