@@ -515,7 +515,7 @@ class BundleMaker(Form, Base):
             self.pathBox.setText(path)
 
     def browseFolder2(self):
-        paths = QFileDialog.getOpenFileNames(self, 'Select Folder', '', '*.ma *.mb')
+        paths = QFileDialog.getOpenFileNames(self, 'Select Folder', '', '*.ma *.mb')[0]
         if paths:
             for path in paths:
                 if osp.splitext(path)[-1] in ['.ma', '.mb']:
