@@ -401,18 +401,27 @@ class BundleMaker(Form, Base):
                                 self.saveSceneAs(name)
                                 if self.makeZipButton.isChecked():
                                     self.archive()
+                                deadlineSuccess = True
                                 if self.deadlineCheck.isChecked():
-                                    self.submitToDeadline(name, project, ep, seq, sh)
+                                    deadlineSuccess = False
+                                    if self.submitToDeadline(name, project, ep,
+                                            seq, sh):
+                                        self.setStatus('Bundle Submitted Successfully')
+                                        deadlineSuccess = True
+
                                 if self.isCurrentScene():
                                     self.setStatus('Closing scene ...')
                                     qApp.processEvents()
                                     cmds.file(new=True, f=True)
-                                if not self.keepBundleButton.isChecked():
+                                if not self.keepBundleButton.isChecked() and deadlineSuccess:
                                     self.deleteCacheNodes()
                                     self.setStatus('removing bundle ...')
                                     qApp.processEvents()
                                     self.removeBundle()
-                                self.setStatus('Scene bundled successfully...')
+                                if deadlineSuccess:
+                                    self.setStatus('Scene bundled successfully...')
+                                else:
+                                    self.setStatus('Scene bundled but not submitted ...')
                                 qApp.processEvents()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
