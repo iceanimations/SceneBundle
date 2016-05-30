@@ -401,27 +401,18 @@ class BundleMaker(Form, Base):
                                 self.saveSceneAs(name)
                                 if self.makeZipButton.isChecked():
                                     self.archive()
-                                deadlineSuccess = True
                                 if self.deadlineCheck.isChecked():
-                                    deadlineSuccess = False
-                                    if self.submitToDeadline(name, project, ep,
-                                            seq, sh):
-                                        self.setStatus('Bundle Submitted Successfully')
-                                        deadlineSuccess = True
-
+                                    self.submitToDeadline(name, project, ep, seq, sh)
                                 if self.isCurrentScene():
                                     self.setStatus('Closing scene ...')
                                     qApp.processEvents()
                                     cmds.file(new=True, f=True)
-                                if not self.keepBundleButton.isChecked() and deadlineSuccess:
+                                if not self.keepBundleButton.isChecked():
                                     self.deleteCacheNodes()
                                     self.setStatus('removing bundle ...')
                                     qApp.processEvents()
                                     self.removeBundle()
-                                if deadlineSuccess:
-                                    self.setStatus('Scene bundled successfully...')
-                                else:
-                                    self.setStatus('Scene bundled but not submitted ...')
+                                self.setStatus('Scene bundled successfully...')
                                 qApp.processEvents()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
@@ -524,7 +515,7 @@ class BundleMaker(Form, Base):
             self.pathBox.setText(path)
 
     def browseFolder2(self):
-        paths = QFileDialog.getOpenFileNames(self, 'Select Folder', '', '*.ma *.mb')[0]
+        paths = QFileDialog.getOpenFileNames(self, 'Select Folder', '', '*.ma *.mb')
         if paths:
             for path in paths:
                 if osp.splitext(path)[-1] in ['.ma', '.mb']:
