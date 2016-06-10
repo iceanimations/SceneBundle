@@ -420,7 +420,8 @@ class BundleMaker(Form, Base):
         pc.workspace(ws, o=True)
         
     def deleteCacheNodes(self):
-        pc.delete(pc.ls(type='cacheFile'))
+        pc.delete(pc.ls(type=['cacheFile', pc.nt.RedshiftProxyMesh]))
+        
 
     def setPaths(self, paths):
         self.filesBox.clear()
