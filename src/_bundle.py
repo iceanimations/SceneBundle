@@ -385,35 +385,36 @@ class BundleMaker(Form, Base):
             pc.workspace(self.rootPath, o=True)
             if self.collectTextures():
                 if self.collectRedshiftProxies():
-                    if self.collectReferences():
-                        if self.collectCaches():
-                            pc.workspace(ws, o=True)
-                            if self.collectParticleCache():
-                                pc.workspace(self.rootPath, o=True)
-                                self.mapTextures()
-                                self.mapCache()
-                                if self.keepReferencesButton.isChecked():
-                                    if not self.copyRef():
-                                        return
-                                else:
-                                    if not self.importReferences():
-                                        return
-                                self.saveSceneAs(name)
-                                if self.makeZipButton.isChecked():
-                                    self.archive()
-                                if self.deadlineCheck.isChecked():
-                                    self.submitToDeadline(name, project, ep, seq, sh)
-                                if self.isCurrentScene():
-                                    self.setStatus('Closing scene ...')
+                    if self.collectRedshiftSprites():
+                        if self.collectReferences():
+                            if self.collectCaches():
+                                pc.workspace(ws, o=True)
+                                if self.collectParticleCache():
+                                    pc.workspace(self.rootPath, o=True)
+                                    self.mapTextures()
+                                    self.mapCache()
+                                    if self.keepReferencesButton.isChecked():
+                                        if not self.copyRef():
+                                            return
+                                    else:
+                                        if not self.importReferences():
+                                            return
+                                    self.saveSceneAs(name)
+                                    if self.makeZipButton.isChecked():
+                                        self.archive()
+                                    if self.deadlineCheck.isChecked():
+                                        self.submitToDeadline(name, project, ep, seq, sh)
+                                    if self.isCurrentScene():
+                                        self.setStatus('Closing scene ...')
+                                        qApp.processEvents()
+                                        cmds.file(new=True, f=True)
+                                    if not self.keepBundleButton.isChecked():
+                                        self.deleteCacheNodes()
+                                        self.setStatus('removing bundle ...')
+                                        qApp.processEvents()
+                                        self.removeBundle()
+                                    self.setStatus('Scene bundled successfully...')
                                     qApp.processEvents()
-                                    cmds.file(new=True, f=True)
-                                if not self.keepBundleButton.isChecked():
-                                    self.deleteCacheNodes()
-                                    self.setStatus('removing bundle ...')
-                                    qApp.processEvents()
-                                    self.removeBundle()
-                                self.setStatus('Scene bundled successfully...')
-                                qApp.processEvents()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         qApp.processEvents()
@@ -741,6 +742,64 @@ class BundleMaker(Form, Base):
                 self.progressBar.setValue(i+1)
                 qApp.processEvents()
             self.progressBar.setValue(0)
+        return True
+    
+    def collectRedshiftSprites(self):
+        try:
+            nodes = pc.ls(exactType=pc.nt.RedshiftSprite)
+        except AttributeError:
+            return True
+        if nodes:
+            badPaths = []
+            for node in nodes:
+                path = node.tex0.get()
+                if not osp.exists(path):
+                    badPaths.append(path)
+            if badPaths:
+                detail = 'Could not find following Redshift Sprite Textures\r\n'+'\r\n'.join(badPaths)
+                if self.isCurrentScene():
+                    btn = msgBox.showMessage(self, title='Scene Bundle',
+                                             msg='Some Redshift Sprite Textures not found in the file system',
+                                             ques='Do you want to continue?',
+                                             details=detail,
+                                             icon=QMessageBox.Warning,
+                                             btns=QMessageBox.Yes|QMessageBox.No)
+                    if btn == QMessageBox.No: return False
+                else:
+                    self.createLog(detail)
+            self.setStatus('Collecting Redshift Sprite Textures...')
+            nodeLen = len(nodes)
+            texturePath = osp.join(self.rootPath, 'spriteTextures')
+            if not osp.exists(texturePath):
+                os.mkdir(texturePath)
+            self.progressBar.setMaximum(nodeLen)
+            qApp.processEvents()
+            for i, node in enumerate(nodes):
+                newPath = osp.join(texturePath, str(i))
+                if not osp.exists(newPath):
+                    os.mkdir(newPath)
+                path = node.tex0.get()
+                if osp.exists(path) and osp.isfile(path):
+                    files = []
+                    if node.useFrameExtension.get():
+                        parts = osp.basename(path).split('.')
+                        if len(parts) == 3:
+                            for phile in os.listdir(osp.dirname(path)):
+                                if re.match(parts[0]+'\.\d+\.'+parts[2], phile):
+                                    files.append(osp.join(osp.dirname(path), phile))
+                            if not files:
+                                files.append(path)
+                        else:
+                            files.append(path)
+                    else:
+                        files.append(path)
+                    if files:
+                        for phile in files:
+                            shutil.copy(phile, newPath)
+                        node.tex0.set(osp.join(newPath, osp.basename(files[0])))
+                self.progressBar.setValue(i+1)
+                qApp.processEvents()
+        self.progressBar.setValue(0)
         return True
 
     def copyRSFile(self, path, path2):
