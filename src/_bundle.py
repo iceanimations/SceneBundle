@@ -5,6 +5,10 @@ import os
 import os.path as osp
 import re
 import shutil
+import abc
+import types
+
+import logging
 
 # local libraries
 import imaya
@@ -12,7 +16,7 @@ reload(imaya)
 import iutil
 reload(iutil)
 
-# relative imports 
+# relative imports
 from . import _archiving as arch
 reload(arch)
 from . import _deadline as deadline
@@ -22,12 +26,110 @@ reload(util)
 
 mapFiles = util.mapFiles
 
+class BundleProgressHandler(object):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def setStatus(self, msg):
+        pass
+
+    @abc.abstractmethod
+    def setMaximum(self, maxx):
+        pass
+
+    @abc.abstractmethod
+    def setValue(self, val):
+        pass
+
+    @abc.abstractmethod
+    def error(self, msg):
+        pass
+
+    @abc.abstractmethod
+    def warning(self, msg):
+        pass
+
+class _ProgressLogHandler(BundleProgressHandler):
+    _progressHandler = None
+    logHandler = None
+    logger = None
+    errors = None
+    warnings = None
+
+    maxx = None
+    value = None
+
+    def __init__(self, progressHandler=None):
+        self.progressHandler = progressHandler
+
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        self.logHandler = logging.FileHandler(self.logFilePath)
+        self.logger.addHandler(self.logHandler)
+
+        path = osp.join(osp.expanduser('~'), 'scene_bundle_log')
+        if not osp.exists(path):
+            os.mkdir(path)
+        self.logFilePath = osp.join(path, 'log.txt')
+
+    def setStatus(self, msg):
+        self.status = msg
+        self.logger.info(msg)
+        if self.progressHandler:
+            self.progressHandler.setStatus(msg)
+
+    def setMaximum(self, maxx):
+        self.maxx = maxx
+        if self.progressHandler:
+            self.progressHandler.setMaximum(maxx)
+
+    def setValue(self, val):
+        self.value = val
+        if self.maxx > 0:
+            self.logger.info('%s of %s' % (self.value, self.maxx))
+        if self.progressHandler:
+            self.progressHandler.setValue()
+
+    def error(self, msg, exc_info=True):
+        self.errors.append(msg)
+        self.logger.error(msg)
+        if self.progressHandler:
+            self.progressHandler.error(msg)
+
+    def warning(self, msg):
+        self.warnings.append(msg)
+        self.logger.warning(msg)
+        if self.progressHandler:
+            self.progressHandler.warning(msg)
+
+    def step(self):
+        if self.value < self.maxx:
+            self.setValue(self.value+1)
+
+    @property
+    def progressHandler(self):
+        return self._progressHandler
+
+    @progressHandler.setter
+    def progressHandler(self, ph):
+        if isinstance(ph, BundleProgressHandler) or all((
+            hasattr(ph, fun) for fun in dir(BundleProgressHandler)
+            if ( not fun.startswith('_') ) and type(
+                getattr(BundleProgressHandler, fun) == types.MethodType)
+            )):
+            self._progressHandler = ph
+        else:
+            raise TypeError,\
+                    'progressHandler must be of type "BundleProgressHandler"'
+
 class BundleMaker(object):
+    _progressLogHandler = None
+    logger = None
+    errors = None
+    warnings = None
 
-    def __init__(self, parentWin=None, standalone=False):
-        self.standalone = standalone
-        self.setupUi(self)
-
+    def __init__(self, progressHandler=None):
+        ''':typeprogressHandler: BundleProgressHandler'''
         self.textureExceptions = []
         self.rootPath = None
         self.texturesMapping = {}
@@ -35,11 +137,22 @@ class BundleMaker(object):
         self.refNodes = []
         self.cacheMapping = {}
         self.logFile = None
+        self._progressLogHandler = _ProgressLogHandler(progressHandler)
 
-        path = osp.join(osp.expanduser('~'), 'scene_bundle_log')
-        if not osp.exists(path):
-            os.mkdir(path)
-        self.logFilePath = osp.join(path, 'log.txt')
+        self.deadline = True
+        self.archive = False
+        self.delete = False
+
+        self.path = ''
+        self.paths = []
+        self.name = []
+        self.pro = None
+        self.seq = None
+        self.ep = None
+        self.shot = None
+
+        self.errors = []
+        self.warning = []
 
     def openLogFile(self):
         try:
@@ -169,10 +282,9 @@ class BundleMaker(object):
         self.bundleButton.setEnabled(True)
         qApp.processEvents()
         pc.workspace(ws, o=True)
-        
+
     def deleteCacheNodes(self):
         pc.delete(pc.ls(type=['cacheFile', pc.nt.RedshiftProxyMesh]))
-        
 
     def setPaths(self, paths):
         self.filesBox.clear()
@@ -345,7 +457,7 @@ class BundleMaker(object):
         self.setStatus('collecting textures...')
         qApp.processEvents()
         imagesPath = osp.join(self.rootPath, 'sourceImages')
-        self.progressBar.setMaximum(len(textureFileNodes))
+        self.setMaximum(len(textureFileNodes))
         for node in textureFileNodes:
             folderPath = osp.join(imagesPath, str(newName))
             relativePath = osp.join(osp.basename(imagesPath), str(newName))
@@ -397,14 +509,14 @@ class BundleMaker(object):
             else:
                 continue
             newName = newName + 1
-            self.progressBar.setValue(newName)
+            self.setValue(newName)
             qApp.processEvents()
-        self.progressBar.setValue(0)
+        self.setValue(0)
         qApp.processEvents()
         self.setStatus('All textures collected successfully...')
         qApp.processEvents()
         return True
-    
+
     def collectRedshiftProxies(self):
         try:
             nodes = pc.ls(type=pc.nt.RedshiftProxyMesh)
@@ -433,7 +545,7 @@ class BundleMaker(object):
             proxyPath = osp.join(self.rootPath, 'proxies')
             if not osp.exists(proxyPath):
                 os.mkdir(proxyPath)
-            self.progressBar.setMaximum(nodesLen)
+            self.setMaximum(nodesLen)
             qApp.processEvents()
             for i, node in enumerate(nodes):
                 path = node.fileName.get()
@@ -464,11 +576,11 @@ class BundleMaker(object):
                             for phile in files:
                                 shutil.copy(phile, newTexturePath)
                     node.fileName.set(osp.join(newProxyPath, osp.basename(path)))
-                self.progressBar.setValue(i+1)
+                self.setValue(i+1)
                 qApp.processEvents()
-            self.progressBar.setValue(0)
+            self.setValue(0)
         return True
-    
+
     def collectRedshiftSprites(self):
         try:
             nodes = pc.ls(exactType=pc.nt.RedshiftSprite)
@@ -497,7 +609,7 @@ class BundleMaker(object):
             texturePath = osp.join(self.rootPath, 'spriteTextures')
             if not osp.exists(texturePath):
                 os.mkdir(texturePath)
-            self.progressBar.setMaximum(nodeLen)
+            self.setMaximum(nodeLen)
             qApp.processEvents()
             for i, node in enumerate(nodes):
                 newPath = osp.join(texturePath, str(i))
@@ -522,9 +634,9 @@ class BundleMaker(object):
                         for phile in files:
                             shutil.copy(phile, newPath)
                         node.tex0.set(osp.join(newPath, osp.basename(files[0])))
-                self.progressBar.setValue(i+1)
+                self.setValue(i+1)
                 qApp.processEvents()
-        self.progressBar.setValue(0)
+        self.setValue(0)
         return True
 
     def copyRSFile(self, path, path2):
@@ -550,7 +662,7 @@ class BundleMaker(object):
     def collectReferences(self):
         self.setStatus('collecting references info...')
         refNodes = self.getRefNodes()
-        self.progressBar.setMaximum(len(refNodes))
+        self.setMaximum(len(refNodes))
         if refNodes:
             c = 1
             badRefs = {}
@@ -562,10 +674,10 @@ class BundleMaker(object):
                     self.refNodes.append(ref)
                 except Exception as ex:
                     badRefs[ref] = str(ex)
-                self.progressBar.setValue(c)
+                self.setValue(c)
                 qApp.processEvents()
                 c += 1
-            self.progressBar.setValue(0)
+            self.setValue(0)
             qApp.processEvents()
             if badRefs:
                 detail = 'Following references can not be collected\r\n'
@@ -630,7 +742,7 @@ class BundleMaker(object):
         qApp.processEvents()
         cacheFolder = osp.join(self.rootPath, 'data')
         newName = 0
-        self.progressBar.setMaximum(len(cacheNodes))
+        self.setMaximum(len(cacheNodes))
         errors = {}
         for node in cacheNodes:
             cacheFiles = node.getFileName()
@@ -649,7 +761,7 @@ class BundleMaker(object):
                 except Exception as ex:
                     errors[osp.splitext(cacheMCFilePath)[0]] = str(ex)
                 self.cacheMapping[node] = osp.join(folderPath, osp.splitext(osp.basename(cacheMCFilePath))[0])
-                self.progressBar.setValue(newName)
+                self.setValue(newName)
                 qApp.processEvents()
         if errors:
             detail = 'Could not collect following cache files'
@@ -668,7 +780,7 @@ class BundleMaker(object):
                 else: return
             else:
                 self.createLog(detail)
-        self.progressBar.setValue(0)
+        self.setValue(0)
         qApp.processEvents()
         return True
 
@@ -690,17 +802,17 @@ class BundleMaker(object):
         if path and osp.exists(path):
             files = os.listdir(path)
             count = 1
-            self.progressBar.setMaximum(len(files))
+            self.setMaximum(len(files))
             qApp.processEvents()
             for fl in files:
                 fullPath = osp.join(path, fl)
                 if osp.isfile(fullPath):
                     if osp.splitext(fullPath)[-1] == '.mcfi':
                         shutil.copy(fullPath, targetPath)
-                self.progressBar.setValue(count)
+                self.setValue(count)
                 qApp.processEvents()
                 count += 1
-            self.progressBar.setValue(0)
+            self.setValue(0)
             qApp.processEvents()
 
     def collectParticleCache(self):
@@ -715,7 +827,7 @@ class BundleMaker(object):
             files = os.listdir(path)
             if files:
                 count = 1
-                self.progressBar.setMaximum(len(files))
+                self.setMaximum(len(files))
                 errors = {}
                 for phile in files:
                     fullPath = osp.join(path, phile)
@@ -723,7 +835,7 @@ class BundleMaker(object):
                         shutil.copy(fullPath, particleCachePath)
                     except Exception as ex:
                         errors[fullPath] = str(ex)
-                    self.progressBar.setValue(count)
+                    self.setValue(count)
                     qApp.processEvents()
                     count += 1
                 if errors:
@@ -743,7 +855,7 @@ class BundleMaker(object):
                         else: return
                     else:
                         self.createLog(detail)
-                self.progressBar.setValue(0)
+                self.setValue(0)
                 self.setStatus('particle cache collected successfully')
                 qApp.processEvents()
             else:
@@ -754,7 +866,7 @@ class BundleMaker(object):
         self.setStatus('copying references...')
         qApp.processEvents()
         c = 0
-        self.progressBar.setMaximum(len(self.refNodes))
+        self.setMaximum(len(self.refNodes))
         if self.refNodes:
             refsPath = osp.join(self.rootPath, 'scenes', 'refs')
             os.mkdir(refsPath)
@@ -770,9 +882,9 @@ class BundleMaker(object):
                 except Exception as ex:
                     errors[ref] = str(ex)
                 c += 1
-                self.progressBar.setValue(c)
+                self.setValue(c)
                 qApp.processEvents()
-            self.progressBar.setValue(0)
+            self.setValue(0)
             qApp.processEvents()
             if errors:
                 detail = 'Could not copy following references\r\n'
@@ -789,14 +901,14 @@ class BundleMaker(object):
                     else: return False
                 else:
                     self.createLog(detail)
-        self.progressBar.setValue(0)
+        self.setValue(0)
         return True
 
     def importReferences(self):
         self.setStatus('importing references ...')
         qApp.processEvents()
         c=0
-        self.progressBar.setMaximum(len(self.refNodes))
+        self.setMaximum(len(self.refNodes))
         errors = {}
         while self.refNodes:
             try:
@@ -809,7 +921,7 @@ class BundleMaker(object):
             except Exception as e:
                 errors[refPath] = str(e)
             c += 1
-            self.progressBar.setValue(c)
+            self.setValue(c)
         if errors:
             detail = 'Could not import following references\r\n'
             for node in errors:
@@ -827,13 +939,13 @@ class BundleMaker(object):
                     return False
             else:
                 self.createLog(detail)
-        self.progressBar.setValue(0)
+        self.setValue(0)
         return True
 
     def mapTextures(self):
         self.setStatus('Mapping collected textures...')
         qApp.processEvents()
-        self.progressBar.setMaximum(len(self.texturesMapping))
+        self.setMaximum(len(self.texturesMapping))
         c = 0
         for node in self.texturesMapping:
             fullPath = osp.join(self.rootPath, self.texturesMapping[node]).replace('\\', '/')
@@ -844,25 +956,23 @@ class BundleMaker(object):
             except RuntimeError:
                 pass
             c += 1
-            self.progressBar.setValue(c)
+            self.setValue(c)
             qApp.processEvents()
-        self.progressBar.setValue(0)
+        self.setValue(0)
         qApp.processEvents()
-        
-
 
     def mapCache(self):
         self.setStatus('Mapping cache files...')
         qApp.processEvents()
-        self.progressBar.setMaximum(len(self.cacheMapping))
+        self.setMaximum(len(self.cacheMapping))
         c = 0
         for node in self.cacheMapping:
             node.cachePath.set(osp.dirname(self.cacheMapping[node]), type="string")
             node.cacheName.set(osp.basename(self.cacheMapping[node]), type="string")
             c += 1
-            self.progressBar.setValue(c)
+            self.setValue(c)
             qApp.processEvents()
-        self.progressBar.setValue(0)
+        self.setValue(0)
         qApp.processEvents()
 
     def mapParticleCache(self):
@@ -877,7 +987,7 @@ class BundleMaker(object):
                 'Creating Archive %s ...'%(self.rootPath+archiver.ext))
         try:
             arch.make_archive(self.rootPath, archiver.name,
-                    progressBar=self.progressBar)
+                    progressBar=self.progressHandler)
         except arch.ArchivingError as e:
             if self.isCurrentScene():
                 msgBox.showMessage(self, title='Scene Bundle', msg=str(e),
@@ -913,7 +1023,7 @@ class BundleMaker(object):
         ###############################################################################
         #                       configuring Deadline submitter                        #
         ###############################################################################
-        self.progressBar.setMaximum(0)
+        self.setMaximum(0)
         self.setStatus('configuring deadline submitter...')
         qApp.processEvents()
         try:
@@ -953,14 +1063,14 @@ class BundleMaker(object):
         ###############################################################################
         #                           copying to directories                            #
         ###############################################################################
-        self.progressBar.setMaximum(len(subm.project_paths))
+        self.setMaximum(len(subm.project_paths))
         for pi, projectPath in enumerate(subm.project_paths):
             try:
                 self.setStatus('copying %s to directory %s ...'%(
                     self.rootPath, projectPath))
                 qApp.processEvents()
                 shutil.copytree(cmds.workspace(q=1, rd=1), projectPath)
-                self.progressBar.setValue(pi)
+                self.setValue(pi)
                 qApp.processEvents()
             except Exception as e:
                 import traceback
@@ -978,12 +1088,12 @@ class BundleMaker(object):
         ###############################################################################
         #                               submitting jobs                               #
         ###############################################################################
-        self.progressBar.setMaximum(len(jobs))
+        self.setMaximum(len(jobs))
         self.setStatus('creating jobs ')
         qApp.processEvents()
         for ji, job in enumerate(jobs):
             self.setStatus('submitting job %d of %d' % (ji+1, len(jobs)))
-            self.progressBar.setValue(ji)
+            self.setValue(ji)
             qApp.processEvents()
             try:
                 job.submit()
@@ -999,7 +1109,7 @@ class BundleMaker(object):
                 else:
                     self.createLog(detail)
                 return False
-        self.progressBar.setValue(0)
+        self.setValue(0)
         qApp.processEvents()
         return True
 
@@ -1019,5 +1129,5 @@ class BundleMaker(object):
         return True
 
     def addExceptions(self, paths):
-        self.textureExceptions = paths
+        self.textureExceptions = paths[:]
 
