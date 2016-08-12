@@ -220,7 +220,10 @@ class BundleMakerUI(Form, Base):
         return self.deadlineCheck.isChecked()
 
     def callCreateBundle(self):
-        self.openLogFile()
+        self.progressBar.show()
+        self.bundleButton.setEnabled(False)
+        qApp.processEvents()
+
         pro = self.projectBox.currentText()
         if self.isDeadlineCheck():
             if pro == '--Project--':
@@ -259,7 +262,10 @@ class BundleMakerUI(Form, Base):
                     self.bundleMaker.createBundle(name=name, project=pro, ep=ep, seq=seq, sh=sh)
         else:
             self.bundleMaker.createBundle(project=pro)
-        self.closeLogFile()
+        self.progressBar.hide()
+        self.bundleButton.setEnabled(True)
+        qApp.processEvents()
+
         self.showLogFileMessage()
 
     def showLogFileMessage(self):

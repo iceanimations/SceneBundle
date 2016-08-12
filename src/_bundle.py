@@ -51,8 +51,6 @@ class BundleProgressHandler(object):
 
 class _ProgressLogHandler(BundleProgressHandler):
     _progressHandler = None
-    logHandler = None
-    logger = None
     errors = None
     warnings = None
 
@@ -66,6 +64,9 @@ class _ProgressLogHandler(BundleProgressHandler):
         self.logger.setLevel(logging.INFO)
         self.logHandler = logging.FileHandler(self.logFilePath)
         self.logger.addHandler(self.logHandler)
+
+        self.errors = []
+        self.warnings = []
 
         path = osp.join(osp.expanduser('~'), 'scene_bundle_log')
         if not osp.exists(path):
@@ -122,28 +123,29 @@ class _ProgressLogHandler(BundleProgressHandler):
             raise TypeError,\
                     'progressHandler must be of type "BundleProgressHandler"'
 
-class BundleMaker(object):
-    _progressLogHandler = None
-    logger = None
-    errors = None
-    warnings = None
+    @progressHandler.deleter
+    def progressHandler(self):
+        self._progressHandler = None
 
-    def __init__(self, progressHandler=None):
-        ''':typeprogressHandler: BundleProgressHandler'''
+class BundleMaker(object):
+    '''Bundle Maker class containing all functions'''
+
+    def __init__(self, progressHandler=None, path=None):
+        ''':type progressHandler: BundleProgressHandler'''
         self.textureExceptions = []
         self.rootPath = None
         self.texturesMapping = {}
         self.collectedTextures = {}
         self.refNodes = []
         self.cacheMapping = {}
-        self.logFile = None
-        self._progressLogHandler = _ProgressLogHandler(progressHandler)
+        self.status = _ProgressLogHandler(progressHandler)
 
         self.deadline = True
         self.archive = False
         self.delete = False
 
-        self.path = ''
+        self.path = path
+
         self.paths = []
         self.name = []
         self.pro = None
@@ -151,8 +153,23 @@ class BundleMaker(object):
         self.ep = None
         self.shot = None
 
-        self.errors = []
-        self.warning = []
+    def setProgressHandler(self, ph=None):
+        if not ph:
+            del self._progressLogHandler.progressHandler
+        else:
+            self._progressLogHandler.progressHandler = ph
+
+    @property
+    def errors(self):
+        return self.status.errors
+
+    @property
+    def warnings(self):
+        return self.status.warnings
+
+    @property
+    def logFilePath(self):
+        return self.status.logFilePath
 
     def openLogFile(self):
         try:
@@ -166,6 +183,12 @@ class BundleMaker(object):
             self.logFile = None
         except:
             pass
+
+    def createLog(self, details):
+        if self.logFile:
+            details = self.currentFileName() +'\r\n'*2 + details
+            self.logFile.write(details)
+            self.logFile.write('\r\n'+'-'*100+'\r\n'*3)
 
     def createScriptNode(self):
         '''Creates a unique script node which remap file in bundles scripts'''
@@ -194,53 +217,12 @@ class BundleMaker(object):
         try:
             util.createReconnectAiAOVScript()
         except Exception as e:
-            pc.warning('cannot create reconnect script: %s' % e)
+            self.status.warning('cannot create reconnect script: %s' % e)
 
         return script
 
-    def createLog(self, details):
-        if self.logFile:
-            details = self.currentFileName() +'\r\n'*2 + details
-            self.logFile.write(details)
-            self.logFile.write('\r\n'+'-'*100+'\r\n'*3)
-
     def createBundle(self, name=None, project=None, ep=None, seq=None, sh=None):
-        if self.isDeadlineCheck():
-            if self.isCurrentScene():
-                ep = self.epBox.currentText()
-                if ep == 'Custom':
-                    ep = self.epBox2.text()
-                if ep == '--Episode--':
-                    msgBox.showMessage(self, title='Scene Bundle',
-                                       msg='Episode name not selected',
-                                       icon=QMessageBox.Information)
-                    return
-                seq = self.seqBox.currentText()
-                if seq == 'Custom':
-                    seq = self.seqBox2.text()
-                if seq == '--Sequence--':
-                    msgBox.showMessage(self, title='Scene Bundle',
-                                       msg='Sequence name not selected',
-                                       icon=QMessageBox.Information)
-                    return
-                sh = self.shBox.currentText()
-                if sh == 'Custom':
-                    sh = self.shBox2.text()
-                if sh == '--Shot--':
-                    msgBox.showMessage(self, title='Scene Bundle',
-                                       msg='Shot name not selected',
-                                       icon=QMessageBox.Information)
-                    return
-                self.settings.bundle_episode = self.epBox.currentText()
-                self.settings.bundle_custom_episode = self.epBox2.text()
-                self.settings.bundle_sequence = self.seqBox.currentText()
-                self.settings.bundle_custom_sequence = self.seqBox2.text()
-                self.settings.bundle_project = self.projectBox.currentText()
-                name = self.getName()
         ws = pc.workspace(o=True, q=True)
-        self.progressBar.show()
-        self.bundleButton.setEnabled(False)
-        qApp.processEvents()
         if self.createProjectFolder(name):
             if self.deadlineCheck.isChecked():
                 if self.zdepthButton.isChecked():
@@ -268,42 +250,23 @@ class BundleMaker(object):
                                     if self.deadlineCheck.isChecked():
                                         self.submitToDeadline(name, project, ep, seq, sh)
                                     if self.isCurrentScene():
-                                        self.setStatus('Closing scene ...')
-                                        qApp.processEvents()
+                                        self.status.setStatus('Closing scene ...')
                                         cmds.file(new=True, f=True)
                                     if not self.keepBundleButton.isChecked():
                                         self.deleteCacheNodes()
-                                        self.setStatus('removing bundle ...')
-                                        qApp.processEvents()
+                                        self.status.setStatus('removing bundle ...')
                                         self.removeBundle()
-                                    self.setStatus('Scene bundled successfully...')
-                                    qApp.processEvents()
-        self.progressBar.hide()
-        self.bundleButton.setEnabled(True)
-        qApp.processEvents()
+                                    self.status.setStatus('Scene bundled successfully...')
         pc.workspace(ws, o=True)
 
     def deleteCacheNodes(self):
         pc.delete(pc.ls(type=['cacheFile', pc.nt.RedshiftProxyMesh]))
 
-    def setPaths(self, paths):
-        self.filesBox.clear()
-        self.filesBox.addItems(paths)
-
     def getPath(self):
-        path = str(self.pathBox.text())
-        if path:
-            if osp.exists(path):
-                self.settings.bundle_path = path
-                return path
-            else:
-                msgBox.showMessage(self, title='Scene Bundle',
-                                   msg='Specified path does not exist',
-                                   icon=QMessageBox.Information)
-        else:
-            msgBox.showMessage(self, title='Scene Bundle',
-                               msg='Location path not specified',
-                               icon=QMessageBox.Information)
+        return self._path
+    def setPath(self, path):
+        self._path = path
+    path = property(fget=getPath, fset=setPath)
 
     def createProjectFolder(self, name=None):
         self.clearData()
@@ -311,43 +274,9 @@ class BundleMaker(object):
         if not name:
             name = self.getName()
         if path and name:
-            dest = osp.join(path, name)
-            if osp.exists(dest):
-                if self.isCurrentScene():
-                    if not osp.isfile(dest):
-                        files = os.listdir(dest)
-                        if files:
-                            btn = msgBox.showMessage(self, title='Scene Bundle',
-                                                     msg='A directory already exists with the specified name at specified path and is not empty',
-                                                     ques='Do you want to replace it?',
-                                                     btns=QMessageBox.Yes|QMessageBox.No,
-                                                     icon=QMessageBox.Warning)
-                            if btn == QMessageBox.Yes:
-                                errors = {}
-                                try:
-                                    shutil.rmtree(dest)
-                                except Exception as ex:
-                                    errors[dest] = str(ex)
-                                if errors:
-                                    detail = 'Could not delete the following files'
-                                    for key, value in errors.items():
-                                        detail += '\n\n'+key+'\nReason: '+value
-                                    msgBox.showMessage(self, title='Scene Bundle',
-                                                        msg='Could not delete files',
-                                                        icon=QMessageBox.Information,
-                                                        details=detail)
-                                    return
-                            else:
-                                return
-                        else:
-                            try:
-                                os.rmdir(dest)
-                            except Exception as ex:
-                                msgBox.showMessage(self, title='Scene Bundle',
-                                                   msg=str(ex),
-                                                   icon=QMessageBox.Information)
-                                return
-                else:
+            try:
+                dest = osp.join(path, name)
+                if osp.exists(dest):
                     count = 1
                     dest += '('+ str(count) +')'
                     while 1:
@@ -355,10 +284,14 @@ class BundleMaker(object):
                             break
                         dest = dest.replace('('+ str(count) +')', '('+ str(count+1) +')')
                         count += 1
-            src = r"R:\Pipe_Repo\Users\Qurban\templateProject"
-            shutil.copytree(src, dest)
-            self.rootPath = dest
-            return True
+                src = r"R:\Pipe_Repo\Users\Qurban\templateProject"
+                shutil.copytree(src, dest)
+                self.rootPath = dest
+                return True
+            except Exception as e:
+                self.status.error('Cannot Create Project Folder: %s' % e)
+        else:
+            self.status.error('No Path Found')
 
     def clearData(self):
         self.rootPath = None
@@ -410,7 +343,7 @@ class BundleMaker(object):
         return cmds.file(location=True, q=True)
 
     def collectTextures(self):
-        self.setStatus('Checking texture files...')
+        self.status.setStatus('Checking texture files...')
         textureFileNodes = self.getFileNodes()
         badTexturePaths = []
         for node in textureFileNodes:
@@ -434,30 +367,19 @@ class BundleMaker(object):
                     if pc.getAttr(node.ftn, l=True):
                         pc.setAttr(node.ftn, l=False)
                 except Exception as ex:
-                    badTexturePaths.append('Could not unlock: '+ filePath)
+                    badTexturePaths.append('Could not unlock: %s: %s' %(
+                        filePath, ex ))
 
         if badTexturePaths:
             detail = 'Following textures do not exist or could not unlock a locked attribute\r\n'
             for texture in badTexturePaths:
                 detail += '\r\n'+ texture
-            if self.isCurrentScene():
-                btn = msgBox.showMessage(self, title='Scene Bundle',
-                                         msg='Errors occurred while collecting textures',
-                                         ques='Do you want to proceed?',
-                                         details=detail,
-                                         icon=QMessageBox.Information,
-                                         btns=QMessageBox.Yes|QMessageBox.No)
-                if btn == QMessageBox.Yes:
-                    pass
-                else:
-                    return
-            else:
-                self.createLog(detail)
+            self.status.error(detail)
+
         newName = 0
-        self.setStatus('collecting textures...')
-        qApp.processEvents()
+        self.status.setStatus('collecting textures...')
         imagesPath = osp.join(self.rootPath, 'sourceImages')
-        self.setMaximum(len(textureFileNodes))
+        self.status.setMaximum(len(textureFileNodes))
         for node in textureFileNodes:
             folderPath = osp.join(imagesPath, str(newName))
             relativePath = osp.join(osp.basename(imagesPath), str(newName))
@@ -509,12 +431,9 @@ class BundleMaker(object):
             else:
                 continue
             newName = newName + 1
-            self.setValue(newName)
-            qApp.processEvents()
-        self.setValue(0)
-        qApp.processEvents()
-        self.setStatus('All textures collected successfully...')
-        qApp.processEvents()
+            self.status.setValue(newName)
+        self.status.setValue(0)
+        self.status.setStatus('All textures collected successfully...')
         return True
 
     def collectRedshiftProxies(self):
@@ -530,23 +449,13 @@ class BundleMaker(object):
                     badPaths.append(path)
             if badPaths:
                 detail = 'Could not find following proxy files\r\n'+'\r\n'.join(badPaths)
-                if self.isCurrentScene():
-                    btn = msgBox.showMessage(self, title='Scene Bundle',
-                                             msg='Some proxies not found in the file system',
-                                             ques='Do you want to continue?',
-                                             details=detail,
-                                             icon=QMessageBox.Warning,
-                                             btns=QMessageBox.Yes|QMessageBox.No)
-                    if btn == QMessageBox.No: return False
-                else:
-                    self.createLog(detail)
+                self.status.error(details)
             self.setStatus('Collecting Redshift Proxies...')
             nodesLen = len(nodes)
             proxyPath = osp.join(self.rootPath, 'proxies')
             if not osp.exists(proxyPath):
                 os.mkdir(proxyPath)
-            self.setMaximum(nodesLen)
-            qApp.processEvents()
+            self.status.setMaximum(nodesLen)
             for i, node in enumerate(nodes):
                 path = node.fileName.get()
                 if osp.basename(osp.dirname(path)) == 'low_res':
@@ -576,7 +485,7 @@ class BundleMaker(object):
                             for phile in files:
                                 shutil.copy(phile, newTexturePath)
                     node.fileName.set(osp.join(newProxyPath, osp.basename(path)))
-                self.setValue(i+1)
+                self.status.setValue(i+1)
                 qApp.processEvents()
             self.setValue(0)
         return True
