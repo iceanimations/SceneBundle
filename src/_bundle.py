@@ -26,8 +26,24 @@ reload(util)
 
 mapFiles = util.mapFiles
 
+
+class OnError(object):
+    IGNORE    = 0b0001
+    LOG       = 0b0010
+    RAISE     = 0b0100
+    LOG_RAISE = LOG | RAISE
+    THROW     = RAISE
+
 class BundleProgressHandler(object):
     __metaclass__ = abc.ABCMeta
+
+    @abc.abstractproperty
+    def onError(self):
+        return OnError.IGNORE
+
+    @abc.abstractmethod
+    def setProcess(self, desc):
+        pass
 
     @abc.abstractmethod
     def setStatus(self, msg):
@@ -56,6 +72,7 @@ class _ProgressLogHandler(BundleProgressHandler):
 
     maxx = None
     value = None
+    onError = OnError.LOG
 
     def __init__(self, progressHandler=None):
         self.progressHandler = progressHandler
@@ -73,9 +90,15 @@ class _ProgressLogHandler(BundleProgressHandler):
             os.mkdir(path)
         self.logFilePath = osp.join(path, 'log.txt')
 
+    def setProcess(self, process):
+        ''':type desc: str'''
+        if self.progressHandler:
+            resp = self.progressHandler.setProcess(process)
+            self.onError = resp or ( self.onError if resp is None else resp )
+        self.process = process
+
     def setStatus(self, msg):
         self.status = msg
-        self.logger.info(msg)
         if self.progressHandler:
             self.progressHandler.setStatus(msg)
 
@@ -92,10 +115,15 @@ class _ProgressLogHandler(BundleProgressHandler):
             self.progressHandler.setValue()
 
     def error(self, msg, exc_info=True):
+        onError = self.onError
         self.errors.append(msg)
-        self.logger.error(msg)
         if self.progressHandler:
-            self.progressHandler.error(msg)
+            resp = self.progressHandler.error(msg)
+            onError = resp or onError
+        if onError & OnError.LOG:
+            self.logger.error(msg, exc_info=exc_info)
+        if onError & OnError.RAISE:
+            raise Exception, msg
 
     def warning(self, msg):
         self.warnings.append(msg)
@@ -171,6 +199,14 @@ class BundleMaker(object):
     def logFilePath(self):
         return self.status.logFilePath
 
+    @property
+    def onError(self):
+        return self.status.onError
+
+    @onError.setter
+    def onError(self, val):
+        self.status.onError = val
+
     def openLogFile(self):
         try:
             self.logFile = open(self.logFilePath, 'wb')
@@ -192,6 +228,7 @@ class BundleMaker(object):
 
     def createScriptNode(self):
         '''Creates a unique script node which remap file in bundles scripts'''
+        self.status.setProcess('CreateScriptNode')
         script = None
         try:
             script = filter(
@@ -222,6 +259,7 @@ class BundleMaker(object):
         return script
 
     def createBundle(self, name=None, project=None, ep=None, seq=None, sh=None):
+        self.status.setProcess('CreateBundle')
         ws = pc.workspace(o=True, q=True)
         if self.createProjectFolder(name):
             if self.deadlineCheck.isChecked():
@@ -268,9 +306,15 @@ class BundleMaker(object):
         self._path = path
     path = property(fget=getPath, fset=setPath)
 
+    def getName(self):
+        return self._name
+    def setName(self, name):
+        self._name = name
+    path = property(fget=getName, fset=setName)
+
     def createProjectFolder(self, name=None):
         self.clearData()
-        path = self.getPath()
+        path = self.path
         if not name:
             name = self.getName()
         if path and name:
@@ -343,14 +387,17 @@ class BundleMaker(object):
         return cmds.file(location=True, q=True)
 
     def collectTextures(self):
+        self.status.setProcess('CollectTextures')
         self.status.setStatus('Checking texture files...')
         textureFileNodes = self.getFileNodes()
         badTexturePaths = []
+
         for node in textureFileNodes:
             try:
                 filePath = imaya.getFullpathFromAttr(node.fileTextureName)
             except:
                 filePath = imaya.getFullpathFromAttr(node.filename)
+
             if filePath:
                 if '<udim>' in filePath.lower() or '<f>' in filePath.lower():
                     fileNames = self.getUDIMFiles(filePath)
@@ -449,8 +496,8 @@ class BundleMaker(object):
                     badPaths.append(path)
             if badPaths:
                 detail = 'Could not find following proxy files\r\n'+'\r\n'.join(badPaths)
-                self.status.error(details)
-            self.setStatus('Collecting Redshift Proxies...')
+                self.status.error(detail)
+            self.status.setStatus('Collecting Redshift Proxies...')
             nodesLen = len(nodes)
             proxyPath = osp.join(self.rootPath, 'proxies')
             if not osp.exists(proxyPath):
@@ -486,11 +533,11 @@ class BundleMaker(object):
                                 shutil.copy(phile, newTexturePath)
                     node.fileName.set(osp.join(newProxyPath, osp.basename(path)))
                 self.status.setValue(i+1)
-                qApp.processEvents()
             self.setValue(0)
         return True
 
     def collectRedshiftSprites(self):
+        self.status.setProcess('CollectRedshiftSprites')
         try:
             nodes = pc.ls(exactType=pc.nt.RedshiftSprite)
         except AttributeError:
@@ -503,28 +550,22 @@ class BundleMaker(object):
                     badPaths.append(path)
             if badPaths:
                 detail = 'Could not find following Redshift Sprite Textures\r\n'+'\r\n'.join(badPaths)
-                if self.isCurrentScene():
-                    btn = msgBox.showMessage(self, title='Scene Bundle',
-                                             msg='Some Redshift Sprite Textures not found in the file system',
-                                             ques='Do you want to continue?',
-                                             details=detail,
-                                             icon=QMessageBox.Warning,
-                                             btns=QMessageBox.Yes|QMessageBox.No)
-                    if btn == QMessageBox.No: return False
-                else:
-                    self.createLog(detail)
+                #self.createLog(detail)
+                self.status.error(detail)
+
             self.setStatus('Collecting Redshift Sprite Textures...')
             nodeLen = len(nodes)
             texturePath = osp.join(self.rootPath, 'spriteTextures')
             if not osp.exists(texturePath):
                 os.mkdir(texturePath)
-            self.setMaximum(nodeLen)
-            qApp.processEvents()
+            self.status.setMaximum(nodeLen)
+
             for i, node in enumerate(nodes):
                 newPath = osp.join(texturePath, str(i))
                 if not osp.exists(newPath):
                     os.mkdir(newPath)
                 path = node.tex0.get()
+
                 if osp.exists(path) and osp.isfile(path):
                     files = []
                     if node.useFrameExtension.get():
@@ -543,9 +584,9 @@ class BundleMaker(object):
                         for phile in files:
                             shutil.copy(phile, newPath)
                         node.tex0.set(osp.join(newPath, osp.basename(files[0])))
-                self.setValue(i+1)
-                qApp.processEvents()
-        self.setValue(0)
+
+                self.status.setValue(i+1)
+        self.status.setValue(0)
         return True
 
     def copyRSFile(self, path, path2):
@@ -569,9 +610,10 @@ class BundleMaker(object):
         return nodes
 
     def collectReferences(self):
-        self.setStatus('collecting references info...')
+        self.status.setProcess('CollectReferences')
+        self.status.setStatus('collecting references info...')
         refNodes = self.getRefNodes()
-        self.setMaximum(len(refNodes))
+        self.status.setMaximum(len(refNodes))
         if refNodes:
             c = 1
             badRefs = {}
@@ -583,42 +625,30 @@ class BundleMaker(object):
                     self.refNodes.append(ref)
                 except Exception as ex:
                     badRefs[ref] = str(ex)
-                self.setValue(c)
-                qApp.processEvents()
+                self.status.setValue(c)
                 c += 1
-            self.setValue(0)
-            qApp.processEvents()
+            self.status.setValue(0)
             if badRefs:
                 detail = 'Following references can not be collected\r\n'
                 for node in badRefs:
                     detail += '\r\n'+ node.path + '\r\nReason: '+ badRefs[node]
-                if self.isCurrentScene():
-                    btn = msgBox.showMessage(self, title='Scene Bundle',
-                                             msg='Errors occured while collecting references',
-                                             ques='Do you want to proceed?',
-                                             icon=QMessageBox.Warning,
-                                             btns=QMessageBox.Yes|QMessageBox.No,
-                                             details=detail)
-                    if btn == QMessageBox.Yes:
-                        pass
-                    else: return False
-                else:
-                    self.createLog(detail)
+                # self.createLog(detail)
+                self.status.error(detail, exc_info=False)
         else:
-            self.setStatus('No references found in the scene...')
-            qApp.processEvents()
+            self.status.setStatus('No references found in the scene...')
         return True
 
     def getCacheNodes(self):
         return pc.ls(type=pc.nt.CacheFile)
 
     def collectCaches(self):
-        self.setStatus('Prepering to collect cache files...')
-        qApp.processEvents()
+        self.status.setProcess('CollectCaches')
+
+        self.status.setStatus('Prepering to collect cache files...')
         cacheNodes = self.getCacheNodes()
+
         badCachePaths = []
-        self.setStatus('checking cache files...')
-        qApp.processEvents()
+        self.status.setStatus('checking cache files...')
         for node in cacheNodes:
             files = node.getFileName()
             if files:
@@ -630,29 +660,20 @@ class BundleMaker(object):
                     badCachePaths.append(cacheXMLFilePath)
                 if not osp.exists(cacheMCFilePath):
                     badCachePaths.append(cacheMCFilePath)
+
         if badCachePaths:
             detail = 'Following cache files not found\r\n'
             for phile in badCachePaths:
                 detail += '\r\n'+ phile
-            if self.isCurrentScene():
-                btn = msgBox.showMessage(self, title='Scene Bundle',
-                                         msg='Some cache files used in the scene not found in the file system',
-                                         ques='Do you want to proceed?',
-                                         details=detail,
-                                         icon=QMessageBox.Information,
-                                         btns=QMessageBox.Yes|QMessageBox.No)
-                if btn == QMessageBox.Yes:
-                    pass
-                else:
-                    return
-            else:
-                self.createLog(detail)
-        self.setStatus('collecting cache files...')
-        qApp.processEvents()
+            # self.createLog(detail)
+            self.status.error(detail, exc_info=False)
+
+        self.status.setStatus('collecting cache files...')
         cacheFolder = osp.join(self.rootPath, 'data')
         newName = 0
-        self.setMaximum(len(cacheNodes))
+        self.status.setMaximum(len(cacheNodes))
         errors = {}
+
         for node in cacheNodes:
             cacheFiles = node.getFileName()
             if cacheFiles:
@@ -660,37 +681,23 @@ class BundleMaker(object):
                     continue
                 cacheXMLFilePath, cacheMCFilePath = cacheFiles
                 newName = newName + 1
-                #osp.join(osp.basename(cacheFolder), str(newName))
-                #folderPath = osp.join(cacheFolder, str(newName))
                 folderPath = cacheFolder
-                #os.mkdir(folderPath)
                 try:
                     shutil.copy(cacheXMLFilePath, folderPath)
                     shutil.copy(cacheMCFilePath, folderPath)
                 except Exception as ex:
                     errors[osp.splitext(cacheMCFilePath)[0]] = str(ex)
                 self.cacheMapping[node] = osp.join(folderPath, osp.splitext(osp.basename(cacheMCFilePath))[0])
-                self.setValue(newName)
-                qApp.processEvents()
+                self.status.setValue(newName)
+
         if errors:
             detail = 'Could not collect following cache files'
             for cPath in errors.keys():
                 detail += '\r\n\r\n'+ cPath + '\r\nReason: '+ errors[cPath]
-            if self.isCurrentScene():
-                btn = msgBox.showMessage(self, title='Scene Bundle',
-                                         msg='Could not collect some of the cache files. '+
-                                         'This would result in loss of animation',
-                                         ques='Do you want to proceed?',
-                                         details=detail,
-                                         btns=QMessageBox.Yes|QMessageBox.No,
-                                         icon=QMessageBox.Warning)
-                if btn == QMessageBox.Yes:
-                    pass
-                else: return
-            else:
-                self.createLog(detail)
-        self.setValue(0)
-        qApp.processEvents()
+            # self.createLog(detail)
+            self.status.errors(detail)
+
+        self.status.setValue(0)
         return True
 
     def getParticleNode(self):
@@ -704,30 +711,28 @@ class BundleMaker(object):
             return osp.join(pcp, node.cd.get())
 
     def collectMCFIs(self):
-        self.setStatus('Collecting mcfi files')
-        qApp.processEvents()
+        self.status.setProcess('CollectMCFIs')
+        self.status.setStatus('Collecting mcfi files ...')
         path = pc.workspace(en=pc.workspace(fre='diskCache'))
         targetPath = osp.join(self.rootPath, 'data')
         if path and osp.exists(path):
             files = os.listdir(path)
             count = 1
-            self.setMaximum(len(files))
-            qApp.processEvents()
+            self.status.setMaximum(len(files))
             for fl in files:
                 fullPath = osp.join(path, fl)
                 if osp.isfile(fullPath):
                     if osp.splitext(fullPath)[-1] == '.mcfi':
                         shutil.copy(fullPath, targetPath)
-                self.setValue(count)
-                qApp.processEvents()
+                self.status.setValue(count)
                 count += 1
-            self.setValue(0)
-            qApp.processEvents()
+            self.status.setValue(0)
 
     def collectParticleCache(self):
         self.collectMCFIs()
-        self.setStatus('Collecting particle cache...')
-        qApp.processEvents()
+        self.status.setProcess('CollectParticleCache')
+        self.status.setStatus('Collecting particle cache...')
+
         path = self.getParticleCacheDirectory()
         if path:
             particlePath = osp.join(self.rootPath, 'cache', 'particles')
@@ -736,7 +741,7 @@ class BundleMaker(object):
             files = os.listdir(path)
             if files:
                 count = 1
-                self.setMaximum(len(files))
+                self.status.setMaximum(len(files))
                 errors = {}
                 for phile in files:
                     fullPath = osp.join(path, phile)
@@ -744,42 +749,32 @@ class BundleMaker(object):
                         shutil.copy(fullPath, particleCachePath)
                     except Exception as ex:
                         errors[fullPath] = str(ex)
-                    self.setValue(count)
-                    qApp.processEvents()
+                    self.status.setValue(count)
                     count += 1
                 if errors:
                     detail = 'Could not collect following cache files'
                     for cPath in errors.keys():
                         detail += '\r\n\r\n'+cPath + '\r\nReason: '+ errors[cPath]
-                    if self.isCurrentScene():
-                        btn = msgBox.showMessage(self, title='Scene Bundle',
-                                                 msg='Could not collect some of the particle cache files. '+
-                                                 'This would result in loss of animation',
-                                                 ques='Do you want to proceed?',
-                                                 details=detail,
-                                                 btns=QMessageBox.Yes|QMessageBox.No,
-                                                 icon=QMessageBox.Warning)
-                        if btn == QMessageBox.Yes:
-                            pass
-                        else: return
-                    else:
-                        self.createLog(detail)
-                self.setValue(0)
-                self.setStatus('particle cache collected successfully')
-                qApp.processEvents()
+                    self.status.error(detail)
+
+                self.status.setValue(0)
+                self.status.setStatus('particle cache collected successfully')
             else:
-                self.setStatus('No particle cache found...')
+                self.status.setStatus('No particle cache found...')
         return True
 
     def copyRef(self):
-        self.setStatus('copying references...')
-        qApp.processEvents()
+        self.status.setProcess('CopyRef')
+        self.status.setStatus('copying references...')
+
         c = 0
-        self.setMaximum(len(self.refNodes))
+        self.status.setMaximum(len(self.refNodes))
+
         if self.refNodes:
             refsPath = osp.join(self.rootPath, 'scenes', 'refs')
             os.mkdir(refsPath)
             errors = {}
+
             for ref in self.refNodes:
                 try:
                     newPath = osp.join(refsPath, osp.basename(ref.path))
@@ -791,33 +786,24 @@ class BundleMaker(object):
                 except Exception as ex:
                     errors[ref] = str(ex)
                 c += 1
-                self.setValue(c)
-                qApp.processEvents()
-            self.setValue(0)
-            qApp.processEvents()
+                self.status.setValue(c)
+            self.status.setValue(0)
+
             if errors:
                 detail = 'Could not copy following references\r\n'
                 for node in errors:
                     detail += '\r\n'+ node.path + '\r\nReason: '+errors[node]
-                if self.isCurrentScene():
-                    btn = msgBox.showMessage(self, title='Scene Bundle',
-                                             msg='Errors occured while copying references',
-                                             ques='Do you want to proceed?',
-                                             icon=QMessageBox.Warning,
-                                             btns=QMessageBox.Yes|QMessageBox.No)
-                    if btn == QMessageBox.Yes:
-                        pass
-                    else: return False
-                else:
-                    self.createLog(detail)
-        self.setValue(0)
+                # self.createLog(detail)
+                self.status.error(detail)
+
+        self.status.setValue(0)
         return True
 
     def importReferences(self):
-        self.setStatus('importing references ...')
-        qApp.processEvents()
+        self.status.setStatus('ImportReferences')
+        self.status.setStatus('importing references ...')
         c=0
-        self.setMaximum(len(self.refNodes))
+        self.status.setMaximum(len(self.refNodes))
         errors = {}
         while self.refNodes:
             try:
@@ -830,31 +816,20 @@ class BundleMaker(object):
             except Exception as e:
                 errors[refPath] = str(e)
             c += 1
-            self.setValue(c)
+            self.status.setValue(c)
         if errors:
             detail = 'Could not import following references\r\n'
             for node in errors:
                 detail += '\r\n'+ node + '\r\nReason: '+errors[node]
-            if self.isCurrentScene():
-                btn = msgBox.showMessage(self, title='Scene Bundle',
-                                            msg='Errors occured while importing references',
-                                            ques='Do you want to proceed?',
-                                            icon=QMessageBox.Warning,
-                                            details=detail,
-                                            btns=QMessageBox.Yes|QMessageBox.No)
-                if btn == QMessageBox.Yes:
-                    pass
-                else:
-                    return False
-            else:
-                self.createLog(detail)
-        self.setValue(0)
+            # self.createLog(detail)
+            self.status.error(detail)
+        self.status.setValue(0)
         return True
 
     def mapTextures(self):
-        self.setStatus('Mapping collected textures...')
-        qApp.processEvents()
-        self.setMaximum(len(self.texturesMapping))
+        self.status.setProcess('MapTextures')
+        self.status.setStatus('Mapping collected textures...')
+        self.status.setMaximum(len(self.texturesMapping))
         c = 0
         for node in self.texturesMapping:
             fullPath = osp.join(self.rootPath, self.texturesMapping[node]).replace('\\', '/')
@@ -865,24 +840,20 @@ class BundleMaker(object):
             except RuntimeError:
                 pass
             c += 1
-            self.setValue(c)
-            qApp.processEvents()
-        self.setValue(0)
-        qApp.processEvents()
+            self.status.setValue(c)
+        self.status.setValue(0)
 
     def mapCache(self):
-        self.setStatus('Mapping cache files...')
-        qApp.processEvents()
-        self.setMaximum(len(self.cacheMapping))
+        self.status.setProcess('MapCache')
+        self.status.setStatus('Mapping cache files...')
+        self.status.setMaximum(len(self.cacheMapping))
         c = 0
         for node in self.cacheMapping:
             node.cachePath.set(osp.dirname(self.cacheMapping[node]), type="string")
             node.cacheName.set(osp.basename(self.cacheMapping[node]), type="string")
             c += 1
-            self.setValue(c)
-            qApp.processEvents()
-        self.setValue(0)
-        qApp.processEvents()
+            self.status.setValue(c)
+        self.status.setValue(0)
 
     def mapParticleCache(self):
         # no need to map particle cache
@@ -891,50 +862,46 @@ class BundleMaker(object):
         pass
 
     def archive(self):
+        self.status.setProcess('Archive')
         archiver = arch.getFormats().values()[0]
-        self.setStatus(
+        self.status.setStatus(
                 'Creating Archive %s ...'%(self.rootPath+archiver.ext))
         try:
             arch.make_archive(self.rootPath, archiver.name,
                     progressBar=self.progressHandler)
         except arch.ArchivingError as e:
-            if self.isCurrentScene():
-                msgBox.showMessage(self, title='Scene Bundle', msg=str(e),
-                        icon=QMessageBox.Information)
-            else:
-                detail = "\nArchiving Error: " + str(e)
-                self.createLog(detail)
+            detail = "\nArchiving Error: " + str(e)
+            self.status.error(detail, exc_info=True)
             return False
         return True
 
     def exportScene(self):
-        self.setStatus('Exporting scene...')
-        qApp.processEvents()
+        self.status.setStatus('ExportScene')
+        self.status.setStatus('Exporting scene...')
         self.createScriptNode()
         scenePath = osp.join(self.rootPath, 'scenes', str(self.nameBox.text()))
         pc.exportAll(scenePath, type=cmds.file(q=True, type=True)[0],
                      f=True, pr=True)
-        self.setStatus('Scene bundled successfully...')
-        qApp.processEvents()
+        self.status.setStatus('Scene bundled successfully...')
 
     def saveSceneAs(self, name=None):
-        if not name:
-            name = self.nameBox.text()
-        self.setStatus('Saving Scene in New Location')
-        qApp.processEvents()
+        self.status.setProcess('SaveSceneAs')
+        name = self.name
+        self.status.setStatus('Saving Scene in New Location')
         self.createScriptNode()
         scenePath = osp.join(self.rootPath, 'scenes', name)
         cmds.file(rename=scenePath)
         cmds.file(f=True, save=True, options="v=0;", type=cmds.file(q=True, type=True)[0])
+        self.status.setStatus('Scene Saved to location: %s'%scenePath)
 
     def submitToDeadline(self, name, project, episode, sequence, shot):
-        ''' hello world '''
+        ''' Submit Scene to Deadline '''
         ###############################################################################
         #                       configuring Deadline submitter                        #
         ###############################################################################
-        self.setMaximum(0)
-        self.setStatus('configuring deadline submitter...')
-        qApp.processEvents()
+        self.status.setProcess('SubmitToDeadline')
+        self.status.setMaximum(0)
+        self.status.setStatus('configuring deadline submitter...')
         try:
             subm = deadline.DeadlineBundleSubmitter(name, project, episode,
                     sequence, shot)
@@ -942,18 +909,15 @@ class BundleMaker(object):
             import traceback
             traceback.print_exc()
             detail = 'Deadline submission error: '+str(ex)
-            if self.isCurrentScene():
-                msgBox.showMessage(self, title='Scene Bundle',
-                                   msg=str(detail), icon=QMessageBox.Information)
-            else:
-                self.createLog(detail)
+            # self.createLog(detail)
+            self.onError |= OnError.RAISE
+            self.status.error(detail)
             return False
 
         ###############################################################################
         #                                creating jobs                                #
         ###############################################################################
-        self.setStatus('creating jobs ')
-        qApp.processEvents()
+        self.status.setStatus('creating jobs ')
         try:
             jobs = subm.createJobs()
         except Exception as e:
@@ -961,49 +925,37 @@ class BundleMaker(object):
             traceback.print_exc()
             detail = "\nError in Creating Job"
             detail += "\n" + str(e)
-            if self.isCurrentScene():
-                msgBox.showMessage(self, title='Scene Bundle',
-                            msg='Cannot create jobs to deadline\n' + str(e),
-                            icon=QMessageBox.Information)
-            else:
-                self.createLog(detail)
+            self.onError |= OnError.RAISE
+            self.status.error(detail, exc_info=True)
             return False
 
         ###############################################################################
         #                           copying to directories                            #
         ###############################################################################
-        self.setMaximum(len(subm.project_paths))
+        self.status.setMaximum(len(subm.project_paths))
         for pi, projectPath in enumerate(subm.project_paths):
             try:
                 self.setStatus('copying %s to directory %s ...'%(
                     self.rootPath, projectPath))
-                qApp.processEvents()
                 shutil.copytree(cmds.workspace(q=1, rd=1), projectPath)
                 self.setValue(pi)
-                qApp.processEvents()
             except Exception as e:
                 import traceback
                 traceback.print_exc()
                 detail = "\nError in copying to directory" + projectPath
                 detail += "\n" + str(e)
-                if self.isCurrentScene():
-                    msgBox.showMessage(self, title='Scene Bundle',
-                                    msg='Cannot copy to rendering server\n'+str(e),
-                                    icon=QMessageBox.Information)
-                else:
-                    self.createLog(detail)
+                self.onError |= OnError.RAISE
+                self.status.error(detail, exc_info=True)
                 return False
 
         ###############################################################################
         #                               submitting jobs                               #
         ###############################################################################
-        self.setMaximum(len(jobs))
-        self.setStatus('creating jobs ')
-        qApp.processEvents()
+        self.status.setMaximum(len(jobs))
+        self.status.setStatus('creating jobs ')
         for ji, job in enumerate(jobs):
-            self.setStatus('submitting job %d of %d' % (ji+1, len(jobs)))
-            self.setValue(ji)
-            qApp.processEvents()
+            self.status.setStatus('submitting job %d of %d' % (ji+1, len(jobs)))
+            self.status.setValue(ji)
             try:
                 job.submit()
             except Exception as e:
@@ -1011,29 +963,21 @@ class BundleMaker(object):
                 traceback.print_exc()
                 detail = "\nError in submitting Job" + job.jobInfo["Name"]
                 detail += "\n" + str(e)
-                if self.isCurrentScene() and False:
-                    msgBox.showMessage(self, title='Scene Bundle',
-                                        msg='Cannot submit Job ' + str(e),
-                                        icon=QMessageBox.Information)
-                else:
-                    self.createLog(detail)
+                self.onError |= OnError.RAISE
+                self.status.error(detail, exc_info=True)
                 return False
-        self.setValue(0)
-        qApp.processEvents()
+        self.status.setValue(0)
         return True
 
     def removeBundle(self):
+        self.status.setProcess('RemoveBundle')
         self.setStatus('Removing directory %s ...'%self.rootPath)
         try:
             shutil.rmtree(self.rootPath)
         except Exception as e:
-            if self.isCurrentScene():
-                msgBox.showMessage(self, title='Scene Bundle', msg=str(e),
-                        icon=QMessageBox.Information)
-            else:
-                detail = "\r\nError in Removing Bundle: "+ str(e)
-                detail = self.currentFileName() + '\r\n'*2 + detail
-                self.createLog(detail)
+            detail = "\r\nError in Removing Bundle: "+ str(e)
+            detail = self.currentFileName() + '\r\n'*2 + detail
+            self.status.error(detail, exc_info=True)
             return False
         return True
 
