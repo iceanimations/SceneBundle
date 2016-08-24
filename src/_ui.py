@@ -24,7 +24,7 @@ reload(iutil)
 from . import _bundle
 reload(_bundle)
 BundleMaker = _bundle.BundleMaker
-BundleProgressHandler = _bundle.BundleProgressHandler
+BundleProgressHandler = _bundle.BaseBundleHandler
 
 root_path = osp.dirname(osp.dirname(__file__))
 ui_path = osp.join(root_path, 'ui')
@@ -330,6 +330,25 @@ class BundleMakerUI(Form, Base):
     def addExceptions(self, paths):
         self.bundleMaker.addExceptions(paths)
 
+    def openLogFile(self):
+        try:
+            self.logFile = open(self.logFilePath, 'wb')
+        except:
+            pass
+
+    def closeLogFile(self):
+        try:
+            self.logFile.close()
+            self.logFile = None
+        except:
+            pass
+
+    def createLog(self, details):
+        if self.logFile:
+            details = self.currentFileName() +'\r\n'*2 + details
+            self.logFile.write(details)
+            self.logFile.write('\r\n'+'-'*100+'\r\n'*3)
+
 Form1, Base1 = uic.loadUiType(osp.join(ui_path, 'form.ui'))
 class EditForm(Form1, Base1):
     def __init__(self, parent=None):
@@ -440,7 +459,6 @@ class EditForm(Form1, Base1):
             if box.itemText(i) == text:
                 return i
         return -1
-
 
 Form2, Base2 = uic.loadUiType(osp.join(ui_path, 'input_field.ui'))
 class InputField(Form2, Base2):

@@ -26,20 +26,19 @@ reload(util)
 
 mapFiles = util.mapFiles
 
-
 class OnError(object):
-    IGNORE    = 0b0001
-    LOG       = 0b0010
-    RAISE     = 0b0100
+    IGNORE    = 0b0000
+    LOG       = 0b0001
+    RAISE     = 0b0010
     LOG_RAISE = LOG | RAISE
     THROW     = RAISE
 
-class BundleProgressHandler(object):
+class BaseBundleHandler(object):
     __metaclass__ = abc.ABCMeta
 
-    @abc.abstractproperty
-    def onError(self):
-        return OnError.IGNORE
+    # @abc.abstractproperty
+    # def onError(self):
+        # return OnError.LOG
 
     @abc.abstractmethod
     def setProcess(self, desc):
@@ -65,7 +64,7 @@ class BundleProgressHandler(object):
     def warning(self, msg):
         pass
 
-class _ProgressLogHandler(BundleProgressHandler):
+class _ProgressLogHandler(BaseBundleHandler):
     _progressHandler = None
     errors = None
     warnings = None
@@ -77,6 +76,11 @@ class _ProgressLogHandler(BundleProgressHandler):
     def __init__(self, progressHandler=None):
         self.progressHandler = progressHandler
 
+        path = osp.join(osp.expanduser('~'), 'scene_bundle_log')
+        if not osp.exists(path):
+            os.mkdir(path)
+        self.logFilePath = osp.join(path, 'log.txt')
+
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         self.logHandler = logging.FileHandler(self.logFilePath)
@@ -84,11 +88,6 @@ class _ProgressLogHandler(BundleProgressHandler):
 
         self.errors = []
         self.warnings = []
-
-        path = osp.join(osp.expanduser('~'), 'scene_bundle_log')
-        if not osp.exists(path):
-            os.mkdir(path)
-        self.logFilePath = osp.join(path, 'log.txt')
 
     def setProcess(self, process):
         ''':type desc: str'''
@@ -112,7 +111,7 @@ class _ProgressLogHandler(BundleProgressHandler):
         if self.maxx > 0:
             self.logger.info('%s of %s' % (self.value, self.maxx))
         if self.progressHandler:
-            self.progressHandler.setValue()
+            self.progressHandler.setValue(val)
 
     def error(self, msg, exc_info=True):
         onError = self.onError
@@ -141,10 +140,10 @@ class _ProgressLogHandler(BundleProgressHandler):
 
     @progressHandler.setter
     def progressHandler(self, ph):
-        if isinstance(ph, BundleProgressHandler) or all((
-            hasattr(ph, fun) for fun in dir(BundleProgressHandler)
+        if isinstance(ph, BaseBundleHandler) or all((
+            hasattr(ph, fun) for fun in dir(BaseBundleHandler)
             if ( not fun.startswith('_') ) and type(
-                getattr(BundleProgressHandler, fun) == types.MethodType)
+                getattr(BaseBundleHandler, fun) == types.MethodType)
             )):
             self._progressHandler = ph
         else:
@@ -158,7 +157,10 @@ class _ProgressLogHandler(BundleProgressHandler):
 class BundleMaker(object):
     '''Bundle Maker class containing all functions'''
 
-    def __init__(self, progressHandler=None, path=None):
+    def __init__(self, progressHandler=None, path=None, filename=None,
+            name=None, deadline=True, doArchive=False, delete=False,
+            keepReferences=False, pro=None,
+            seq=None, ep=None, shot=None):
         ''':type progressHandler: BundleProgressHandler'''
         self.textureExceptions = []
         self.rootPath = None
@@ -168,24 +170,23 @@ class BundleMaker(object):
         self.cacheMapping = {}
         self.status = _ProgressLogHandler(progressHandler)
 
-        self.deadline = True
-        self.archive = False
-        self.delete = False
+        self.deadline = deadline
+        self.doArchive = doArchive
+        self.delete = delete
+        self.keepReferences = keepReferences
 
         self.path = path
 
         self.paths = []
-        self.name = []
-        self.pro = None
-        self.seq = None
-        self.ep = None
-        self.shot = None
+        self.name = name
+        self.pro = pro
+        self.seq = seq
+        self.ep = ep
+        self.shot = shot
+        self.filename = filename
 
     def setProgressHandler(self, ph=None):
-        if not ph:
-            del self._progressLogHandler.progressHandler
-        else:
-            self._progressLogHandler.progressHandler = ph
+        self._progressLogHandler.progressHandler = ph
 
     @property
     def errors(self):
@@ -207,24 +208,23 @@ class BundleMaker(object):
     def onError(self, val):
         self.status.onError = val
 
-    def openLogFile(self):
-        try:
-            self.logFile = open(self.logFilePath, 'wb')
-        except:
-            pass
+    @property
+    def filename(self):
+        return self._filename
 
-    def closeLogFile(self):
-        try:
-            self.logFile.close()
-            self.logFile = None
-        except:
-            pass
+    @filename.setter
+    def filename(self, fn):
+        self._filename = fn
 
-    def createLog(self, details):
-        if self.logFile:
-            details = self.currentFileName() +'\r\n'*2 + details
-            self.logFile.write(details)
-            self.logFile.write('\r\n'+'-'*100+'\r\n'*3)
+    @property
+    def keepReferences(self):
+        return self._keepReferences
+
+    @keepReferences.setter
+    def keepReferences(self, val):
+        self._keepReferences = val
+
+
 
     def createScriptNode(self):
         '''Creates a unique script node which remap file in bundles scripts'''
@@ -262,7 +262,7 @@ class BundleMaker(object):
         self.status.setProcess('CreateBundle')
         ws = pc.workspace(o=True, q=True)
         if self.createProjectFolder(name):
-            if self.deadlineCheck.isChecked():
+            if self.deadline:
                 if self.zdepthButton.isChecked():
                     util.turnZdepthOn()
             pc.workspace(self.rootPath, o=True)
@@ -276,21 +276,18 @@ class BundleMaker(object):
                                     pc.workspace(self.rootPath, o=True)
                                     self.mapTextures()
                                     self.mapCache()
-                                    if self.keepReferencesButton.isChecked():
+                                    if self.keepReferences:
                                         if not self.copyRef():
                                             return
                                     else:
                                         if not self.importReferences():
                                             return
                                     self.saveSceneAs(name)
-                                    if self.makeZipButton.isChecked():
+                                    if self.doArchive:
                                         self.archive()
-                                    if self.deadlineCheck.isChecked():
+                                    if self.deadline:
                                         self.submitToDeadline(name, project, ep, seq, sh)
-                                    if self.isCurrentScene():
-                                        self.status.setStatus('Closing scene ...')
-                                        cmds.file(new=True, f=True)
-                                    if not self.keepBundleButton.isChecked():
+                                    if self.delete:
                                         self.deleteCacheNodes()
                                         self.status.setStatus('removing bundle ...')
                                         self.removeBundle()
