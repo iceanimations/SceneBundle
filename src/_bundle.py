@@ -36,10 +36,6 @@ class OnError(object):
 class BaseBundleHandler(object):
     __metaclass__ = abc.ABCMeta
 
-    # @abc.abstractproperty
-    # def onError(self):
-        # return OnError.LOG
-
     @abc.abstractmethod
     def setProcess(self, desc):
         pass
@@ -81,10 +77,10 @@ class _ProgressLogHandler(BaseBundleHandler):
             os.mkdir(path)
         self.logFilePath = osp.join(path, 'log.txt')
 
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
-        self.logHandler = logging.FileHandler(self.logFilePath)
-        self.logger.addHandler(self.logHandler)
+        self.logger = logging.getLogger( __name__ )
+        self.logger.setLevel( logging.INFO )
+        self.logHandler = logging.FileHandler( self.logFilePath )
+        self.logger.addHandler( self.logHandler )
 
         self.errors = []
         self.warnings = []
@@ -141,14 +137,15 @@ class _ProgressLogHandler(BaseBundleHandler):
     @progressHandler.setter
     def progressHandler(self, ph):
         if isinstance(ph, BaseBundleHandler) or all((
-            hasattr(ph, fun) for fun in dir(BaseBundleHandler)
-            if ( not fun.startswith('_') ) and type(
-                getattr(BaseBundleHandler, fun) == types.MethodType)
-            )):
+                hasattr(ph, fun) for fun in dir(BaseBundleHandler)
+                if ( not fun.startswith('_') ) and type(
+                    getattr(BaseBundleHandler, fun) == types.MethodType)
+                and hasattr ( fun, '__isabstractmethod__' ) and
+                fun.__isabstractmethod__ )):
             self._progressHandler = ph
         else:
-            raise TypeError,\
-                    'progressHandler must be of type "BundleProgressHandler"'
+            raise ( TypeError,
+                    'progressHandler must be of type "BundleProgressHandler"' )
 
     @progressHandler.deleter
     def progressHandler(self):
@@ -224,8 +221,6 @@ class BundleMaker(object):
     def keepReferences(self, val):
         self._keepReferences = val
 
-
-
     def createScriptNode(self):
         '''Creates a unique script node which remap file in bundles scripts'''
         self.status.setProcess('CreateScriptNode')
@@ -257,6 +252,13 @@ class BundleMaker(object):
             self.status.warning('cannot create reconnect script: %s' % e)
 
         return script
+
+    def openFile(self, filename=None):
+        self.status.setProcess('Opening File')
+        self.status.setStatus('Opening File to be bundled')
+        if filename is not None:
+            self.filename = filename
+        imaya.openFile(self.filename)
 
     def createBundle(self, name=None, project=None, ep=None, seq=None, sh=None):
         self.status.setProcess('CreateBundle')
@@ -307,7 +309,7 @@ class BundleMaker(object):
         return self._name
     def setName(self, name):
         self._name = name
-    path = property(fget=getName, fset=setName)
+    name = property(fget=getName, fset=setName)
 
     def createProjectFolder(self, name=None):
         self.clearData()
@@ -391,9 +393,11 @@ class BundleMaker(object):
 
         for node in textureFileNodes:
             try:
-                filePath = imaya.getFullpathFromAttr(node.fileTextureName)
+                filePath = imaya.readPathAttr(node.fileTextureName)
             except:
-                filePath = imaya.getFullpathFromAttr(node.filename)
+                filePath = imaya.readPathAttr(node.filename)
+
+            print 'filePath=', filePath
 
             if filePath:
                 if '<udim>' in filePath.lower() or '<f>' in filePath.lower():
@@ -530,11 +534,12 @@ class BundleMaker(object):
                                 shutil.copy(phile, newTexturePath)
                     node.fileName.set(osp.join(newProxyPath, osp.basename(path)))
                 self.status.setValue(i+1)
-            self.setValue(0)
+            self.status.setValue(0)
         return True
 
     def collectRedshiftSprites(self):
         self.status.setProcess('CollectRedshiftSprites')
+        self.status.setStatus('Collecting Redshift Sprites')
         try:
             nodes = pc.ls(exactType=pc.nt.RedshiftSprite)
         except AttributeError:
@@ -550,7 +555,7 @@ class BundleMaker(object):
                 #self.createLog(detail)
                 self.status.error(detail)
 
-            self.setStatus('Collecting Redshift Sprite Textures...')
+            self.status.setStatus('Collecting Redshift Sprite Textures...')
             nodeLen = len(nodes)
             texturePath = osp.join(self.rootPath, 'spriteTextures')
             if not osp.exists(texturePath):
@@ -932,7 +937,7 @@ class BundleMaker(object):
         self.status.setMaximum(len(subm.project_paths))
         for pi, projectPath in enumerate(subm.project_paths):
             try:
-                self.setStatus('copying %s to directory %s ...'%(
+                self.status.setStatus('copying %s to directory %s ...'%(
                     self.rootPath, projectPath))
                 shutil.copytree(cmds.workspace(q=1, rd=1), projectPath)
                 self.setValue(pi)
@@ -968,7 +973,7 @@ class BundleMaker(object):
 
     def removeBundle(self):
         self.status.setProcess('RemoveBundle')
-        self.setStatus('Removing directory %s ...'%self.rootPath)
+        self.status.setStatus('Removing directory %s ...'%self.rootPath)
         try:
             shutil.rmtree(self.rootPath)
         except Exception as e:
