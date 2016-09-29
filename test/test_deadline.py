@@ -1,7 +1,7 @@
 import unittest
 import src._deadline
 
-DeadlineBundleSubmitter
+DeadlineBundleSubmitter = src._deadline.DeadlineBundleSubmitter
 
 class TestDeadlineBundleSubmitter(unittest.TestCase):
     def testBundleSubmit(self):
