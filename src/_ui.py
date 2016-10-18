@@ -6,8 +6,8 @@ Created on Nov 5, 2014
 from uiContainer import uic
 import msgBox
 reload(msgBox)
-from PyQt4.QtGui import QMessageBox, QFileDialog, qApp, QIcon, QRegExpValidator
-from PyQt4.QtCore import Qt, QPropertyAnimation, QRect, QEasingCurve, QRegExp
+from PyQt4.QtGui import ( QMessageBox, QFileDialog, qApp, QIcon, QRegExpValidator )
+from PyQt4.QtCore import ( Qt, QPropertyAnimation, QRect, QEasingCurve, QRegExp )
 import qtify_maya_window as qtfy
 import PyQt4.QtCore as core
 import os.path as osp
@@ -84,7 +84,7 @@ class BundleMakerUI(Form, Base):
         super(BundleMakerUI, self).__init__(parent)
         self.standalone = standalone
         self.setupUi(self)
-        self.bundleMaker = BundleMaker
+        self.bundleMaker = BundleMaker(self)
 
         self.animation = QPropertyAnimation(self, 'geometry')
         self.animation.setDuration(500)
@@ -128,7 +128,6 @@ class BundleMakerUI(Form, Base):
         self.epBox2.hide()
         self.seqBox2.hide()
         self.shBox2.hide()
-
 
         addKeyEvent(self.epBox, self.epBox2)
         addKeyEvent(self.seqBox, self.seqBox2)
@@ -231,10 +230,12 @@ class BundleMakerUI(Form, Base):
                                    msg='Project name not selected',
                                    icon=QMessageBox.Information)
                 return
+
         if not self.isCurrentScene():
             if not self.getPath(): # Bundle location path
                 return
             total = self.filesBox.count()
+
             if total == 0:
                 msgBox.showMessage(self, title='Scene Bundle',
                                    msg='No file added to the files box',
@@ -247,6 +248,7 @@ class BundleMakerUI(Form, Base):
                                        msg='Name, Episode, Sequence and/or Shot not specified for the item',
                                        icon=QMessageBox.Information)
                     return
+
             for i in range(total):
                 self.setStatus('Opening scene '+ str(i+1) +' of '+ str(total))
                 item = self.filesBox.item(i)
@@ -259,8 +261,17 @@ class BundleMakerUI(Form, Base):
                         imaya.openFile(filename)
                     except:
                         pass
-                    self.bundleMaker.createBundle(name=name, project=pro, ep=ep, seq=seq, sh=sh)
+                    self.bundleMaker.path = self.pathBox.text()
+                    self.bundleMaker.name = self.nameBox.text()
+                    self.bundleMaker.createBundle(name=name, project=pro,
+                            ep=ep, seq=seq, sh=sh)
+
         else:
+            self.bundleMaker.path = self.pathBox.text()
+            self.bundleMaker.name = self.nameBox.text()
+            self.bundleMaker.deadline = False
+            self.bundleMaker.archive = False
+            self.bundleMaker.delete = False
             self.bundleMaker.createBundle(project=pro)
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
@@ -273,10 +284,10 @@ class BundleMakerUI(Form, Base):
             details = f.read()
             if details:
                 btn = msgBox.showMessage(self, title='Scene Bundle',
-                                         msg='Some errors occured while creating bundle\n'+self.logFilePath,
-                                         ques='Do you want to view log file now?',
-                                         icon=QMessageBox.Information,
-                                         btns=QMessageBox.Yes|QMessageBox.No)
+                        msg='Some errors occured while creating bundle\n'+self.logFilePath,
+                        ques='Do you want to view log file now?',
+                        icon=QMessageBox.Information,
+                        btns=QMessageBox.Yes|QMessageBox.No)
                 if btn == QMessageBox.Yes:
                     subprocess.Popen(self.logFilePath, shell=True)
 
@@ -348,6 +359,13 @@ class BundleMakerUI(Form, Base):
             details = self.currentFileName() +'\r\n'*2 + details
             self.logFile.write(details)
             self.logFile.write('\r\n'+'-'*100+'\r\n'*3)
+
+    def setProcess(self, process):
+        self.statusLabel.setText('Process ... ' + process)
+
+    def error(self, msg):
+        import pymel.core as pc
+        pc.error(msg)
 
 Form1, Base1 = uic.loadUiType(osp.join(ui_path, 'form.ui'))
 class EditForm(Form1, Base1):

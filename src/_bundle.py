@@ -397,8 +397,6 @@ class BundleMaker(object):
             except:
                 filePath = imaya.readPathAttr(node.filename)
 
-            print 'filePath=', filePath
-
             if filePath:
                 if '<udim>' in filePath.lower() or '<f>' in filePath.lower():
                     fileNames = self.getUDIMFiles(filePath)
