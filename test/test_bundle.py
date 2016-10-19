@@ -4,6 +4,8 @@ import os
 import shutil
 import unittest
 
+import pymel.core as pc
+
 import site
 site.addsitedir(os.path.abspath('..'))
 site.addsitedir(r'R:\Python_Scripts\plugins\utilities')
@@ -71,6 +73,12 @@ class TestBundle(_TestBase):
         self.bm.openFile()
         self.bm.createBundle()
 
+    @classmethod
+    def tearDownClass(self):
+        pc.newFile(f=1)
+        super(TestBundle, self).tearDownClass()
+        self.bm.removeBundle()
+
     def testRootPath(self):
         rootPath = self.bm.rootPath
         constructed = normpath(os.path.join( self.bm.path, self.bm.name ))
@@ -78,30 +86,34 @@ class TestBundle(_TestBase):
 
     def testTextures(self):
         images = []
-        images.append ( r"D:\temp\bundle\sourceimages\1\Form_1001.png" )
-        images.append ( r"D:\temp\bundle\sourceimages\1\Form_1002.png" )
-        images.append ( r"D:\temp\bundle\sourceimages\0\image.1001.jpg" )
+        images.append ( r"sourceimages\1\Form_1001.png" )
+        images.append ( r"sourceimages\1\Form_1002.png" )
+        images.append ( r"sourceimages\0\image.1001.jpg" )
         for image in images:
-            self.assertTrue(os.path.exists(image))
+            self.assertTrue( os.path.exists(os.path.join(self.tmpdir,
+                self.name, image)))
 
     def testCaches(self):
         caches = []
-        caches.append(r"D:\temp\bundle\data\air_hornShape.xml")
-        caches.append(r"D:\temp\bundle\data\air_hornShape.mcx")
+        caches.append(r"data\air_hornShape.xml")
+        caches.append(r"data\air_hornShape.mcx")
         for cache in caches:
-            self.assertTrue(os.path.exists(cache))
+            self.assertTrue(os.path.exists(os.path.join(self.tmpdir, self.name,
+                cache)))
 
     def testRsProxies(self):
-        proxies = [r"D:\temp\bundle\proxies\bundle\data\air_horn_shaded_v001.rs"]
+        proxies = [r"proxies\bundle\data\air_horn_shaded_v001.rs"]
         for proxy in proxies:
-            self.assertTrue(os.path.exists(proxy))
+            self.assertTrue(os.path.exists(os.path.join(self.tmpdir, self.name,
+                proxy)))
 
     def testMayaFile(self):
-        mayafile = r"D:\temp\bundle\scenes\bundle.ma" 
+        mayafile = os.path.join( self.tmpdir, self.name, r"scenes\bundle.ma" )
         self.assertTrue(os.path.exists(mayafile))
 
     def testReferences(self):
-        ref_file = r"D:\temp\bundle\scenes\refs\air_horn_shaded.ma"
+        ref_file = os.path.join(self.tmpdir, self.name,
+                r"scenes\refs\air_horn_shaded.ma")
         self.assertTrue(os.path.exists(ref_file))
 
 if __name__ == "__main__":

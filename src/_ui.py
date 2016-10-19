@@ -5,7 +5,7 @@ Created on Nov 5, 2014
 '''
 from uiContainer import uic
 import msgBox
-reload(msgBox)
+# reload(msgBox)
 from PyQt4.QtGui import ( QMessageBox, QFileDialog, qApp, QIcon, QRegExpValidator )
 from PyQt4.QtCore import ( Qt, QPropertyAnimation, QRect, QEasingCurve, QRegExp )
 import qtify_maya_window as qtfy
@@ -17,12 +17,8 @@ import _utilities as util
 import appUsageApp
 import yaml
 import imaya
-reload(imaya)
-import iutil
-reload(iutil)
 
 from . import _bundle
-reload(_bundle)
 BundleMaker = _bundle.BundleMaker
 BundleProgressHandler = _bundle.BaseBundleHandler
 
@@ -141,6 +137,12 @@ class BundleMakerUI(Form, Base):
 
     def setStatus(self, msg):
         self.statusLabel.setText(msg)
+
+    def setMaximum(self, maxx):
+        self.progressBar.setMaximum(maxx)
+
+    def setValue(self, val):
+        self.progressBar.setValue(val)
 
     def makeButtonsExclussive(self, btn):
         if not any([self.deadlineCheck.isChecked(),
@@ -284,12 +286,13 @@ class BundleMakerUI(Form, Base):
             details = f.read()
             if details:
                 btn = msgBox.showMessage(self, title='Scene Bundle',
-                        msg='Some errors occured while creating bundle\n'+self.logFilePath,
+                        msg=( 'Some errors occured while creating bundle\n' +
+                            self.bundleMaker.logFilePath ),
                         ques='Do you want to view log file now?',
                         icon=QMessageBox.Information,
                         btns=QMessageBox.Yes|QMessageBox.No)
                 if btn == QMessageBox.Yes:
-                    subprocess.Popen(self.logFilePath, shell=True)
+                    subprocess.Popen(self.bundleMaker.logFilePath, shell=True)
 
     def setPaths(self, paths):
         self.filesBox.clear()
@@ -364,8 +367,8 @@ class BundleMakerUI(Form, Base):
         self.statusLabel.setText('Process ... ' + process)
 
     def error(self, msg):
-        import pymel.core as pc
-        pc.error(msg)
+        if self.process == 'CollectTextures':
+            return False
 
 Form1, Base1 = uic.loadUiType(osp.join(ui_path, 'form.ui'))
 class EditForm(Form1, Base1):

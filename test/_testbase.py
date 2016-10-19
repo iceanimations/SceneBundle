@@ -2,7 +2,6 @@ import unittest
 import os
 import zipfile
 import shutil
-import pymel.core as pc
 
 currentdir = os.path.dirname(__file__)
 
@@ -43,7 +42,5 @@ class _TestBase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        pc.newFile(f=1)
-        self.bm.removeBundle()
         shutil.rmtree(self.srcdir)
 
