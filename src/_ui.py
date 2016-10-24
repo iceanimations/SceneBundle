@@ -16,11 +16,14 @@ import subprocess
 import _utilities as util
 import appUsageApp
 import yaml
-import imaya
+import traceback
+import logging
+
+import maya.cmds as cmds
 
 from . import _bundle
 BundleMaker = _bundle.BundleMaker
-BundleProgressHandler = _bundle.BaseBundleHandler
+onError = _bundle.OnError
 
 root_path = osp.dirname(osp.dirname(__file__))
 ui_path = osp.join(root_path, 'ui')
@@ -45,7 +48,8 @@ try:
     with open(_project_conf) as f:
         projects_list = yaml.load(f)
 except IOError as e:
-    print 'Cannot read projects config file ... using defaults', e
+    logging.getLogger(__name__).warning(
+        'Error: %r \r\nCannot read projects config file ... using defaults'%e )
 
 def populateProjectsBox(box):
     box.addItems(projects_list)
@@ -133,16 +137,10 @@ class BundleMakerUI(Form, Base):
         self.seqBox2.setValidator(__validator__)
         self.shBox2.setValidator(__validator__)
 
+        self.logFilePath = osp.join(osp.expanduser('~'), 'scene_bundle_log',
+                'latestErrorLog.txt')
+
         appUsageApp.updateDatabase('sceneBundle')
-
-    def setStatus(self, msg):
-        self.statusLabel.setText(msg)
-
-    def setMaximum(self, maxx):
-        self.progressBar.setMaximum(maxx)
-
-    def setValue(self, val):
-        self.progressBar.setValue(val)
 
     def makeButtonsExclussive(self, btn):
         if not any([self.deadlineCheck.isChecked(),
@@ -225,6 +223,8 @@ class BundleMakerUI(Form, Base):
         self.bundleButton.setEnabled(False)
         qApp.processEvents()
 
+        ep, seq, sh = None, None, None
+
         pro = self.projectBox.currentText()
         if self.isDeadlineCheck():
             if pro == '--Project--':
@@ -259,40 +259,52 @@ class BundleMakerUI(Form, Base):
                 name, filename, ep, seq, sh = item.text().split(' | ')
                 if osp.splitext(filename)[-1] in ['.ma', '.mb']:
                     try:
-                        #cmds.file(filename, o=True, f=True, prompt=False)
-                        imaya.openFile(filename)
+                        self.bundleMaker.filename = filename
+                        self.bundleMaker.openFile(filename)
                     except:
                         pass
-                    self.bundleMaker.path = self.pathBox.text()
-                    self.bundleMaker.name = self.nameBox.text()
-                    self.bundleMaker.createBundle(name=name, project=pro,
-                            ep=ep, seq=seq, sh=sh)
+                    self.createBundle(name=name, pro=pro, ep=ep, seq=seq,
+                            sh=sh)
 
         else:
-            self.bundleMaker.path = self.pathBox.text()
-            self.bundleMaker.name = self.nameBox.text()
-            self.bundleMaker.deadline = False
-            self.bundleMaker.archive = False
-            self.bundleMaker.delete = False
-            self.bundleMaker.createBundle(project=pro)
+            self.createBundle(pro=pro, ep=self.getEp(), seq=self.getSeq(),
+                    sh=self.getSh())
+
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         qApp.processEvents()
 
         self.showLogFileMessage()
 
+    def createBundle(self, name=None, pro=None, ep=None, seq=None, sh=None):
+        self.bundleMaker.path = self.getPath()
+        if name is None:
+            name = self.getName()
+        self.bundleMaker.name = name
+        self.bundleMaker.deadline = self.deadlineCheck.isChecked()
+        self.bundleMaker.archive = self.makeZipButton.isChecked()
+        self.bundleMaker.delete = not self.keepBundleButton.isChecked()
+        self.bundleMaker.keepReferences = self.keepReferencesButton.isChecked()
+        try:
+            self.openLogFile()
+            self.bundleMaker.createBundle(name=name, project=pro, ep=ep,
+                    seq=seq, sh=sh)
+        finally:
+            self.closeLogFile()
+
+
     def showLogFileMessage(self):
-        with open(self.bundleMaker.logFilePath, 'rb') as f:
+        with open(self.logFilePath, 'rb') as f:
             details = f.read()
             if details:
                 btn = msgBox.showMessage(self, title='Scene Bundle',
                         msg=( 'Some errors occured while creating bundle\n' +
-                            self.bundleMaker.logFilePath ),
+                            self.logFilePath ),
                         ques='Do you want to view log file now?',
                         icon=QMessageBox.Information,
                         btns=QMessageBox.Yes|QMessageBox.No)
                 if btn == QMessageBox.Yes:
-                    subprocess.Popen(self.bundleMaker.logFilePath, shell=True)
+                    subprocess.Popen(self.logFilePath, shell=True)
 
     def setPaths(self, paths):
         self.filesBox.clear()
@@ -324,6 +336,30 @@ class BundleMakerUI(Form, Base):
             msgBox.showMessage(self, title='Scene Bundle',
                                msg='Name not specified',
                                icon=QMessageBox.Information)
+
+    def getEp(self):
+        text = self.epBox.currentText()
+        if text == 'Custom':
+            return self.epBox2.text()
+        if text == '--Episode--':
+            text = ''
+        return text
+
+    def getSeq(self):
+        text = self.seqBox.currentText()
+        if text == 'Custom':
+            return self.seqBox2.text()
+        if text == '--Sequence--':
+            text = ''
+        return text
+
+    def getSh(self):
+        text = self.shBox.currentText()
+        if text == 'Custom':
+            return self.shBox2.text()
+        if text == '--Shot--':
+            text = ''
+        return text
 
     def browseFolder(self):
         path = QFileDialog.getExistingDirectory(self, 'Select Folder',
@@ -363,12 +399,46 @@ class BundleMakerUI(Form, Base):
             self.logFile.write(details)
             self.logFile.write('\r\n'+'-'*100+'\r\n'*3)
 
+    def setStatus(self, msg):
+        self.status = msg
+        self.statusLabel.setText(msg)
+
+    def setMaximum(self, maxx):
+        self.maxx = maxx
+        self.progressBar.setMaximum(maxx)
+
+    def setValue(self, val):
+        self.val = val
+        self.progressBar.setValue(val)
+
     def setProcess(self, process):
+        self.process = process
         self.statusLabel.setText('Process ... ' + process)
 
     def error(self, msg):
-        if self.process == 'CollectTextures':
-            return False
+        exc = traceback.format_exc()
+        if exc.strip() == str(None):
+            exc = ''
+        self.createLog('\r\nError:' + msg + '\n' + exc)
+        if self.isCurrentScene():
+            btn = msgBox.showMessage(self, title='Scene Bundle',
+                    msg='Errors occurred while %s: %s'%(self.process, self.status),
+                    ques='Do you want to proceed?',
+                    details=msg,
+                    icon=QMessageBox.Information,
+                    btns=QMessageBox.Yes|QMessageBox.No)
+            if btn == QMessageBox.Yes:
+                return onError.LOG
+            else:
+                return onError.LOG_RAISE
+        else:
+            return onError.LOG
+
+    def warning(self, msg):
+        self.createLog('\r\nWarning:' + msg)
+
+    def currentFileName(self):
+        return cmds.file(location=True, q=True)
 
 Form1, Base1 = uic.loadUiType(osp.join(ui_path, 'form.ui'))
 class EditForm(Form1, Base1):
@@ -549,10 +619,8 @@ class InputField(Form2, Base2):
 
     def setSh(self, sh):
         index = self.getIndexOfBox(self.shBox, sh)
-        print index
         if index == -1:
             index = self.shBox.count() - 1
-            print index
             self.shBox2.setText(sh)
         self.shBox.setCurrentIndex(index)
 

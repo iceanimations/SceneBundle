@@ -2,8 +2,16 @@ import unittest
 import os
 import zipfile
 import shutil
+import logging
+import sys
+
+from src._bundle import BaseBundleHandler
 
 currentdir = os.path.dirname(__file__)
+
+def normpath(path):
+    return os.path.normpath( os.path.abspath( os.path.expandvars(
+        os.path.expanduser( path ) ) ) )
 
 def mkdir(path):
     '''make a directory recursively from parent to child'''
@@ -22,6 +30,7 @@ class _TestBase(unittest.TestCase):
     name = 'bundle'
     srcdir = os.path.join(tmpdir, 'mayaproj')
     bundledir = os.path.join(tmpdir, name)
+    zipfileName = 'mayaproj.zip'
 
     @classmethod
     def setUpClass(self):
@@ -31,10 +40,10 @@ class _TestBase(unittest.TestCase):
         if os.path.exists(self.srcdir):
             shutil.rmtree(self.srcdir)
 
-        if not os.path.exists(os.path.join(currentdir, 'mayaproj.zip')):
+        if not os.path.exists(os.path.join(currentdir, self.zipfileName)):
             raise IOError, 'Cannot find zip file'
 
-        with zipfile.ZipFile(os.path.join(currentdir, 'mayaproj.zip'), 'r') as z:
+        with zipfile.ZipFile(os.path.join(currentdir, self.zipfileName), 'r') as z:
             z.extractall(self.tmpdir)
 
         if not os.path.exists(self.srcdir):
@@ -43,4 +52,35 @@ class _TestBase(unittest.TestCase):
     @classmethod
     def tearDownClass(self):
         shutil.rmtree(self.srcdir)
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+class _TestBundleHandler(BaseBundleHandler):
+    process = ''
+    maxx = 0
+    value = 0
+
+    @property
+    def processName(self):
+        return self.process + ': ' if self.process else ''
+
+    def setProcess(self, process):
+        self.process = process
+
+    def setStatus(self, msg):
+        logging.info(self.processName + msg)
+
+    def setMaximum(self, maxx):
+        self.maxx = maxx
+
+    def setValue(self, value):
+        if self.maxx:
+            logging.info( self.processName +
+                    '%d of %d Done' % (self.value, self.maxx) )
+        self.value = value
+
+    def error(self, msg, exc_info=False):
+        logging.error(self.processName + msg, exc_info=exc_info)
+
+    def warning(self, msg):
+        logging.warning(self.processName + msg)
 

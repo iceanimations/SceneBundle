@@ -1,5 +1,3 @@
-import logging
-import sys
 import os
 import shutil
 import unittest
@@ -9,50 +7,15 @@ import pymel.core as pc
 import site
 site.addsitedir(os.path.abspath('..'))
 site.addsitedir(r'R:\Python_Scripts\plugins\utilities')
-from src._bundle import BundleMaker, BaseBundleHandler
+from src._bundle import BundleMaker
 
-from _testbase import _TestBase
+from _testbase import _TestBase, normpath, _TestBundleHandler
 
 currentdir = os.path.dirname(__file__)
 
-def normpath(path):
-    return os.path.normpath( os.path.abspath( os.path.expandvars(
-        os.path.expanduser( path ) ) ) )
-
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-class BundleHandler(BaseBundleHandler):
-    process = ''
-    maxx = 0
-    value = 0
-
-    @property
-    def processName(self):
-        return self.process + ': ' if self.process else ''
-
-    def setProcess(self, process):
-        self.process = process
-
-    def setStatus(self, msg):
-        logging.info(self.processName + msg)
-
-    def setMaximum(self, maxx):
-        self.maxx = maxx
-
-    def setValue(self, value):
-        if self.maxx:
-            logging.info( self.processName +
-                    '%d of %d Done' % (self.value, self.maxx) )
-        self.value = value
-
-    def error(self, msg, exc_info=False):
-        logging.error(self.processName + msg, exc_info=exc_info)
-
-    def warning(self, msg):
-        logging.warning(self.processName + msg)
-
 class TestBundle(_TestBase):
-    handler = BundleHandler()
-    bm = BundleMaker(handler)
+    handler = _TestBundleHandler()
+    bm = BundleMaker()
 
     @classmethod
     def setUpClass(self):

@@ -12,17 +12,12 @@ import logging
 
 # local libraries
 import imaya
-reload(imaya)
 import iutil
-reload(iutil)
 
 # relative imports
 from . import _archiving as arch
-reload(arch)
 from . import _deadline as deadline
-reload(deadline)
 from . import _utilities as util
-reload(util)
 
 mapFiles = util.mapFiles
 
@@ -69,6 +64,8 @@ class _ProgressLogHandler(BaseBundleHandler):
     value = None
     onError = OnError.LOG
 
+    logKey = 'SCENE_BUNDLE'
+
     def __init__(self, progressHandler=None):
         self.progressHandler = progressHandler
 
@@ -77,7 +74,7 @@ class _ProgressLogHandler(BaseBundleHandler):
             os.mkdir(path)
         self.logFilePath = osp.join(path, 'log.txt')
 
-        self.logger = logging.getLogger( __name__ )
+        self.logger = logging.getLogger( self.logKey )
         self.logger.setLevel( logging.INFO )
         self.logHandler = logging.FileHandler( self.logFilePath )
         self.logger.addHandler( self.logHandler )
@@ -91,6 +88,7 @@ class _ProgressLogHandler(BaseBundleHandler):
             resp = self.progressHandler.setProcess(process)
             self.onError = resp or ( self.onError if resp is None else resp )
         self.process = process
+        self.logger.info('Process: %s'%self.process)
 
     def setStatus(self, msg):
         self.status = msg
@@ -417,7 +415,7 @@ class BundleMaker(object):
                         filePath, ex ))
 
         if badTexturePaths:
-            detail = 'Following textures do not exist or could not unlock a locked attribute\r\n'
+            detail = 'Some textures do not exist or could not unlock a locked attribute\r\n'
             for texture in badTexturePaths:
                 detail += '\r\n'+ texture
             self.status.error(detail)
@@ -793,14 +791,13 @@ class BundleMaker(object):
                 detail = 'Could not copy following references\r\n'
                 for node in errors:
                     detail += '\r\n'+ node.path + '\r\nReason: '+errors[node]
-                # self.createLog(detail)
                 self.status.error(detail)
 
         self.status.setValue(0)
         return True
 
     def importReferences(self):
-        self.status.setStatus('ImportReferences')
+        self.status.setProcess('ImportReferences')
         self.status.setStatus('importing references ...')
         c=0
         self.status.setMaximum(len(self.refNodes))
