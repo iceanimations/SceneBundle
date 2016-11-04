@@ -12,10 +12,9 @@ sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya\tactic\app")
 sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya\maya2015\PyQt")
 
 from uiContainer import uic
-reload(uic)
-from PyQt4.QtGui import QApplication, qApp
+from PyQt4.QtGui import QApplication, qApp, QMessageBox
 from PyQt4.QtTest import QTest
-from PyQt4.QtCore import Qt, QTimer, QObject, pyqtSlot
+from PyQt4.QtCore import Qt, QObject, QTimer
 
 from _testbase import _TestBase, normpath, _TestBundleHandler
 
@@ -27,7 +26,28 @@ import src._ui as ui
 BundleMakerUI = ui.BundleMakerUI
 
 currentdir = os.path.dirname(__file__)
-class TestBundleMakerUI(_TestBase, QObject):
+
+
+class DiagHelper(QObject):
+    key = None
+    func = None
+
+    def dismissDialog(self, *args):
+        QTest.keyClick(qApp.activeModalWidget(), self.key)
+
+    def activate(self, time=1000, func=None):
+        if func is None:
+            if self.func is None:
+                func = self.dismissDialog
+            else:
+                func = self.func
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(func)
+        self.timer.setSingleShot(True)
+        self.timer.start(time)
+
+
+class TestBundleMakerUI(_TestBase):
     tmpdir = r'd:\temp'
     name = 'bundle'
     srcdir = os.path.join(tmpdir, 'mayaproj')
@@ -35,7 +55,6 @@ class TestBundleMakerUI(_TestBase, QObject):
     zipfileName = 'mayaproj2.zip'
 
     def __init__(self, *args):
-        QObject.__init__(self)
         _TestBase.__init__(self, *args)
 
     @classmethod
@@ -71,10 +90,12 @@ class TestBundleMakerUI(_TestBase, QObject):
         qApp.processEvents()
         time.sleep(1)
 
-        # self.timer = QTimer()
-        # # self.timer.timeout.connect(self.acceptDialog)
-        # self.timer.setSingleShot(True)
-        # self.timer.start(3000)
+        diag1 = DiagHelper()
+        diag1.key = Qt.Key_Enter
+        diag1.activate(1000)
+        diag2 = DiagHelper()
+        diag2.key = Qt.Key_Escape
+        diag2.activate(2000)
         QTest.mouseClick(self.gui.bundleButton, Qt.LeftButton)
         time.sleep(1)
 
@@ -118,6 +139,7 @@ class TestBundleMakerUI(_TestBase, QObject):
         ref_file = os.path.join(self.tmpdir, self.name,
                 r"scenes\refs\air_horn_shaded.ma")
         self.assertTrue(os.path.exists(ref_file))
+
 
 if __name__ == "__main__":
     unittest.main()

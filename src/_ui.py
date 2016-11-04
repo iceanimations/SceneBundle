@@ -6,8 +6,10 @@ Created on Nov 5, 2014
 from uiContainer import uic
 import msgBox
 # reload(msgBox)
-from PyQt4.QtGui import ( QMessageBox, QFileDialog, qApp, QIcon, QRegExpValidator )
-from PyQt4.QtCore import ( Qt, QPropertyAnimation, QRect, QEasingCurve, QRegExp )
+from PyQt4.QtGui import ( QMessageBox, QFileDialog, qApp, QIcon,
+        QRegExpValidator )
+from PyQt4.QtCore import ( Qt, QPropertyAnimation, QRect, QEasingCurve,
+        QRegExp )
 import qtify_maya_window as qtfy
 import PyQt4.QtCore as core
 import os.path as osp
@@ -107,14 +109,18 @@ class BundleMakerUI(Form, Base):
         self.deadlineCheck.clicked.connect(self.toggleBoxes)
         self.currentSceneButton.clicked.connect(self.toggleBoxes)
         self.addExceptionsButton.clicked.connect(self.showExceptionsWindow)
-        map(lambda btn: btn.clicked.connect(lambda: self.makeButtonsExclussive(btn)),
-            [self.deadlineCheck, self.makeZipButton, self.keepBundleButton])
-        boxes = [self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2, self.nameBox]
-        map(lambda box: box.currentIndexChanged.connect(lambda: fillName(*boxes)), [self.epBox, self.seqBox, self.shBox])
-        map(lambda box: box.textChanged.connect(lambda: fillName(*boxes)), [self.epBox2, self.seqBox2, self.shBox2])
-        addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
+        map(lambda btn: btn.clicked.connect(
+            lambda: self.makeButtonsExclussive(btn)), [self.deadlineCheck,
+                self.makeZipButton, self.keepBundleButton])
+        boxes = [self.epBox, self.seqBox, self.shBox, self.epBox2,
+                self.seqBox2, self.shBox2, self.nameBox]
+        map(lambda box: box.currentIndexChanged.connect(lambda:
+            fillName(*boxes)), [self.epBox, self.seqBox, self.shBox])
+        map(lambda box: box.textChanged.connect(lambda: fillName(*boxes)),
+                [self.epBox2, self.seqBox2, self.shBox2])
+        addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2,
+                self.seqBox2, self.shBox2)
 
-        #self.projectBox.hide()
         if self.standalone:
             self.currentSceneButton.setEnabled(False)
         self.progressBar.hide()
@@ -198,13 +204,17 @@ class BundleMakerUI(Form, Base):
             self.expandWindow()
 
     def expandWindow(self):
-        self.animation.setStartValue(QRect(self.x()+8, self.y()+30, self.width(), self.height()))
-        self.animation.setEndValue(QRect(self.x()+8, self.y()+30, self.width(), 420))
+        self.animation.setStartValue(QRect(self.x()+8, self.y()+30,
+            self.width(), self.height()))
+        self.animation.setEndValue(QRect(self.x()+8, self.y()+30, self.width(),
+            420))
         self.animation.start()
 
     def shrinkWindow(self):
-        self.animation.setStartValue(QRect(self.x()+8, self.y()+30, self.width(), self.height()))
-        self.animation.setEndValue(QRect(self.x()+8, self.y()+30, self.width(), 160))
+        self.animation.setStartValue(QRect(self.x()+8, self.y()+30,
+            self.width(), self.height()))
+        self.animation.setEndValue(QRect(self.x()+8, self.y()+30, self.width(),
+            160))
         self.animation.start()
 
     def closeEvent(self, event):
@@ -247,8 +257,9 @@ class BundleMakerUI(Form, Base):
             for i in range(total):
                 if len(self.filesBox.item(i).text().split(' | ')) < 5:
                     msgBox.showMessage(self, title='Scene Bundle',
-                                       msg='Name, Episode, Sequence and/or Shot not specified for the item',
-                                       icon=QMessageBox.Information)
+                        msg=( 'Name, Episode, Sequence and/or Shot not '
+                            'specified for the item' ),
+                        icon=QMessageBox.Information)
                     return
 
             for i in range(total):
@@ -280,6 +291,7 @@ class BundleMakerUI(Form, Base):
         self.bundleMaker.path = self.getPath()
         if name is None:
             name = self.getName()
+            pass
         self.bundleMaker.name = name
         self.bundleMaker.deadline = self.deadlineCheck.isChecked()
         self.bundleMaker.archive = self.makeZipButton.isChecked()
@@ -311,7 +323,8 @@ class BundleMakerUI(Form, Base):
         self.filesBox.addItems(paths)
 
     def getPaths(self):
-        return [self.filesBox.item(i).text() for i in range(self.filesBox.count())]
+        return [self.filesBox.item(i).text() for i in
+                range(self.filesBox.count())]
 
     def getPath(self):
         path = str(self.pathBox.text())
@@ -368,7 +381,8 @@ class BundleMakerUI(Form, Base):
             self.pathBox.setText(path)
 
     def browseFolder2(self):
-        paths = QFileDialog.getOpenFileNames(self, 'Select Folder', '', '*.ma *.mb')
+        paths = QFileDialog.getOpenFileNames(self, 'Select Folder', '',
+                '*.ma *.mb')
         if paths:
             for path in paths:
                 if osp.splitext(path)[-1] in ['.ma', '.mb']:
@@ -402,18 +416,26 @@ class BundleMakerUI(Form, Base):
     def setStatus(self, msg):
         self.status = msg
         self.statusLabel.setText(msg)
+        qApp.processEvents()
 
     def setMaximum(self, maxx):
         self.maxx = maxx
         self.progressBar.setMaximum(maxx)
+        qApp.processEvents()
 
     def setValue(self, val):
         self.val = val
         self.progressBar.setValue(val)
+        qApp.processEvents()
 
     def setProcess(self, process):
         self.process = process
-        self.statusLabel.setText('Process ... ' + process)
+        self.statusLabel.setText('Process: %s ... ' % process)
+        qApp.processEvents()
+
+    def done(self):
+        if self.isCurrentScene():
+            cmds.file(new=1, f=1)
 
     def error(self, msg):
         exc = traceback.format_exc()
@@ -422,7 +444,8 @@ class BundleMakerUI(Form, Base):
         self.createLog('\r\nError:' + msg + '\n' + exc)
         if self.isCurrentScene():
             btn = msgBox.showMessage(self, title='Scene Bundle',
-                    msg='Errors occurred while %s: %s'%(self.process, self.status),
+                    msg='Errors occurred while %s: %s'%(self.process,
+                        self.status),
                     ques='Do you want to proceed?',
                     details=msg,
                     icon=QMessageBox.Information,
@@ -454,7 +477,8 @@ class EditForm(Form1, Base1):
         self.epBox.currentIndexChanged.connect(self.switchAllBoxes)
         self.seqBox.currentIndexChanged.connect(self.switchAllBoxes)
         self.shBox.currentIndexChanged.connect(self.switchAllBoxes)
-        addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
+        addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2,
+                self.seqBox2, self.shBox2)
 
         self.epBox2.setValidator(__validator__)
         self.seqBox2.setValidator(__validator__)
@@ -497,9 +521,12 @@ class EditForm(Form1, Base1):
 
     def switchAllBoxes(self):
         for iField in self.inputFields:
-            iField.epBox.setCurrentIndex(self.getIndexOfBox(iField.epBox, self.epBox.currentText()))
-            iField.seqBox.setCurrentIndex(self.getIndexOfBox(iField.seqBox, self.seqBox.currentText()))
-            iField.shBox.setCurrentIndex(self.getIndexOfBox(iField.shBox, self.shBox.currentText()))
+            iField.epBox.setCurrentIndex(self.getIndexOfBox(iField.epBox,
+                self.epBox.currentText()))
+            iField.seqBox.setCurrentIndex(self.getIndexOfBox(iField.seqBox,
+                self.seqBox.currentText()))
+            iField.shBox.setCurrentIndex(self.getIndexOfBox(iField.shBox,
+                self.shBox.currentText()))
 
     def fillAllBoxes(self):
         for iField in self.inputFields:
@@ -517,29 +544,29 @@ class EditForm(Form1, Base1):
             sh = iField.getSh()
             if not name:
                 msgBox.showMessage(self, title='Scene Bundle',
-                                   msg='Name not specified for the bundle',
-                                   icon=QMessageBox.Information)
+                    msg='Name not specified for the bundle',
+                    icon=QMessageBox.Information)
                 return
             if not path:
                 msgBox.showMessage(self, title='Scene Bundle',
-                                   msg='Path not specified for the bundle',
-                                   icon=QMessageBox.Information)
+                    msg='Path not specified for the bundle',
+                    icon=QMessageBox.Information)
                 return
             if self.parentWin.isDeadlineCheck():
                 if not ep:
                     msgBox.showMessage(self, title='Scene Bundle',
-                                       msg='Episode not specified for the bundle',
-                                       icon=QMessageBox.Information)
+                        msg='Episode not specified for the bundle',
+                        icon=QMessageBox.Information)
                     return
                 if not seq:
                     msgBox.showMessage(self, title='Scene Bundle',
-                                       msg='Sequence not specified for the bundle',
-                                       icon=QMessageBox.Information)
+                        msg='Sequence not specified for the bundle',
+                        icon=QMessageBox.Information)
                     return
                 if not sh:
                     msgBox.showMessage(self, title='Scene Bundle',
-                                       msg='Shot not specified fot the bundle',
-                                       icon=QMessageBox.Information)
+                        msg='Shot not specified fot the bundle',
+                        icon=QMessageBox.Information)
                     return
             paths.append(' | '.join([name, path, ep, seq, sh]))
         self.parentWin.setPaths(paths)
@@ -553,12 +580,14 @@ class EditForm(Form1, Base1):
 
 Form2, Base2 = uic.loadUiType(osp.join(ui_path, 'input_field.ui'))
 class InputField(Form2, Base2):
-    def __init__(self, parent=None, name=None, path=None, ep=None, seq=None, sh=None):
+    def __init__(self, parent=None, name=None, path=None, ep=None, seq=None,
+            sh=None):
         super(InputField, self).__init__(parent)
         self.setupUi(self)
 
         populateBoxes(self.epBox, self.seqBox, self.shBox)
-        addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2)
+        addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2,
+                self.seqBox2, self.shBox2)
 
         addKeyEvent(self.epBox, self.epBox2)
         addKeyEvent(self.seqBox, self.seqBox2)
@@ -588,9 +617,12 @@ class InputField(Form2, Base2):
         self.epBox2.setValidator(__validator__)
         self.seqBox2.setValidator(__validator__)
         self.shBox2.setValidator(__validator__)
-        boxes = [self.epBox, self.seqBox, self.shBox, self.epBox2, self.seqBox2, self.shBox2, self.nameBox]
-        map(lambda box: box.currentIndexChanged.connect(lambda: fillName(*boxes)), [self.epBox, self.seqBox, self.shBox])
-        map(lambda box: box.textChanged.connect(lambda: fillName(*boxes)), [self.epBox2, self.seqBox2, self.shBox2])
+        boxes = [self.epBox, self.seqBox, self.shBox, self.epBox2,
+                self.seqBox2, self.shBox2, self.nameBox]
+        map(lambda box: box.currentIndexChanged.connect(lambda:
+            fillName(*boxes)), [self.epBox, self.seqBox, self.shBox])
+        map(lambda box: box.textChanged.connect(lambda: fillName(*boxes)),
+                [self.epBox2, self.seqBox2, self.shBox2])
 
         self.browseButton.clicked.connect(self.browseFolder)
 
@@ -599,7 +631,8 @@ class InputField(Form2, Base2):
         del self
 
     def browseFolder(self):
-        filename = QFileDialog.getSaveFileName(self, 'Select File', '', '*.ma *.mb')
+        filename = QFileDialog.getSaveFileName(self, 'Select File', '',
+                '*.ma *.mb')
         if filename:
             self.pathBox.setText(filename)
 

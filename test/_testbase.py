@@ -84,3 +84,6 @@ class _TestBundleHandler(BaseBundleHandler):
     def warning(self, msg):
         logging.warning(self.processName + msg)
 
+    def done(self):
+        pass
+
