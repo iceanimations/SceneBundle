@@ -36,6 +36,7 @@ class OnError(object):
     LOG_RAISE = LOG | RAISE
     LOG_ASK   = LOG | ASK
     LOG_EXIT  = LOG | EXIT
+    ALL = LOG | RAISE | ASK | EXIT
 
 class BundleException(Exception):
     pass
@@ -137,11 +138,11 @@ class _ProgressLogHandler(BaseBundleHandler):
     def error(self, msg, exc_info=True):
         onError = self.onError
         self.errors.append(msg)
+        if onError & OnError.LOG:
+            self.logger.error(msg, exc_info=exc_info)
         if self.progressHandler:
             resp = self.progressHandler.error('%s : %s'%( self.process, msg ))
             onError = resp or onError
-        if onError & OnError.LOG:
-            self.logger.error(msg, exc_info=exc_info)
         if onError & OnError.RAISE:
             raise BundleException, msg
         if onError & OnError.EXIT:

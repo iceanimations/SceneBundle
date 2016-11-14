@@ -103,6 +103,7 @@ class TestBundleMakerUI(_TestBase):
     def tearDownClass(self):
         mc.file(new=1, f=1)
         super(TestBundleMakerUI, self).tearDownClass()
+        self.gui.bundleMaker.removeBundle()
 
     def testRootPath(self):
         rootPath = self.rootPath

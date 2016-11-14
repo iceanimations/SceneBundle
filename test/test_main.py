@@ -29,9 +29,10 @@ class TestMain(_TestBase):
         # bundleMain(self.bm, args)
         args.insert(0, os.path.dirname(currentdir))
         args.insert(0, sys.executable)
-        subprocess.check_call(args)
-        # out, err = proc.communicate()
-        print
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE,
+                stdin=subprocess.PIPE)
+        out, err = proc.communicate('y\n')
+        print out
 
     @classmethod
     def tearDownClass(self):

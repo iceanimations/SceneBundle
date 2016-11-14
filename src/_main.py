@@ -4,7 +4,8 @@ import sys
 import logging
 
 sys.path.insert(0, '.')
-from _bundle import ( BundleMaker, OnError, bundleFormatter, loggerName )
+from _bundle import ( BundleMaker, OnError, bundleFormatter, loggerName,
+        _ProgressLogHandler )
 
 class CondAction(argparse._StoreTrueAction):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
@@ -52,18 +53,53 @@ def build_parser():
             default=sys.stdin)
     parser.add_argument('-o', '--outfile', type=argparse.FileType('w'),
             default=sys.stdout)
+    parser.add_argument('-err', '--onError', type=int, dest='onError',
+            choices=range(OnError.ALL), default=OnError.LOG)
     return parser
+
+class MainBundleHandler(_ProgressLogHandler):
+    def __init__(self, stream, bundler=None):
+        self.logger = logging.getLogger(self.logKey)
+        self.stream = stream
+        self.bundler = bundler
+        self.install()
+
+    def install(self):
+        self.logHandler = logging.StreamHandler(self.stream)
+        self.logHandler.setLevel(logging.INFO)
+        self.logHandler.setFormatter(self.formatter)
+        self.logger.addHandler(self.logHandler)
+
+    def remove(self):
+        self.logger.removeHandler(self.logHandler)
+
+    def error(self, msg):
+        ask = None
+        if self.bundler:
+            ask = self.bundler.onError & OnError.ASK
+        if ask:
+            print ("Continue (Y/N)?"),
+            resp = raw_input("")
+            resp = resp.strip()
+            if resp == 'y' or resp =='Y':
+                return OnError.LOG
+        return OnError.LOG_EXIT
+
+    def warning(self, msg): pass
+    def step(self): pass
+    def done(self): pass
+    def setProcess(self, process): pass
+    def setMaximum(self, maxx): pass
+    def setStatus(self, status): pass
+    def setValue(self, val): pass
 
 def bundleMain( bm=None, args=None ):
     parser = build_parser()
     args = parser.parse_args( args )
+    mainHandler = MainBundleHandler(args.outfile)
     if bm is None:
-        bm = BundleMaker()
-    mainLogHandler = logging.StreamHandler(args.outfile)
-    mainLogHandler.setLevel(logging.INFO)
-    mainLogHandler.setFormatter(bundleFormatter)
-    bundleLogger = logging.getLogger(loggerName)
-    bundleLogger.addHandler(mainLogHandler)
+        bm = BundleMaker(mainHandler)
+        mainHandler.bundler = bm
     bm.filename = args.filename
     bm.archive = args.archive
     bm.delete = args.delete
@@ -76,11 +112,12 @@ def bundleMain( bm=None, args=None ):
     bm.deadline = args.deadline
     bm.name = args.name
     bm.path = args.tempPath
+    bm.onError = args.onError
     if args.addException:
         bm.addExceptions( args.addException )
     bm.openFile()
     bm.createBundle()
-    bundleLogger.removeHandler(mainLogHandler)
+    mainHandler.remove()
     return bm
 
 if __name__ == "__main__":
@@ -88,7 +125,7 @@ if __name__ == "__main__":
     parser.print_help()
     namespace, _ = parser.parse_known_args([r'd:\temp.txt', '-d', '-p', 'mansour', '-ep',
         'ep65', '-s', 'sq001', '-t', 'sh001', 'discover'])
-    print namespace
+    print (namespace)
     for attr in dir(namespace):
         if not attr.startswith('_'):
             print attr, getattr(namespace, attr)
