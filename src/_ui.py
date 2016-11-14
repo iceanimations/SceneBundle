@@ -441,7 +441,7 @@ class BundleMakerUI(Form, Base):
         exc = traceback.format_exc()
         if exc.strip() == str(None):
             exc = ''
-        self.createLog('\r\nError:' + msg + '\n' + exc)
+        self.createLog('\r\nError:' + msg + '\n'*2 + exc)
         if self.isCurrentScene():
             btn = msgBox.showMessage(self, title='Scene Bundle',
                     msg='Errors occurred while %s: %s'%(self.process,

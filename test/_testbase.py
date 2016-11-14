@@ -5,7 +5,7 @@ import shutil
 import logging
 import sys
 
-from src._bundle import BaseBundleHandler
+from src._bundle import BaseBundleHandler, _ProgressLogHandler
 
 currentdir = os.path.dirname(__file__)
 
@@ -53,11 +53,17 @@ class _TestBase(unittest.TestCase):
     def tearDownClass(self):
         shutil.rmtree(self.srcdir)
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 class _TestBundleHandler(BaseBundleHandler):
     process = ''
     maxx = 0
     value = 0
+    logger = 'TESTBUNDLE'
+
+    def __init__(self):
+        self.logger = logging.getLogger(self.logger)
+        self.handler = logging.StreamHandler(sys.stdout)
+        self.handler.setFormatter(_ProgressLogHandler.formatter)
+        self.logger.addHandler(self.handler)
 
     @property
     def processName(self):

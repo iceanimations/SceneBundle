@@ -7,8 +7,8 @@ import pymel.core as pc
 import site
 site.addsitedir(os.path.abspath('..'))
 site.addsitedir(r'R:\Python_Scripts\plugins\utilities')
-from src._bundle import BundleMaker
 
+from src._bundle import BundleMaker
 from _testbase import _TestBase, normpath, _TestBundleHandler
 
 currentdir = os.path.dirname(__file__)
@@ -21,8 +21,8 @@ class TestBundle(_TestBase):
     def setUpClass(self):
         super(TestBundle, self).setUpClass()
         self.bm.name = self.name
-        self.bm.filename = os.path.join( self.tmpdir,
-                'mayaproj', 'scenes', 'mayaproj.ma' )
+        self.bm.filename = os.path.join( self.tmpdir, 'mayaproj', 'scenes',
+                'mayaproj.ma' )
         self.bm.path = self.tmpdir
         self.bm.deadline = False
         self.bm.archive = False

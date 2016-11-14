@@ -1,5 +1,6 @@
 import pymel.core as pc
 import maya.cmds as cmds
+import sys
 
 import os
 import os.path as osp
@@ -20,13 +21,21 @@ from . import _deadline as deadline
 from . import _utilities as util
 
 mapFiles = util.mapFiles
+bundleFormatter = logging.Formatter(
+            fmt='%(name)s : %(levelname)s : %(asctime)s : %(message)s')
+loggerName = 'SCENE_BUNDLE'
 
 class OnError(object):
     IGNORE    = 0b0000
     LOG       = 0b0001
     RAISE     = 0b0010
-    LOG_RAISE = LOG | RAISE
+    ASK       = 0b0100
+    EXIT      = 0b1000
     THROW     = RAISE
+    QUIT      = EXIT
+    LOG_RAISE = LOG | RAISE
+    LOG_ASK   = LOG | ASK
+    LOG_EXIT  = LOG | EXIT
 
 class BundleException(Exception):
     pass
@@ -72,7 +81,8 @@ class _ProgressLogHandler(BaseBundleHandler):
     onError = OnError.LOG
     complete = None
 
-    logKey = 'SCENE_BUNDLE'
+    logKey = loggerName
+    formatter = bundleFormatter
 
     def __init__(self, progressHandler=None):
         self.progressHandler = progressHandler
@@ -85,7 +95,9 @@ class _ProgressLogHandler(BaseBundleHandler):
         self.logger = logging.getLogger( self.logKey )
         self.logger.setLevel( logging.INFO )
         self.logHandler = logging.FileHandler( self.logFilePath )
-        self.logger.addHandler( self.logHandler )
+        self.logHandler.setFormatter( self.formatter )
+        if not self.logger.handlers:
+            self.logger.addHandler( self.logHandler )
         self.setMaximum(0)
         self.complete = False
 
@@ -99,22 +111,25 @@ class _ProgressLogHandler(BaseBundleHandler):
             self.onError = resp or ( self.onError if resp is None else resp )
         self.process = process
         self.setMaximum(0)
-        self.logger.info('Process: %s'%self.process)
+        self.logger.info('Process : %s'%self.process)
 
     def setStatus(self, msg):
         self.status = msg
+        self.logger.info('Status : %s : %s' % (self.process, msg))
         if self.progressHandler:
             self.progressHandler.setStatus(msg)
 
     def setMaximum(self, maxx):
         self.maxx = maxx
+        if maxx > self.value:
+            self.value = maxx
         if self.progressHandler:
             self.progressHandler.setMaximum(maxx)
 
     def setValue(self, val):
         self.value = val
         if self.maxx > 0:
-            self.logger.info('%s : %s of %s' % (self.process, self.value,
+            self.logger.info('Progress : %s : %s of %s' % (self.process, self.value,
                 self.maxx))
         if self.progressHandler:
             self.progressHandler.setValue(val)
@@ -123,15 +138,17 @@ class _ProgressLogHandler(BaseBundleHandler):
         onError = self.onError
         self.errors.append(msg)
         if self.progressHandler:
-            resp = self.progressHandler.error(msg)
+            resp = self.progressHandler.error('%s : %s'%( self.process, msg ))
             onError = resp or onError
         if onError & OnError.LOG:
             self.logger.error(msg, exc_info=exc_info)
         if onError & OnError.RAISE:
             raise BundleException, msg
+        if onError & OnError.EXIT:
+            self.exit(1)
 
     def warning(self, msg):
-        self.warnings.append(msg)
+        self.warnings.append('%s : %s'%( self.process, msg ))
         self.logger.warning(msg)
         if self.progressHandler:
             self.progressHandler.warning(msg)
@@ -143,8 +160,20 @@ class _ProgressLogHandler(BaseBundleHandler):
     def done(self):
         self.complete = True
         self.logger.info('DONE')
+        resp = 0
         if self.progressHandler:
-            self.progressHandler.done()
+            resp = self.progressHandler.done()
+        onError = self.onError
+        onError = resp or onError
+        if onError & OnError.EXIT:
+            self.exit()
+
+    def exit(self, code=0):
+        if pc.about(q=True, batch=True):
+            sys.exit(code)
+        else:
+            pc.quit(f=1,ec=code)
+
 
     @property
     def progressHandler(self):
@@ -280,10 +309,10 @@ class BundleMaker(object):
         return script
 
     def openFile(self, filename=None):
-        self.status.setProcess('Opening File')
-        self.status.setStatus('Opening File to be bundled')
+        self.status.setProcess('FileOpen')
         if filename is not None:
             self.filename = filename
+        self.status.setStatus('Opening File %s for bundling!'%self.filename)
         imaya.openFile(self.filename)
 
     def createBundle(self, name=None, project=None, ep=None, seq=None,
@@ -423,6 +452,7 @@ class BundleMaker(object):
         textureFileNodes = self.getFileNodes()
         badTexturePaths = []
 
+        self.status.setMaximum(0)
         for node in textureFileNodes:
             try:
                 filePath = imaya.readPathAttr(node.fileTextureName)
@@ -459,6 +489,7 @@ class BundleMaker(object):
         self.status.setStatus('collecting textures...')
         imagesPath = osp.join(self.rootPath, 'sourceImages')
         self.status.setMaximum(len(textureFileNodes))
+        self.status.setValue(0)
         for node in textureFileNodes:
             folderPath = osp.join(imagesPath, str(newName))
             relativePath = osp.join(osp.basename(imagesPath), str(newName))
@@ -525,7 +556,7 @@ class BundleMaker(object):
                 continue
             newName = newName + 1
             self.status.setValue(newName)
-        self.status.setValue(0)
+        self.status.setMaximum(0)
         self.status.setStatus('All textures collected successfully...')
         return True
 
@@ -550,6 +581,7 @@ class BundleMaker(object):
             if not osp.exists(proxyPath):
                 os.mkdir(proxyPath)
             self.status.setMaximum(nodesLen)
+            self.status.setValue(0)
             for i, node in enumerate(nodes):
                 path = node.fileName.get()
                 if osp.basename(osp.dirname(path)) == 'low_res':
@@ -586,7 +618,7 @@ class BundleMaker(object):
                     node.fileName.set( osp.join(newProxyPath,
                         osp.basename(path)) )
                 self.status.setValue(i+1)
-            self.status.setValue(0)
+            self.status.setMaximum(0)
         return True
 
     def collectRedshiftSprites(self):
@@ -614,6 +646,7 @@ class BundleMaker(object):
             if not osp.exists(texturePath):
                 os.mkdir(texturePath)
             self.status.setMaximum(nodeLen)
+            self.status.setValue(0)
 
             for i, node in enumerate(nodes):
                 newPath = osp.join(texturePath, str(i))
@@ -644,7 +677,7 @@ class BundleMaker(object):
                             osp.basename(files[0])) )
 
                 self.status.setValue(i+1)
-        self.status.setValue(0)
+        self.status.setMaximum(0)
         return True
 
     def copyRSFile(self, path, path2):
@@ -672,6 +705,7 @@ class BundleMaker(object):
         self.status.setStatus('collecting references info...')
         refNodes = self.getRefNodes()
         self.status.setMaximum(len(refNodes))
+        self.status.setValue(0)
         if refNodes:
             c = 1
             badRefs = {}
@@ -685,7 +719,7 @@ class BundleMaker(object):
                     badRefs[ref] = str(ex)
                 self.status.setValue(c)
                 c += 1
-            self.status.setValue(0)
+            self.status.setMaximum(0)
             if badRefs:
                 detail = 'Following references can not be collected\r\n'
                 for node in badRefs:
@@ -730,6 +764,7 @@ class BundleMaker(object):
         cacheFolder = osp.join(self.rootPath, 'data')
         newName = 0
         self.status.setMaximum(len(cacheNodes))
+        self.status.setValue(0)
         errors = {}
 
         for node in cacheNodes:
@@ -756,7 +791,7 @@ class BundleMaker(object):
             # self.createLog(detail)
             self.status.errors(detail)
 
-        self.status.setValue(0)
+        self.status.setMaximum(0)
         return True
 
     def getParticleNode(self):
@@ -778,6 +813,7 @@ class BundleMaker(object):
             files = os.listdir(path)
             count = 1
             self.status.setMaximum(len(files))
+            self.status.setValue(0)
             for fl in files:
                 fullPath = osp.join(path, fl)
                 if osp.isfile(fullPath):
@@ -785,7 +821,7 @@ class BundleMaker(object):
                         shutil.copy(fullPath, targetPath)
                 self.status.setValue(count)
                 count += 1
-            self.status.setValue(0)
+            self.status.setMaximum(0)
 
     def collectParticleCache(self):
         self.collectMCFIs()
@@ -801,6 +837,7 @@ class BundleMaker(object):
             if files:
                 count = 1
                 self.status.setMaximum(len(files))
+                self.status.setValue(0)
                 errors = {}
                 for phile in files:
                     fullPath = osp.join(path, phile)
@@ -816,7 +853,7 @@ class BundleMaker(object):
                         detail += '\r\n\r\n'+cPath + '\r\nReason: '+ errors[cPath]
                     self.status.error(detail)
 
-                self.status.setValue(0)
+                self.status.setMaximum(0)
                 self.status.setStatus('particle cache collected successfully')
             else:
                 self.status.setStatus('No particle cache found...')
@@ -828,6 +865,7 @@ class BundleMaker(object):
 
         c = 0
         self.status.setMaximum(len(self.refNodes))
+        self.status.setValue(0)
 
         if self.refNodes:
             refsPath = osp.join(self.rootPath, 'scenes', 'refs')
@@ -846,7 +884,6 @@ class BundleMaker(object):
                     errors[ref] = str(ex)
                 c += 1
                 self.status.setValue(c)
-            self.status.setValue(0)
 
             if errors:
                 detail = 'Could not copy following references\r\n'
@@ -854,7 +891,7 @@ class BundleMaker(object):
                     detail += '\r\n'+ node.path + '\r\nReason: '+errors[node]
                 self.status.error(detail)
 
-        self.status.setValue(0)
+        self.status.setMaximum(0)
         return True
 
     def importReferences(self):
@@ -862,6 +899,7 @@ class BundleMaker(object):
         self.status.setStatus('importing references ...')
         c=0
         self.status.setMaximum(len(self.refNodes))
+        self.status.setValue(0)
         errors = {}
         while self.refNodes:
             try:
@@ -881,13 +919,14 @@ class BundleMaker(object):
                 detail += '\r\n'+ node + '\r\nReason: '+errors[node]
             # self.createLog(detail)
             self.status.error(detail)
-        self.status.setValue(0)
+        self.status.setMaximum(0)
         return True
 
     def mapTextures(self):
         self.status.setProcess('MapTextures')
         self.status.setStatus('Mapping collected textures...')
         self.status.setMaximum(len(self.texturesMapping))
+        self.status.setValue(0)
         c = 0
         for node in self.texturesMapping:
             fullPath = osp.join(self.rootPath,
@@ -900,12 +939,13 @@ class BundleMaker(object):
                 pass
             c += 1
             self.status.setValue(c)
-        self.status.setValue(0)
+        self.status.setMaximum(0)
 
     def mapCache(self):
         self.status.setProcess('MapCache')
         self.status.setStatus('Mapping cache files...')
         self.status.setMaximum(len(self.cacheMapping))
+        self.status.setValue(0)
         c = 0
         for node in self.cacheMapping:
             node.cachePath.set( osp.dirname(self.cacheMapping[node]),
@@ -914,7 +954,7 @@ class BundleMaker(object):
                     type="string" )
             c += 1
             self.status.setValue(c)
-        self.status.setValue(0)
+        self.status.setMaximum(0)
 
     def mapParticleCache(self):
         # no need to map particle cache
@@ -995,6 +1035,7 @@ class BundleMaker(object):
         #                   copying to directories                            #
         #######################################################################
         self.status.setMaximum(len(subm.project_paths))
+        self.status.setValue(0)
         for pi, projectPath in enumerate(subm.project_paths):
             try:
                 self.status.setStatus('copying %s to directory %s ...'%(
@@ -1009,12 +1050,14 @@ class BundleMaker(object):
                 self.onError |= OnError.RAISE
                 self.status.error(detail, exc_info=True)
                 return False
+        self.status.setMaximum(0)
 
         #######################################################################
         #                       submitting jobs                               #
         #######################################################################
-        self.status.setMaximum(len(jobs))
         self.status.setStatus('creating jobs ')
+        self.status.setMaximum(len(jobs))
+        self.status.setValue(0)
         for ji, job in enumerate(jobs):
             self.status.setStatus('submitting job %d of %d' % (ji+1,
                 len(jobs)))
@@ -1029,7 +1072,7 @@ class BundleMaker(object):
                 self.onError |= OnError.RAISE
                 self.status.error(detail, exc_info=True)
                 return False
-        self.status.setValue(0)
+        self.status.setMaximum(0)
         return True
 
     def removeBundle(self):
