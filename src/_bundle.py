@@ -169,10 +169,11 @@ class _ProgressLogHandler(BaseBundleHandler):
             self.exit()
 
     def exit(self, code=0):
+        self.logger.info('ExitMaya')
         if pc.about(q=True, batch=True):
             sys.exit(code)
         else:
-            pc.quit(f=1,ec=code)
+            pc.quit(a=1,ec=code)
 
 
     @property
@@ -230,6 +231,18 @@ class BundleMaker(object):
 
     def setProgressHandler(self, ph=None):
         self._progressLogHandler.progressHandler = ph
+
+    def _restoreAttribute(attrName='onError'):
+        def _decorator(method):
+            def _wrapper(self, *args, **kwargs):
+                val = getattr(self, attrName)
+                try:
+                    ret = method(self, *args, **kwargs)
+                finally:
+                    setattr(self, attrName, val)
+                return ret
+            return _wrapper
+        return _decorator
 
     @property
     def errors(self):
@@ -446,9 +459,11 @@ class BundleMaker(object):
     def currentFileName(self):
         return cmds.file(location=True, q=True)
 
+    @_restoreAttribute()
     def collectTextures(self):
         self.status.setProcess('CollectTextures')
         self.status.setStatus('Checking texture files...')
+        self.onError = OnError.LOG_ASK
         textureFileNodes = self.getFileNodes()
         badTexturePaths = []
 
