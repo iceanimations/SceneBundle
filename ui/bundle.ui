@@ -302,6 +302,13 @@
           </spacer>
          </item>
          <item>
+          <widget class="QCheckBox" name="bgButton">
+           <property name="text">
+            <string>Use Background Process</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QToolButton" name="selectButton">
            <property name="toolTip">
             <string>Select all files</string>

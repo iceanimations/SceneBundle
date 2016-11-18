@@ -39,7 +39,13 @@ class BundleMakerProcess(BundleMakerBase):
             r'\s*(?P<status>.*)\s*')
     done_re = re.compile( r'\s*DONE\s*')
 
-    def createBundle(self):
+    def createBundle(self, name=None, project=None, episode=None,
+            sequence=None, shot=None):
+        if name is None: name = self.name
+        if project is None: project = self.project
+        if episode is None: episode = self.episode
+        if sequence is None: sequence = self.sequence
+        if shot is None: shot = self.shot
         command = []
         command.append(mayapyPaths.get(self.mayaversion))
         command.append(os.path.dirname(currentdir))

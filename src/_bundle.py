@@ -202,8 +202,8 @@ class BundleMakerBase(object):
 
     def __init__(self, progressHandler=None, path=None, filename=None,
             name=None, deadline=True, doArchive=False, delete=False,
-            keepReferences=False, pro=None, zdepth=None, seq=None, ep=None,
-            shot=None):
+            keepReferences=False, project=None, zdepth=None, sequence=None,
+            episode=None, shot=None):
         ''':type progressHandler: BundleProgressHandler'''
         self.textureExceptions = []
         self.deadline = deadline
@@ -213,9 +213,9 @@ class BundleMakerBase(object):
         self.zdepth = zdepth
         self.path = path
         self.name = name
-        self.pro = pro
-        self.seq = seq
-        self.ep = ep
+        self.project = project
+        self.sequence = sequence
+        self.episode = episode
         self.shot = shot
         self.filename = filename
         self.setProgressHandler(progressHandler)
@@ -271,7 +271,11 @@ class BundleMakerBase(object):
         self.status.onError = val
 
     def addExceptions(self, paths):
-        self.textureExceptions = paths[:]
+        self._textureExceptions = paths[:]
+    def getTextureExceptions(self):
+        return self._textureExceptions[:]
+    textureExceptions = property(fget=getTextureExceptions,
+            fset=addExceptions)
 
 class BundleMaker(BundleMakerBase):
     '''Bundle Maker class containing all functions'''
@@ -355,8 +359,13 @@ class BundleMaker(BundleMakerBase):
         self.status.setStatus('Opening File %s for bundling!'%self.filename)
         imaya.openFile(self.filename)
 
-    def createBundle(self, name=None, project=None, ep=None, seq=None,
-            sh=None):
+    def createBundle(self, name=None, project=None, episode=None, sequence=None,
+            shot=None):
+        if name is None: name = self.name
+        if project is None: project = self.project
+        if episode is None: episode = self.episode
+        if sequence is None: sequence = self.sequence
+        if shot is None: shot = self.shot
         self.status.setProcess('CreateBundle')
         ws = pc.workspace(o=True, q=True)
         if self.createProjectFolder(name):
@@ -385,7 +394,7 @@ class BundleMaker(BundleMakerBase):
                                         self.archive()
                                     if self.deadline:
                                         self.submitToDeadline(name, project,
-                                                ep, seq, sh)
+                                                episode, sequence, shot)
                                     if self.delete:
                                         self.deleteCacheNodes()
                                         self.status.setStatus(
@@ -402,7 +411,7 @@ class BundleMaker(BundleMakerBase):
     def createProjectFolder(self, name=None):
         self.clearData()
         path = self.path
-        if not name:
+        if name is None:
             name = self.getName()
         if path and name:
             try:
@@ -888,7 +897,6 @@ class BundleMaker(BundleMakerBase):
             else:
                 self.status.setStatus('No particle cache found...')
         return True
-
     def copyRef(self):
         self.status.setProcess('CopyRef')
         self.status.setStatus('copying references...')

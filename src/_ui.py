@@ -87,6 +87,7 @@ class BundleMakerUI(Form, Base):
         self.standalone = standalone
         self.setupUi(self)
         self.bundleMaker = BundleMaker(self)
+        self.textureExceptions = []
 
         self.animation = QPropertyAnimation(self, 'geometry')
         self.animation.setDuration(500)
@@ -274,12 +275,12 @@ class BundleMakerUI(Form, Base):
                         self.bundleMaker.openFile(filename)
                     except:
                         pass
-                    self.createBundle(name=name, pro=pro, ep=ep, seq=seq,
-                            sh=sh)
+                    self.createBundle(name=name, project=pro, episode=ep,
+                            sequence=seq, shot=sh)
 
         else:
-            self.createBundle(pro=pro, ep=self.getEp(), seq=self.getSeq(),
-                    sh=self.getSh())
+            self.createBundle(project=pro, episode=self.getEp(),
+                    sequence=self.getSeq(), shot=self.getSh())
 
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
@@ -287,20 +288,21 @@ class BundleMakerUI(Form, Base):
 
         self.showLogFileMessage()
 
-    def createBundle(self, name=None, pro=None, ep=None, seq=None, sh=None):
+    def createBundle(self, name=None, project=None, episode=None,
+            sequence=None, shot=None):
         self.bundleMaker.path = self.getPath()
         if name is None:
             name = self.getName()
-            pass
         self.bundleMaker.name = name
         self.bundleMaker.deadline = self.deadlineCheck.isChecked()
         self.bundleMaker.archive = self.makeZipButton.isChecked()
         self.bundleMaker.delete = not self.keepBundleButton.isChecked()
         self.bundleMaker.keepReferences = self.keepReferencesButton.isChecked()
+        self.bundleMaker.textureExceptions = self.textureExceptions
         try:
             self.openLogFile()
-            self.bundleMaker.createBundle(name=name, project=pro, ep=ep,
-                    seq=seq, sh=sh)
+            self.bundleMaker.createBundle(name=name, project=project,
+                    episode=episode, sequence=sequence, shot=shot)
         finally:
             self.closeLogFile()
 
@@ -392,7 +394,7 @@ class BundleMakerUI(Form, Base):
         Exceptions(self, self.textureExceptions).show()
 
     def addExceptions(self, paths):
-        self.bundleMaker.addExceptions(paths)
+        self.textureExceptions = paths[:]
 
     def openLogFile(self):
         try:
