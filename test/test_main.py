@@ -6,7 +6,7 @@ site.addsitedir(os.path.abspath('..'))
 site.addsitedir(r'R:\Python_Scripts\plugins\utilities')
 
 from src._bundle import BundleMaker
-from _testbase import _TestBase, normpath
+from _testbase import TestBase, normpath
 
 import pymel.core as pc
 
@@ -14,7 +14,7 @@ import subprocess
 
 currentdir = os.path.dirname(__file__)
 
-class TestMain(_TestBase):
+class TestMain(TestBase):
     bm = BundleMaker()
     zipfileName = 'mayaproj2.zip'
 
@@ -32,7 +32,6 @@ class TestMain(_TestBase):
         proc = subprocess.Popen(args, stdout=subprocess.PIPE,
                 stdin=subprocess.PIPE)
         out, err = proc.communicate('y\n')
-        print out
 
     @classmethod
     def tearDownClass(self):

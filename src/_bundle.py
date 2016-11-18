@@ -22,7 +22,7 @@ from . import _utilities as util
 
 mapFiles = util.mapFiles
 bundleFormatter = logging.Formatter(
-            fmt='%(name)s : %(levelname)s : %(asctime)s : %(message)s')
+        fmt='%(name)s : %(levelname)s : %(asctime)s : %(message)s' )
 loggerName = 'SCENE_BUNDLE'
 
 class OnError(object):
@@ -43,6 +43,7 @@ class BundleException(Exception):
 
 class BaseBundleHandler(object):
     __metaclass__ = abc.ABCMeta
+    onError = OnError.LOG
 
     @abc.abstractmethod
     def setProcess(self, desc):
@@ -79,7 +80,6 @@ class _ProgressLogHandler(BaseBundleHandler):
 
     maxx = None
     value = None
-    onError = OnError.LOG
     complete = None
 
     logKey = loggerName
@@ -135,7 +135,7 @@ class _ProgressLogHandler(BaseBundleHandler):
         if self.progressHandler:
             self.progressHandler.setValue(val)
 
-    def error(self, msg, exc_info=True):
+    def error(self,msg, exc_info=True):
         onError = self.onError
         self.errors.append(msg)
         if onError & OnError.LOG:
@@ -176,7 +176,6 @@ class _ProgressLogHandler(BaseBundleHandler):
         else:
             pc.quit(a=1,ec=code)
 
-
     @property
     def progressHandler(self):
         return self._progressHandler
@@ -198,42 +197,101 @@ class _ProgressLogHandler(BaseBundleHandler):
     def progressHandler(self):
         self._progressHandler = None
 
-class BundleMaker(object):
-    '''Bundle Maker class containing all functions'''
+class BundleMakerBase(object):
+    '''Base Bundle Maker Class Having all properties'''
 
     def __init__(self, progressHandler=None, path=None, filename=None,
             name=None, deadline=True, doArchive=False, delete=False,
-            keepReferences=False, pro=None, zdepth=False,
-            seq=None, ep=None, shot=None):
+            keepReferences=False, pro=None, zdepth=None, seq=None, ep=None,
+            shot=None):
         ''':type progressHandler: BundleProgressHandler'''
         self.textureExceptions = []
-        self.rootPath = None
-        self.texturesMapping = {}
-        self.collectedTextures = {}
-        self.refNodes = []
-        self.cacheMapping = {}
-        self.status = _ProgressLogHandler(progressHandler)
-
         self.deadline = deadline
         self.doArchive = doArchive
         self.delete = delete
         self.keepReferences = keepReferences
         self.zdepth = zdepth
-
         self.path = path
-
-        self.paths = []
         self.name = name
         self.pro = pro
         self.seq = seq
         self.ep = ep
         self.shot = shot
         self.filename = filename
+        self.setProgressHandler(progressHandler)
 
     def setProgressHandler(self, ph=None):
-        self._progressLogHandler.progressHandler = ph
+        self.status = ph
 
-    def _restoreAttribute(attrName='onError'):
+    @property
+    def keepReferences(self):
+        return self._keepReferences
+
+    @keepReferences.setter
+    def keepReferences(self, val):
+        self._keepReferences = val
+
+    @property
+    def zdepth(self):
+        return self._zdepth
+
+    @zdepth.setter
+    def zdepth(self, val):
+        self._zdepth = val
+
+    def getPath(self):
+        return self._path
+    def setPath(self, path):
+        self._path = path
+    path = property(fget=getPath, fset=setPath)
+
+    def getName(self):
+        return self._name
+    def setName(self, name):
+        self._name = name
+    name = property(fget=getName, fset=setName)
+
+    @property
+    def filename(self):
+        return self._filename
+
+    @filename.setter
+    def filename(self, fn):
+        self._filename = fn
+
+    @property
+    def onError(self):
+        if self.status:
+            return self.status.onError
+        else:
+            return BaseBundleHandler.onError
+
+    @onError.setter
+    def onError(self, val):
+        self.status.onError = val
+
+    def addExceptions(self, paths):
+        self.textureExceptions = paths[:]
+
+class BundleMaker(BundleMakerBase):
+    '''Bundle Maker class containing all functions'''
+
+    def __init__(self, *args, **kwargs):
+        ''':type progressHandler: BundleProgressHandler'''
+        self.status = _ProgressLogHandler()
+        super(BundleMaker, self).__init__(*args, **kwargs)
+        self.textureExceptions = []
+        self.rootPath = None
+        self.texturesMapping = {}
+        self.collectedTextures = {}
+        self.refNodes = []
+        self.cacheMapping = {}
+        self.paths = []
+
+    def setProgressHandler(self, ph=None):
+        self.status.progressHandler = ph
+
+    def _restoreAttribute(attrName):
         def _decorator(method):
             def _wrapper(self, *args, **kwargs):
                 val = getattr(self, attrName)
@@ -256,38 +314,6 @@ class BundleMaker(object):
     @property
     def logFilePath(self):
         return self.status.logFilePath
-
-    @property
-    def onError(self):
-        return self.status.onError
-
-    @onError.setter
-    def onError(self, val):
-        self.status.onError = val
-
-    @property
-    def filename(self):
-        return self._filename
-
-    @filename.setter
-    def filename(self, fn):
-        self._filename = fn
-
-    @property
-    def keepReferences(self):
-        return self._keepReferences
-
-    @keepReferences.setter
-    def keepReferences(self, val):
-        self._keepReferences = val
-
-    @property
-    def zdepth(self):
-        self._zdepth
-
-    @zdepth.setter
-    def zdepth(self, val):
-        self._zdepth = val
 
     def createScriptNode(self):
         '''Creates a unique script node which remap file in bundles scripts'''
@@ -373,18 +399,6 @@ class BundleMaker(object):
     def deleteCacheNodes(self):
         pc.delete(pc.ls(type=['cacheFile', pc.nt.RedshiftProxyMesh]))
 
-    def getPath(self):
-        return self._path
-    def setPath(self, path):
-        self._path = path
-    path = property(fget=getPath, fset=setPath)
-
-    def getName(self):
-        return self._name
-    def setName(self, name):
-        self._name = name
-    name = property(fget=getName, fset=setName)
-
     def createProjectFolder(self, name=None):
         self.clearData()
         path = self.path
@@ -460,7 +474,7 @@ class BundleMaker(object):
     def currentFileName(self):
         return cmds.file(location=True, q=True)
 
-    @_restoreAttribute()
+    @_restoreAttribute('onError')
     def collectTextures(self):
         self.status.setProcess('CollectTextures')
         self.status.setStatus('Checking texture files...')
@@ -1102,7 +1116,4 @@ class BundleMaker(object):
             self.status.error(detail, exc_info=True)
             return False
         return True
-
-    def addExceptions(self, paths):
-        self.textureExceptions = paths[:]
 

@@ -16,7 +16,7 @@ from PyQt4.QtGui import QApplication, qApp, QMessageBox
 from PyQt4.QtTest import QTest
 from PyQt4.QtCore import Qt, QObject, QTimer
 
-from _testbase import _TestBase, normpath, _TestBundleHandler
+from _testbase import TestBase, normpath, TestBundleHandler
 
 import maya.cmds as mc
 
@@ -47,7 +47,7 @@ class DiagHelper(QObject):
         self.timer.start(time)
 
 
-class TestBundleMakerUI(_TestBase):
+class TestBundleMakerUI(TestBase):
     tmpdir = r'd:\temp'
     name = 'bundle'
     srcdir = os.path.join(tmpdir, 'mayaproj')
@@ -55,7 +55,7 @@ class TestBundleMakerUI(_TestBase):
     zipfileName = 'mayaproj2.zip'
 
     def __init__(self, *args):
-        _TestBase.__init__(self, *args)
+        TestBase.__init__(self, *args)
 
     @classmethod
     def setUpClass(self):
@@ -64,7 +64,7 @@ class TestBundleMakerUI(_TestBase):
             shutil.rmtree(self.rootPath)
 
         super(TestBundleMakerUI, self).setUpClass()
-        self.handler = _TestBundleHandler()
+        self.handler = TestBundleHandler()
 
         self.gui = BundleMakerUI()
         self.gui.show()

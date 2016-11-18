@@ -78,16 +78,21 @@ class MainBundleHandler(_ProgressLogHandler):
         if self.bundler:
             ask = self.bundler.onError & OnError.ASK
         if ask:
-            print ("Continue (Y/N)?"),
+            self.logger.info (" Question : Continue ((Y)es/(N)o/(E)xit)?")
             resp = raw_input("")
             resp = resp.strip()
-            if resp == 'y' or resp =='Y':
+            if resp == 'y' or resp == 'Y':
                 return OnError.LOG
+            if resp == 'e' or resp == 'E':
+                return OnError.LOG_EXIT
+        return OnError.LOG_RAISE
+
+    def done(self):
+        sys.exit(0)
         return OnError.LOG_EXIT
 
     def warning(self, msg): pass
     def step(self): pass
-    def done(self): pass
     def setProcess(self, process): pass
     def setMaximum(self, maxx): pass
     def setStatus(self, status): pass

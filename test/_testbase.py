@@ -24,7 +24,7 @@ def mkdir(path):
         os.mkdir(path)
         return True
 
-class _TestBase(unittest.TestCase):
+class TestBase(unittest.TestCase):
     '''Base class for Inheritance'''
     tmpdir = r'd:\temp'
     name = 'bundle'
@@ -53,7 +53,7 @@ class _TestBase(unittest.TestCase):
     def tearDownClass(self):
         shutil.rmtree(self.srcdir)
 
-class _TestBundleHandler(BaseBundleHandler):
+class TestBundleHandler(BaseBundleHandler):
     process = ''
     maxx = 0
     value = 0
@@ -64,32 +64,43 @@ class _TestBundleHandler(BaseBundleHandler):
         self.handler = logging.StreamHandler(sys.stdout)
         self.handler.setFormatter(_ProgressLogHandler.formatter)
         self.logger.addHandler(self.handler)
+        self.counts = {}
 
-    @property
-    def processName(self):
-        return self.process + ': ' if self.process else ''
+    def count(self, name):
+        self.counts[name] = self.counts.get(name, 0) + 1
 
     def setProcess(self, process):
         self.process = process
+        self.logger.info('Process : %s' %(self.process))
+        self.count('setProcess')
 
     def setStatus(self, msg):
-        logging.info(self.processName + msg)
+        self.status = msg
+        self.logger.info('Status : %s : %s' %(self.process, msg))
+        self.count('setStatus')
 
     def setMaximum(self, maxx):
         self.maxx = maxx
+        self.count('setMaximum')
 
     def setValue(self, value):
         if self.maxx:
-            logging.info( self.processName +
-                    '%d of %d Done' % (self.value, self.maxx) )
+            self.logger.info('Progress : %s : %s of %s' % (self.process,
+                self.value, self.maxx))
         self.value = value
+        self.count('setValue')
 
     def error(self, msg, exc_info=False):
-        logging.error(self.processName + msg, exc_info=exc_info)
+        self.err = msg
+        self.logger.error('%s : %s' %(self.process, msg))
+        self.count('error')
 
     def warning(self, msg):
-        logging.warning(self.processName + msg)
+        self.warn = msg
+        self.logger.warning('%s : %s' %(self.process, msg))
+        self.count('warning')
 
     def done(self):
-        pass
+        self.logger.info('DONE')
+        self.count('done')
 

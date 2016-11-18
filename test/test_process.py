@@ -1,57 +1,54 @@
-import os
 import shutil
+import os
+import site
 import unittest
 
-import pymel.core as pc
-
-import site
 site.addsitedir(os.path.abspath('..'))
 site.addsitedir(r'R:\Python_Scripts\plugins\utilities')
 
-from src._bundle import BundleMaker
-from _testbase import TestBase, normpath, TestBundleHandler
+from src._process import BundleMakerProcess, OnError
+from _testbase import TestBase, TestBundleHandler
 
 currentdir = os.path.dirname(__file__)
 
-class TestBundle(TestBase):
-    handler = TestBundleHandler()
-    bm = BundleMaker()
+class TestBundleProcess(TestBase):
+    bp = BundleMakerProcess()
+    zipfileName = 'mayaproj2.zip'
 
     @classmethod
     def setUpClass(self):
-        super(TestBundle, self).setUpClass()
-        self.bm.name = self.name
-        self.bm.filename = os.path.join( self.tmpdir, 'mayaproj', 'scenes',
+        super(TestBundleProcess, self).setUpClass()
+        self.handler = TestBundleHandler()
+        self.bp.setProgressHandler(self.handler)
+        self.bp.name = self.name
+        self.bp.filename = os.path.join( self.tmpdir, 'mayaproj', 'scenes',
                 'mayaproj.ma' )
-        self.bm.path = self.tmpdir
-        self.bm.deadline = False
-        self.bm.archive = False
-        self.bm.delete = False
-        self.bm.keepReferences = True
+        self.bp.path = self.tmpdir
+        self.bp.deadline = False
+        self.bp.archive = False
+        self.bp.delete = False
+        self.bp.keepReferences = True
+        self.bp.onError = OnError.LOG
 
-        rootPath = os.path.join(self.bm.path, self.bm.name)
-        if os.path.exists(rootPath):
-            shutil.rmtree(rootPath)
+        self.rootPath = os.path.join(self.tmpdir, self.name)
+        if os.path.exists(self.rootPath):
+            shutil.rmtree(self.rootPath)
 
-        self.bm.openFile()
-        self.bm.createBundle()
+        self.bp.createBundle()
 
     @classmethod
     def tearDownClass(self):
-        pc.newFile(f=1)
-        super(TestBundle, self).tearDownClass()
-        self.bm.removeBundle()
+        super(TestBundleProcess, self).tearDownClass()
+        shutil.rmtree( os.path.join( self.bp.path, self.bp.name ) )
 
     def testRootPath(self):
-        rootPath = self.bm.rootPath
-        constructed = normpath(os.path.join( self.bm.path, self.bm.name ))
-        self.assertEqual(rootPath, constructed)
+        self.assertTrue(os.path.exists(self.rootPath))
 
     def testTextures(self):
         images = []
-        images.append ( r"sourceimages\1\Form_1001.png" )
-        images.append ( r"sourceimages\1\Form_1002.png" )
-        images.append ( r"sourceimages\0\image.1001.jpg" )
+        images.append ( r"sourceimages\0\Form_1001.png" )
+        images.append ( r"sourceimages\0\Form_1002.png" )
+        # images.append ( r"sourceimages\0\image.1001.jpg" )
         for image in images:
             self.assertTrue( os.path.exists( os.path.join( self.tmpdir,
                 self.name, image ) ) )
@@ -78,6 +75,11 @@ class TestBundle(TestBase):
         ref_file = os.path.join( self.tmpdir, self.name,
                 r"scenes\refs\air_horn_shaded.ma" )
         self.assertTrue( os.path.exists(ref_file) )
+
+    def testParsing(self):
+        self.assertEqual(self.bp.status.counts,
+                {'setMaximum': 16, 'setValue': 16, 'setProcess': 12,
+                    'setStatus': 18, 'done': 1, 'error': 1})
 
 if __name__ == "__main__":
     unittest.main()

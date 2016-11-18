@@ -25,7 +25,7 @@ import maya.cmds as cmds
 
 from . import _bundle
 BundleMaker = _bundle.BundleMaker
-onError = _bundle.OnError
+OnError = _bundle.OnError
 
 root_path = osp.dirname(osp.dirname(__file__))
 ui_path = osp.join(root_path, 'ui')
@@ -451,11 +451,11 @@ class BundleMakerUI(Form, Base):
                     icon=QMessageBox.Information,
                     btns=QMessageBox.Yes|QMessageBox.No)
             if btn == QMessageBox.Yes:
-                return onError.LOG
+                return OnError.LOG
             else:
-                return onError.LOG_RAISE
+                return OnError.LOG_RAISE
         else:
-            return onError.LOG
+            return OnError.LOG
 
     def warning(self, msg):
         self.createLog('\r\nWarning:' + msg)
