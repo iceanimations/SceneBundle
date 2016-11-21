@@ -2,7 +2,7 @@ import subprocess
 import re
 import os
 
-from ._bundle import ( OnError, loggerName, BundleException, BundleMakerBase )
+from ._base import ( OnError, loggerName, BundleException, BundleMakerBase )
 
 currentdir = os.path.dirname(os.path.abspath( __file__ ))
 mayapyPaths = {

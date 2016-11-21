@@ -5,7 +5,7 @@ import shutil
 import logging
 import sys
 
-from src._bundle import BaseBundleHandler, _ProgressLogHandler
+from src._base import BaseBundleHandler, bundleFormatter
 
 currentdir = os.path.dirname(__file__)
 
@@ -62,7 +62,7 @@ class TestBundleHandler(BaseBundleHandler):
     def __init__(self):
         self.logger = logging.getLogger(self.logger)
         self.handler = logging.StreamHandler(sys.stdout)
-        self.handler.setFormatter(_ProgressLogHandler.formatter)
+        self.handler.setFormatter(bundleFormatter)
         self.logger.addHandler(self.handler)
         self.counts = {}
 

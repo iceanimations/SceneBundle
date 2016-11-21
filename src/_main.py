@@ -4,8 +4,7 @@ import sys
 import logging
 
 sys.path.insert(0, '.')
-from _bundle import ( BundleMaker, OnError, bundleFormatter, loggerName,
-        _ProgressLogHandler )
+from _bundle import ( BundleMaker, OnError, BundleMakerHandler )
 
 class CondAction(argparse._StoreTrueAction):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
@@ -57,7 +56,7 @@ def build_parser():
             choices=range(OnError.ALL), default=OnError.LOG)
     return parser
 
-class MainBundleHandler(_ProgressLogHandler):
+class MainBundleHandler(BundleMakerHandler):
     def __init__(self, stream, bundler=None):
         self.logger = logging.getLogger(self.logKey)
         self.stream = stream
