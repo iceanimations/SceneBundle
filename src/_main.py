@@ -77,7 +77,7 @@ class MainBundleHandler(BundleMakerHandler):
         if self.bundler:
             ask = self.bundler.onError & OnError.ASK
         if ask:
-            self.logger.info (" Question : Continue ((Y)es/(N)o/(E)xit)?")
+            self.logger.info ("Question: Continue ((Y)es/(N)o/(E)xit)?")
             resp = raw_input("")
             resp = resp.strip()
             if resp == 'y' or resp == 'Y':

@@ -16,7 +16,7 @@ from PyQt4.QtGui import QApplication, qApp
 from PyQt4.QtTest import QTest
 from PyQt4.QtCore import Qt, QObject, QTimer
 
-from _testbase import TestBase, normpath, TestBundleHandler
+from _testbase import TestBase, TestBundleHandler, setUp, tearDown
 
 import maya.cmds as mc
 
@@ -31,27 +31,50 @@ currentdir = os.path.dirname(__file__)
 class DiagHelper(QObject):
     key = None
     func = None
+    time = None
+    keyword = None
+
+    def __init__(self, key=None, func=None, time=1000, keyword=None):
+        super(DiagHelper, self).__init__()
+        self.key = key
+        self.func = func
+        self.time = time
+        self.keyword = keyword
+
+    def recognize(self, obj):
+        if self.keyword is None:
+            return True
+        text = ''
+        try: text = obj.text()
+        except AttributeError: pass
+        if self.keyword.lower() in text.lower():
+            return True
+        return False
 
     def dismissDialog(self, *args):
-        QTest.keyClick(qApp.activeModalWidget(), self.key)
+        activeWidget = qApp.activeModalWidget()
+        if self.recognize(activeWidget):
+            QTest.keyClick(qApp.activeModalWidget(), self.key)
+            self.timer.stop()
 
-    def activate(self, time=1000, func=None):
+    def activate(self, time=None, func=None):
         if func is None:
             if self.func is None:
                 func = self.dismissDialog
             else:
                 func = self.func
+        if time is not None:
+            self.time = time
         self.timer = QTimer(self)
         self.timer.timeout.connect(func)
-        self.timer.setSingleShot(True)
-        self.timer.start(time)
+        self.timer.start(self.time)
 
 
-class TestBundleMakerUI(TestBase):
+class TestBundleMakerUI_CurrentScene(TestBase):
     tmpdir = r'd:\temp'
     name = 'bundle'
-    srcdir = os.path.join(tmpdir, 'mayaproj')
-    bundledir = os.path.join(tmpdir, name)
+    srcdir = 'mayaproj'
+    bundledir = name
     zipfileName = 'mayaproj2.zip'
 
     def __init__(self, *args):
@@ -59,12 +82,9 @@ class TestBundleMakerUI(TestBase):
 
     @classmethod
     def setUpClass(self):
-        self.rootPath = os.path.join(self.tmpdir, self.name)
-        if os.path.exists(self.rootPath):
-            shutil.rmtree(self.rootPath)
-
-        super(TestBundleMakerUI, self).setUpClass()
+        super(TestBundleMakerUI_CurrentScene, self).setUpClass()
         self.handler = TestBundleHandler()
+        self.rootPath = os.path.join(self.tmpdir, self.bundledir)
 
         self.gui = BundleMakerUI()
         self.gui.show()
@@ -72,7 +92,7 @@ class TestBundleMakerUI(TestBase):
         time.sleep(0.5)
 
         self.gui.bundleMaker.progressHandler=self.handler
-        self.gui.bundleMaker.filename = os.path.join(self.tmpdir, 'mayaproj',
+        self.gui.bundleMaker.filename = os.path.join(self.tmpdir, self.srcdir,
                 'scenes', 'mayaproj.ma')
         self.gui.bundleMaker.openFile()
 
@@ -90,31 +110,29 @@ class TestBundleMakerUI(TestBase):
         qApp.processEvents()
         time.sleep(1)
 
-        diag1 = DiagHelper()
-        diag1.key = Qt.Key_Enter
-        diag1.activate(1000)
-        diag2 = DiagHelper()
-        diag2.key = Qt.Key_Escape
-        diag2.activate(2000)
+        dh1 = DiagHelper(key=Qt.Key_Enter, time=1000,
+                keyword='CollectTextures')
+        dh1.activate()
+        dh2 = DiagHelper(key=Qt.Key_Escape, time=2000,
+                keyword='latestErrorLog')
+        dh2.activate()
         QTest.mouseClick(self.gui.bundleButton, Qt.LeftButton)
         time.sleep(1)
 
     @classmethod
     def tearDownClass(self):
         mc.file(new=1, f=1)
-        super(TestBundleMakerUI, self).tearDownClass()
-        self.gui.bundleMaker.removeBundle()
+        super(TestBundleMakerUI_CurrentScene, self).tearDownClass()
+        shutil.rmtree(self.rootPath)
 
     def testRootPath(self):
-        rootPath = self.rootPath
-        constructed = normpath(os.path.join( self.tmpdir, self.name ))
-        self.assertEqual(rootPath, constructed)
+        self.assertTrue(os.path.exists(self.rootPath))
 
     def testTextures(self):
         images = []
         images.append ( r"sourceimages\1\Form_1001.png" )
         images.append ( r"sourceimages\1\Form_1002.png" )
-        images = [os.path.join(self.tmpdir, self.name, image) for image in
+        images = [os.path.join(self.tmpdir, self.bundledir, image) for image in
                 images]
         self.assertTrue( ( any(os.path.exists(image)) for image in images ) )
 
@@ -140,6 +158,88 @@ class TestBundleMakerUI(TestBase):
         ref_file = os.path.join(self.tmpdir, self.name,
                 r"scenes\refs\air_horn_shaded.ma")
         self.assertTrue(os.path.exists(ref_file))
+
+
+class TestBundleMakerUI_List(TestBase):
+    srcdir = ('mayaproj1', 'mayaproj2')
+    name = ('bundle1', 'bundle2')
+    bundledir = name
+    zipfileName = ('mayaproj.zip', 'mayaproj2.zip')
+
+    @classmethod
+    def setUpClass(self):
+        self.rootPaths = []
+        paths = []
+        for srcdir, bundledir, zipfileName in zip(self.srcdir, self.bundledir,
+                self.zipfileName):
+            setUp(self.tmpdir, os.path.join( self.tmpdir, srcdir ),
+                    os.path.join( self.tmpdir, bundledir ), zipfileName)
+            self.rootPaths.append(os.path.join(self.tmpdir, bundledir))
+            filename = os.path.join(self.tmpdir, srcdir, 'scenes',
+                    'mayaproj.ma')
+            paths.append(' | '.join( [bundledir, filename, '', '', ''] ))
+        self.rootPaths = tuple(self.rootPaths)
+
+        self.handler = TestBundleHandler()
+        self.gui = BundleMakerUI()
+        self.gui.setPaths(paths)
+        self.gui.show()
+        QTest.mouseClick(self.gui.keepBundleButton, Qt.LeftButton)
+        QTest.mouseClick(self.gui.deadlineCheck, Qt.LeftButton)
+        QTest.mouseClick(self.gui.keepReferencesButton, Qt.LeftButton)
+
+        qApp.processEvents()
+        QTest.mouseClick(self.gui.bundleButton, Qt.LeftButton)
+        time.sleep(1)
+
+    def testRootPaths(self):
+       for rootPath in self.rootPaths:
+            self.assertTrue(os.path.exists(rootPath))
+
+    def testTextures(self):
+        for bundledir in self.bundledir:
+            images = []
+            images.append ( r"sourceimages\1\Form_1001.png" )
+            images.append ( r"sourceimages\1\Form_1002.png" )
+            images = [os.path.join(self.tmpdir, bundledir, image) for image in
+                    images]
+            self.assertTrue((any(os.path.exists(image)) for image in images))
+
+    def testCaches(self):
+        for bundledir in self.bundledir:
+            caches = []
+            caches.append(r"data\air_hornShape.xml")
+            caches.append(r"data\air_hornShape.mcx")
+            for cache in caches:
+                self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
+                    bundledir, cache)))
+
+    def testRsProxies(self):
+        for bundledir in self.bundledir:
+            proxies = ["proxies\\"+ 'bundle' +
+                    r"\data\air_horn_shaded_v001.rs"]
+            for proxy in proxies:
+                self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
+                    bundledir, proxy)))
+
+    def testMayaFile(self):
+        for bundledir in self.bundledir:
+            mayafile = os.path.join( self.tmpdir, bundledir, "scenes",
+                    bundledir + ".ma" )
+            self.assertTrue(os.path.exists(mayafile))
+
+    def testReferences(self):
+        for bundledir in self.bundledir:
+            ref_file = os.path.join(self.tmpdir, bundledir,
+                    r"scenes\refs\air_horn_shaded.ma")
+            self.assertTrue(os.path.exists(ref_file))
+
+    @classmethod
+    def tearDownClass(self):
+        for srcdir, bundledir in zip( self.srcdir, self.bundledir ):
+            tearDown(os.path.join(self.tmpdir, srcdir))
+            tearDown(os.path.join(self.tmpdir, bundledir))
+            # tearDown(os.path.join(self.tmpdir, 'mayaproj'))
 
 
 if __name__ == "__main__":

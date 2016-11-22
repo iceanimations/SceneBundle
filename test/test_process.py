@@ -1,10 +1,6 @@
 import shutil
 import os
-import site
 import unittest
-
-site.addsitedir(os.path.abspath('..'))
-site.addsitedir(r'R:\Python_Scripts\plugins\utilities')
 
 from src._process import BundleMakerProcess, OnError
 from _testbase import TestBase, TestBundleHandler
@@ -78,8 +74,8 @@ class TestBundleProcess(TestBase):
 
     def testParsing(self):
         self.assertEqual(self.bp.status.counts,
-                {'setMaximum': 16, 'setValue': 16, 'setProcess': 12,
-                    'setStatus': 18, 'done': 1, 'error': 1})
+                {'setMaximum': 16, 'setValue': 16, 'setProcess': 13,
+                    'setStatus': 19, 'done': 1, 'error': 1})
 
 if __name__ == "__main__":
     unittest.main()

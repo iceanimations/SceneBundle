@@ -5,6 +5,12 @@ import shutil
 import logging
 import sys
 
+import site
+sys.path.insert(0, r'd:\talha.ahmed\workspace\pyenv_maya\tactic')
+site.addsitedir(os.path.abspath('..'))
+site.addsitedir(r'R:\Python_Scripts\plugins\utilities')
+site.addsitedir(r'R:\Python_Scripts\plugins')
+
 from src._base import BaseBundleHandler, bundleFormatter
 
 currentdir = os.path.dirname(__file__)
@@ -24,34 +30,43 @@ def mkdir(path):
         os.mkdir(path)
         return True
 
+def setUp(tmpdir, srcdir, bundledir, zipfileName):
+    if not os.path.exists(tmpdir):
+        mkdir(tmpdir)
+    if os.path.exists(srcdir):
+        shutil.rmtree(srcdir)
+    if not os.path.exists(os.path.join(currentdir, zipfileName)):
+        raise IOError, 'Cannot find zip file'
+    unpack_dir = os.path.join(tmpdir, 'mayaproj')
+    if not os.path.exists(unpack_dir):
+        with zipfile.ZipFile(os.path.join(currentdir, zipfileName), 'r') as z:
+            z.extractall(tmpdir)
+    if unpack_dir != srcdir:
+        shutil.copytree(unpack_dir, srcdir)
+    rootPath = os.path.join(tmpdir, bundledir)
+    if os.path.exists(rootPath):
+        shutil.rmtree(rootPath)
+    if not os.path.exists(srcdir):
+        raise IOError, "Cannot find the directory for testing"
+
+def tearDown(srcdir):
+    shutil.rmtree(srcdir)
+
 class TestBase(unittest.TestCase):
     '''Base class for Inheritance'''
     tmpdir = r'd:\temp'
-    name = 'bundle'
-    srcdir = os.path.join(tmpdir, 'mayaproj')
-    bundledir = os.path.join(tmpdir, name)
+    srcdir = 'mayaproj'
+    bundledir = 'bundle'
     zipfileName = 'mayaproj.zip'
 
     @classmethod
     def setUpClass(self):
-        if not os.path.exists(self.tmpdir):
-            mkdir(self.tmpdir)
-
-        if os.path.exists(self.srcdir):
-            shutil.rmtree(self.srcdir)
-
-        if not os.path.exists(os.path.join(currentdir, self.zipfileName)):
-            raise IOError, 'Cannot find zip file'
-
-        with zipfile.ZipFile(os.path.join(currentdir, self.zipfileName), 'r') as z:
-            z.extractall(self.tmpdir)
-
-        if not os.path.exists(self.srcdir):
-            raise IOError, "Cannot find the directory for testing"
+        setUp(self.tmpdir, os.path.join(self.tmpdir, self.srcdir),
+                os.path.join(self.tmpdir, self.bundledir), self.zipfileName)
 
     @classmethod
     def tearDownClass(self):
-        shutil.rmtree(self.srcdir)
+        tearDown(os.path.join(self.tmpdir, self.srcdir))
 
 class TestBundleHandler(BaseBundleHandler):
     process = ''
@@ -63,7 +78,9 @@ class TestBundleHandler(BaseBundleHandler):
         self.logger = logging.getLogger(self.logger)
         self.handler = logging.StreamHandler(sys.stdout)
         self.handler.setFormatter(bundleFormatter)
+        self.handler.setLevel(logging.INFO)
         self.logger.addHandler(self.handler)
+        self.logger.setLevel(logging.INFO)
         self.counts = {}
 
     def count(self, name):

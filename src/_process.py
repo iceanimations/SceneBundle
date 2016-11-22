@@ -185,8 +185,8 @@ class BundleMakerProcess(BundleMakerBase):
             line = self.line
         match = self.progress_re.match(line)
         if match:
-            maxx = match.group('maxx')
-            val = match.group('val')
+            maxx = int( match.group('maxx') )
+            val = int( match.group('val' ))
             self.status.setMaximum(maxx)
             self.status.setValue(val)
         return match

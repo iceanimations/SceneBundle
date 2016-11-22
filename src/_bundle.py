@@ -105,10 +105,13 @@ class BundleMaker(BundleMakerBase):
 
     def openFile(self, filename=None):
         self.status.setProcess('FileOpen')
-        if filename is not None:
-            self.filename = filename
+        if filename is None:
+            filename = self.filename
         self.status.setStatus('Opening File %s for bundling!'%self.filename)
-        imaya.openFile(self.filename)
+        try:
+            imaya.openFile(self.filename)
+        except RuntimeError as e:
+            self.status.error('Cannot Open File %s ... %s' %(filename, str(e)))
 
     def createBundle(self, name=None, project=None, episode=None, sequence=None,
             shot=None):
@@ -119,6 +122,8 @@ class BundleMaker(BundleMakerBase):
         if shot is None: shot = self.shot
         self.status.setProcess('CreateBundle')
         ws = pc.workspace(o=True, q=True)
+        if self.filename and cmds.file(q=1, sn=1) != self.filename:
+            self.openFile()
         if self.createProjectFolder(name):
             if self.deadline:
                 if self.zdepth:

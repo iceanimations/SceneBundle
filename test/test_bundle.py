@@ -4,10 +4,6 @@ import unittest
 
 import pymel.core as pc
 
-import site
-site.addsitedir(os.path.abspath('..'))
-site.addsitedir(r'R:\Python_Scripts\plugins\utilities')
-
 from src._bundle import BundleMaker
 from _testbase import TestBase, normpath, TestBundleHandler
 

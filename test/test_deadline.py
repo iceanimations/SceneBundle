@@ -1,6 +1,5 @@
 import unittest
 import functools
-import site
 
 
 def printargs(funcName, *args, **kwargs):
@@ -8,7 +7,6 @@ def printargs(funcName, *args, **kwargs):
     print args
     print kwargs
 
-site.addsitedir(r'R:\Python_Scripts\plugins')
 from src import _deadline as dl
 dl.dl.deadlineCommand = functools.partial(printargs, 'deadlineCommand')
 

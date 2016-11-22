@@ -21,10 +21,20 @@ import yaml
 import traceback
 import logging
 
-import maya.cmds as cmds
+isMaya = True
+isMayaGUI = True
+try:
+    import maya.cmds as cmds
+    if cmds.about(q=True, batch=True):
+        isMayaGUI = False
+except ImportError:
+    isMaya = False
+    isMayaGUI = False
 
 from . import _bundle
+from . import _process
 BundleMaker = _bundle.BundleMaker
+BundleMakerProcess = _process.BundleMakerProcess
 OnError = _bundle.OnError
 
 root_path = osp.dirname(osp.dirname(__file__))
@@ -82,11 +92,15 @@ Form, Base = uic.loadUiType(osp.join(ui_path, 'bundle.ui'))
 class BundleMakerUI(Form, Base):
     settings = BundleSettings()
     bundleMaker = None
+    filename = None
+    onError = OnError.LOG
+
     def __init__(self, parent=qtfy.getMayaWindow(), standalone=False):
         super(BundleMakerUI, self).__init__(parent)
         self.standalone = standalone
         self.setupUi(self)
         self.bundleMaker = BundleMaker(self)
+        # self.bundleMaker = BundleMakerProcess(self)
         self.textureExceptions = []
 
         self.animation = QPropertyAnimation(self, 'geometry')
@@ -270,6 +284,7 @@ class BundleMakerUI(Form, Base):
                 qApp.processEvents()
                 name, filename, ep, seq, sh = item.text().split(' | ')
                 if osp.splitext(filename)[-1] in ['.ma', '.mb']:
+                    self.filename = filename
                     try:
                         self.bundleMaker.filename = filename
                         self.bundleMaker.openFile(filename)
@@ -279,6 +294,7 @@ class BundleMakerUI(Form, Base):
                             sequence=seq, shot=sh)
 
         else:
+            self.filename = cmds.file(q=1, sn=1)
             self.createBundle(project=pro, episode=self.getEp(),
                     sequence=self.getSeq(), shot=self.getSh())
 
@@ -293,6 +309,7 @@ class BundleMakerUI(Form, Base):
         self.bundleMaker.path = self.getPath()
         if name is None:
             name = self.getName()
+        self.bundleMaker.filename = self.filename
         self.bundleMaker.name = name
         self.bundleMaker.deadline = self.deadlineCheck.isChecked()
         self.bundleMaker.archive = self.makeZipButton.isChecked()
@@ -436,8 +453,7 @@ class BundleMakerUI(Form, Base):
         qApp.processEvents()
 
     def done(self):
-        if self.isCurrentScene():
-            cmds.file(new=1, f=1)
+        cmds.file(new=1, f=1)
 
     def error(self, msg):
         exc = traceback.format_exc()
