@@ -16,6 +16,7 @@ class TestBundle(TestBase):
     @classmethod
     def setUpClass(self):
         super(TestBundle, self).setUpClass()
+        self.name = self.bundledir
         self.bm.name = self.name
         self.bm.filename = os.path.join( self.tmpdir, 'mayaproj', 'scenes',
                 'mayaproj.ma' )

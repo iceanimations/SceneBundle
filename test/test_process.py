@@ -16,7 +16,8 @@ class TestBundleProcess(TestBase):
         super(TestBundleProcess, self).setUpClass()
         self.handler = TestBundleHandler()
         self.bp.setProgressHandler(self.handler)
-        self.bp.name = self.name
+        self.bp.name = self.bundledir
+        self.name = self.bundledir
         self.bp.filename = os.path.join( self.tmpdir, 'mayaproj', 'scenes',
                 'mayaproj.ma' )
         self.bp.path = self.tmpdir

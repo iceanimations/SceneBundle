@@ -21,12 +21,12 @@ class TestMain(TestBase):
     @classmethod
     def setUpClass(self):
         super(TestMain, self).setUpClass()
+        self.name = self.bundledir
         args = [os.path.join( self.tmpdir, 'mayaproj', 'scenes',
             'mayaproj.ma'), '-n', self.name, '-tp', self.tmpdir, '-r']
         self.bm.name = self.name
         self.bm.path = self.tmpdir
         self.bm.rootPath = normpath(os.path.join( self.bm.path, self.bm.name ))
-        # bundleMain(self.bm, args)
         args.insert(0, os.path.dirname(currentdir))
         args.insert(0, sys.executable)
         proc = subprocess.Popen(args, stdout=subprocess.PIPE,
