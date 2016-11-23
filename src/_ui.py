@@ -100,7 +100,8 @@ class BundleMakerUI(Form, Base):
         self.standalone = standalone
         self.setupUi(self)
         self.bundleMaker = BundleMaker(self)
-        # self.bundleMaker = BundleMakerProcess(self)
+        self.bundleProcess = BundleMakerProcess(self)
+        self.bundler = self.bundleMaker
         self.textureExceptions = []
 
         self.animation = QPropertyAnimation(self, 'geometry')
@@ -135,6 +136,8 @@ class BundleMakerUI(Form, Base):
                 [self.epBox2, self.seqBox2, self.shBox2])
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2,
                 self.seqBox2, self.shBox2)
+
+        self.bgButton.setChecked(True)
 
         if self.standalone:
             self.currentSceneButton.setEnabled(False)
@@ -259,6 +262,10 @@ class BundleMakerUI(Form, Base):
                 return
 
         if not self.isCurrentScene():
+            if self.bgButton.isChecked():
+                self.bundler = self.bundleProcess
+            else:
+                self.bundler = self.bundleMaker
             if not self.getPath(): # Bundle location path
                 return
             total = self.filesBox.count()
@@ -286,14 +293,15 @@ class BundleMakerUI(Form, Base):
                 if osp.splitext(filename)[-1] in ['.ma', '.mb']:
                     self.filename = filename
                     try:
-                        self.bundleMaker.filename = filename
-                        self.bundleMaker.openFile(filename)
+                        self.bundler.filename = filename
+                        self.bundler.openFile(filename)
                     except:
                         pass
                     self.createBundle(name=name, project=pro, episode=ep,
                             sequence=seq, shot=sh)
 
         else:
+            self.bundler = self.bundleMaker
             self.filename = cmds.file(q=1, sn=1)
             self.createBundle(project=pro, episode=self.getEp(),
                     sequence=self.getSeq(), shot=self.getSh())
@@ -306,19 +314,19 @@ class BundleMakerUI(Form, Base):
 
     def createBundle(self, name=None, project=None, episode=None,
             sequence=None, shot=None):
-        self.bundleMaker.path = self.getPath()
+        self.bundler.path = self.getPath()
         if name is None:
             name = self.getName()
-        self.bundleMaker.filename = self.filename
-        self.bundleMaker.name = name
-        self.bundleMaker.deadline = self.deadlineCheck.isChecked()
-        self.bundleMaker.archive = self.makeZipButton.isChecked()
-        self.bundleMaker.delete = not self.keepBundleButton.isChecked()
-        self.bundleMaker.keepReferences = self.keepReferencesButton.isChecked()
-        self.bundleMaker.textureExceptions = self.textureExceptions
+        self.bundler.filename = self.filename
+        self.bundler.name = name
+        self.bundler.deadline = self.deadlineCheck.isChecked()
+        self.bundler.archive = self.makeZipButton.isChecked()
+        self.bundler.delete = not self.keepBundleButton.isChecked()
+        self.bundler.keepReferences = self.keepReferencesButton.isChecked()
+        self.bundler.textureExceptions = self.textureExceptions
         try:
             self.openLogFile()
-            self.bundleMaker.createBundle(name=name, project=project,
+            self.bundler.createBundle(name=name, project=project,
                     episode=episode, sequence=sequence, shot=shot)
         finally:
             self.closeLogFile()

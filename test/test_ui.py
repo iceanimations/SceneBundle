@@ -161,10 +161,10 @@ class TestBundleMakerUI_CurrentScene(TestBase):
 
 
 class TestBundleMakerUI_List(TestBase):
-    srcdir = ('mayaproj1', 'mayaproj2')
-    name = ('bundle1', 'bundle2')
+    srcdir = ('mayaproj1', 'mayaproj2', 'mayaproj3')
+    name = ('bundle1', 'bundle2', 'bundle3')
     bundledir = name
-    zipfileName = ('mayaproj.zip', 'mayaproj2.zip')
+    zipfileName = ('mayaproj.zip', 'mayaproj2.zip', 'mayaproj.zip')
 
     @classmethod
     def setUpClass(self):
