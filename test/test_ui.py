@@ -91,10 +91,10 @@ class TestBundleMakerUI_CurrentScene(TestBase):
         qApp.processEvents()
         time.sleep(0.5)
 
-        self.gui.bundleMaker.progressHandler=self.handler
-        self.gui.bundleMaker.filename = os.path.join(self.tmpdir, self.srcdir,
+        self.gui.bundler.progressHandler=self.handler
+        self.gui.bundler.filename = os.path.join(self.tmpdir, self.srcdir,
                 'scenes', 'mayaproj.ma')
-        self.gui.bundleMaker.openFile()
+        self.gui.bundler.openFile()
 
         QTest.mouseClick(self.gui.currentSceneButton, Qt.LeftButton)
         QTest.mouseDClick(self.gui.pathBox, Qt.LeftButton)

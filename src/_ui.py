@@ -63,8 +63,91 @@ except IOError as e:
     logging.getLogger(__name__).warning(
         'Error: %r \r\nCannot read projects config file ... using defaults'%e )
 
-def populateProjectsBox(box):
-    box.addItems(projects_list)
+class BundleMakerUIProcessAdapter(core.QObject, BundleMakerProcess):
+    gui = None
+    process = None
+
+    processSignal = core.pyqtSignal(str)
+    statusSignal = core.pyqtSignal(str)
+    maximumSignal = core.pyqtSignal(int)
+    valueSignal = core.pyqtSignal(int)
+    warningSignal = core.pyqtSignal(str)
+    errorSignal = core.pyqtSignal(str)
+    doneSignal = core.pyqtSignal()
+
+    def __init__(self, progressHandler=None, path=None, filename=None,
+            name=None, deadline=True, doArchive=False, delete=False,
+            keepReferences=False, project=None, zdepth=None, sequence=None,
+            episode=None, shot=None):
+        gui = progressHandler
+        super(BundleMakerUIProcessAdapter, self).__init__()
+        BundleMakerProcess.__init__(self, progressHandler=self,
+                path=path, filename=filename, name=name, deadline=deadline,
+                doArchive=doArchive, delete=delete,
+                keepReferences=keepReferences, project=project, zdepth=zdepth,
+                sequence=sequence, episode=episode, shot=shot)
+
+        self.gui = gui
+        self.thread = core.QThread(self.gui)
+        gui.thread = self.thread
+        self.moveToThread(self.thread)
+
+        self.thread.started.connect(self.start)
+        self.thread.finished.connect(self.deleteLater)
+        self.doneSignal.connect(self.thread.terminate)
+
+        self.processSignal.connect(gui.setProcess)
+        self.statusSignal.connect(gui.setStatus)
+        self.maximumSignal.connect(gui.setMaximum)
+        self.valueSignal.connect(gui.setValue)
+        self.errorSignal.connect(gui.error)
+        self.warningSignal.connect(gui.warning)
+        self.doneSignal.connect(gui.done)
+
+    def setProcess(self, process):
+        return self.processSignal.emit(process)
+
+    def setStatus(self, status):
+        return self.statusSignal.emit(status)
+
+    def setMaximum(self, maxx):
+        return self.maximumSignal.emit(maxx)
+
+    def setValue(self, val):
+        return self.valueSignal.emit(val)
+
+    def error(self, val):
+        return self.errorSignal.emit(val)
+
+    def warning(self, msg):
+        return self.warningSignal.emit(msg)
+
+    def done(self):
+        return self.doneSignal.emit()
+
+    def setErrorResp(self, resp):
+        self.resp = resp
+
+    @property
+    def onError(self):
+        return self.gui.onError
+    @onError.setter
+    def onError(self, val):
+        self.gui.onError = val
+
+    def createBundle(self, name=None, project=None, episode=None,
+            sequence=None, shot=None):
+        self.name = name
+        self.project = project
+        self.episode = episode
+        self.sequence = sequence
+        self.shot = shot
+        self.thread.start()
+
+    def start(self):
+        BundleMakerProcess.createBundle(self)
+
+BundleProcess = BundleMakerUIProcessAdapter
 
 class Setting(object):
     def __init__(self, keystring, default):
@@ -99,9 +182,7 @@ class BundleMakerUI(Form, Base):
         super(BundleMakerUI, self).__init__(parent)
         self.standalone = standalone
         self.setupUi(self)
-        self.bundleMaker = BundleMaker(self)
-        self.bundleProcess = BundleMakerProcess(self)
-        self.bundler = self.bundleMaker
+        self.bundler = BundleMaker(self)
         self.textureExceptions = []
 
         self.animation = QPropertyAnimation(self, 'geometry')
@@ -163,6 +244,7 @@ class BundleMakerUI(Form, Base):
 
         self.logFilePath = osp.join(osp.expanduser('~'), 'scene_bundle_log',
                 'latestErrorLog.txt')
+        self.thread = None
 
         appUsageApp.updateDatabase('sceneBundle')
 
@@ -262,10 +344,7 @@ class BundleMakerUI(Form, Base):
                 return
 
         if not self.isCurrentScene():
-            if self.bgButton.isChecked():
-                self.bundler = self.bundleProcess
-            else:
-                self.bundler = self.bundleMaker
+
             if not self.getPath(): # Bundle location path
                 return
             total = self.filesBox.count()
@@ -286,6 +365,10 @@ class BundleMakerUI(Form, Base):
 
             for i in range(total):
                 self.setStatus('Opening scene '+ str(i+1) +' of '+ str(total))
+                if self.bgButton.isChecked():
+                    self.bundler = BundleProcess(self)
+                else:
+                    self.bundler = BundleMaker(self)
                 item = self.filesBox.item(i)
                 item.setBackground(Qt.darkGray)
                 qApp.processEvents()
@@ -300,8 +383,11 @@ class BundleMakerUI(Form, Base):
                     self.createBundle(name=name, project=pro, episode=ep,
                             sequence=seq, shot=sh)
 
+                while self.thread:
+                    qApp.processEvents()
+
         else:
-            self.bundler = self.bundleMaker
+            self.bundler = BundleMaker(self)
             self.filename = cmds.file(q=1, sn=1)
             self.createBundle(project=pro, episode=self.getEp(),
                     sequence=self.getSeq(), shot=self.getSh())
@@ -462,6 +548,12 @@ class BundleMakerUI(Form, Base):
 
     def done(self):
         cmds.file(new=1, f=1)
+        if self.thread:
+            try:
+                self.thread.terminate
+            except:
+                pass
+            self.thread = None
 
     def error(self, msg):
         exc = traceback.format_exc()
@@ -771,6 +863,9 @@ def fillName(epBox, seqBox, shBox, epBox2, seqBox2, shBox2, nameBox):
             names.append(text)
     name = '_'.join(names) if names else '_'
     nameBox.setText(name)
+
+def populateProjectsBox(box):
+    box.addItems(projects_list)
 
 def populateBoxes(epBox, seqBox, shBox):
     shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
