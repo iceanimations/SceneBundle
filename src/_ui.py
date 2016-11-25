@@ -20,6 +20,7 @@ import appUsageApp
 import yaml
 import traceback
 import logging
+import time
 
 isMaya = True
 isMayaGUI = True
@@ -367,6 +368,8 @@ class BundleMakerUI(Form, Base):
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
         self.bgButton.setEnabled(False)
+        self.addButton.setEnabled(False)
+        self.removeButton.setEnabled(False)
         qApp.processEvents()
 
         ep, seq, sh = None, None, None
@@ -382,12 +385,11 @@ class BundleMakerUI(Form, Base):
 
             if not self.isCurrentScene():
 
-                if not self.bgButton.isChecked():
-                    self.addButton.setEnabled(False)
-                    self.removeButton.setEnabled(False)
+                if self.bgButton.isChecked():
+                    self.addButton.setEnabled(True)
+                    self.removeButton.setEnabled(True)
 
                 if not self.getPath(): # Bundle location path
-                    print '((((((((((((((((((((((()))))))))))))))))))))))'
                     return
 
                 total = self.filesBox.count()
@@ -430,6 +432,8 @@ class BundleMakerUI(Form, Base):
                     if failed:
                         self.pathStatus[idx] = PathStatus.kFailed
                         item.setBackground(Qt.darkRed)
+                        qApp.processEvents()
+                        time.sleep(1)
                         continue
 
                     if self.bgButton.isChecked():
@@ -572,7 +576,7 @@ class BundleMakerUI(Form, Base):
                     self.filesBox.addItem(path)
                     item = self.filesBox.item(self.filesBox.count()-1)
                     self.pathStatus.append(PathStatus.kWaiting)
-                    item.setBackground(Qt.White)
+                    item.setBackground(Qt.white)
 
     def setPaths(self, paths):
         for row in range( len(paths) ):
