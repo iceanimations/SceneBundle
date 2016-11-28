@@ -364,6 +364,25 @@ class BundleMakerUI(Form, Base):
             if idx == self.currentIndex:
                 return -1
 
+    def start(self):
+        self.progressBar.show()
+        self.bundleButton.setEnabled(False)
+        self.bgButton.setEnabled(False)
+        if not self.bgButton.isChecked():
+            self.addButton.setEnabled(False)
+            self.removeButton.setEnabled(False)
+
+    def stop(self):
+        self.progressBar.hide()
+        self.bundleButton.setEnabled(True)
+        self.bgButton.setEnabled(True)
+        self.addButton.setEnabled(True)
+        self.removeButton.setEnabled(True)
+        self.showLogFileMessage()
+
+    def callCreateBundle2(self):
+        pass
+
     def callCreateBundle(self):
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
@@ -400,15 +419,8 @@ class BundleMakerUI(Form, Base):
                                     icon=QMessageBox.Information)
                     return
 
-                for i in range(total):
-                    if len(self.filesBox.item(i).text().split(' | ')) < 5:
-                        msgBox.showMessage(self, title='Scene Bundle',
-                            msg=( 'Name, Episode, Sequence and/or Shot not '
-                                'specified for the item' ),
-                            icon=QMessageBox.Information)
-                        return
-
                 while self.numPending() > 0:
+                    total = self.filesBox.count()
                     idx = self.getNextPathIndex()
                     self.setStatus('Bundling Item '+ str(self.numDone()+1) +
                             ' of '+ str(total))
@@ -429,43 +441,42 @@ class BundleMakerUI(Form, Base):
                             if not all([name, filename]):
                                 failed=True
 
+                    errors = self.errors[:]
                     if failed:
                         self.pathStatus[idx] = PathStatus.kFailed
                         item.setBackground(Qt.darkRed)
                         qApp.processEvents()
-                        time.sleep(1)
                         continue
-
-                    if self.bgButton.isChecked():
-                        self.bundler = BundleProcess(self)
                     else:
-                        self.bundler = BundleMaker(self)
+                        if self.bgButton.isChecked():
+                            self.bundler = BundleProcess(self)
+                        else:
+                            self.bundler = BundleMaker(self)
 
-                    self.pathStatus[idx] = PathStatus.kBusy
-                    item.setBackground(Qt.darkGreen)
+                        self.pathStatus[idx] = PathStatus.kBusy
+                        item.setBackground(Qt.darkGreen)
+                        qApp.processEvents()
 
-                    qApp.processEvents()
-                    if osp.splitext(filename)[-1] in ['.ma', '.mb']:
                         self.filename = filename
                         try:
                             self.bundler.openFile(filename)
                         except:
                             pass
                         self.bundler.filename = filename
-                        errors = self.errors[:]
                         self.createBundle(name=name, project=pro, episode=ep,
                                 sequence=seq, shot=sh)
 
-                        if len(errors) != len(self.errors):
-                            self.pathStatus[idx] = PathStatus.kError
-                            item.setBackground(Qt.darkYellow)
-                        else:
-                            self.pathStatus[idx] = PathStatus.kSuccess
-                            item.setBackground(Qt.darkGray)
-
-
                     while self.thread:
                         qApp.processEvents()
+
+                    if len(errors) != len(self.errors):
+                        self.pathStatus[idx] = PathStatus.kError
+                        item.setBackground(Qt.darkYellow)
+                    else:
+                        self.pathStatus[idx] = PathStatus.kSuccess
+                        item.setBackground(Qt.darkGray)
+                    qApp.processEvents()
+
 
             else:
                 self.bundler = BundleMaker(self)
@@ -665,6 +676,7 @@ class BundleMakerUI(Form, Base):
         exc = traceback.format_exc()
         if exc.strip() == str(None):
             exc = ''
+        errMsg = '\r\n%s:' % self.currentFileName
         errMsg = '\r\nError:' + msg + '\n'*2 + exc
         self.errors.append(errMsg)
         self.createLog(errMsg)
@@ -687,7 +699,9 @@ class BundleMakerUI(Form, Base):
         self.createLog('\r\nWarning:' + msg)
 
     def currentFileName(self):
-        return cmds.file(location=True, q=True)
+        if self.isCurrentScene():
+            return cmds.file(location=True, q=True)
+        return self.filename
 
 Form1, Base1 = uic.loadUiType(osp.join(ui_path, 'form.ui'))
 class EditForm(Form1, Base1):

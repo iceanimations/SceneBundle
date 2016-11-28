@@ -164,7 +164,7 @@ class TestBundleMakerUI_List(TestBase):
     srcdir = ('mayaproj1', 'mayaproj2', 'mayaproj3')
     name = ('bundle1', 'bundle2', 'bundle3')
     bundledir = name
-    zipfileName = ('mayaproj.zip', 'mayaproj2.zip', 'mayaproj.zip')
+    zipfileName = ('mayaproj2.zip', 'mayaproj2.zip', 'mayaproj2.zip')
 
     @classmethod
     def setUpClass(self):
@@ -182,6 +182,7 @@ class TestBundleMakerUI_List(TestBase):
 
         self.handler = TestBundleHandler()
         self.gui = BundleMakerUI()
+        paths.insert(2, filename)
         self.gui.setPaths(paths)
         self.gui.show()
         QTest.mouseClick(self.gui.keepBundleButton, Qt.LeftButton)
