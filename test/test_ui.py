@@ -188,10 +188,12 @@ class TestBundleMakerUI_List(TestBase):
         QTest.mouseClick(self.gui.keepBundleButton, Qt.LeftButton)
         QTest.mouseClick(self.gui.deadlineCheck, Qt.LeftButton)
         QTest.mouseClick(self.gui.keepReferencesButton, Qt.LeftButton)
+        QTest.mouseClick(self.gui.bgButton, Qt.LeftButton)
 
         qApp.processEvents()
         QTest.mouseClick(self.gui.bundleButton, Qt.LeftButton)
         time.sleep(1)
+        qApp.exec_()
 
     def testRootPaths(self):
        for rootPath in self.rootPaths:

@@ -148,6 +148,12 @@ class BundleMakerUIProcessAdapter(core.QObject, BundleMakerProcess):
     def start(self):
         BundleMakerProcess.createBundle(self)
 
+    def stop(self):
+        try: self.killProcess()
+        except: pass
+        self.gui.thread.terminate()
+        self.gui.thread = None
+
 BundleProcess = BundleMakerUIProcessAdapter
 
 class Setting(object):
@@ -207,10 +213,10 @@ class BundleMakerUI(Form, Base):
         self.selectButton.setIcon(QIcon(osp.join(ic_path, 'ic_mark.png')))
         self.nameBox.setValidator(__validator__)
 
-        self.bundleButton.clicked.connect(self.callCreateBundle)
+        self.bundleButton.clicked.connect(self.callCreateBundle2)
         self.browseButton.clicked.connect(self.browseFolder)
-        self.nameBox.returnPressed.connect(self.callCreateBundle)
-        self.pathBox.returnPressed.connect(self.callCreateBundle)
+        self.nameBox.returnPressed.connect(self.callCreateBundle2)
+        self.pathBox.returnPressed.connect(self.callCreateBundle2)
         self.addButton.clicked.connect(self.browseFolder2)
         self.currentSceneButton.toggled.connect(self.animateWindow)
         self.removeButton.clicked.connect(self.removeSelected)
@@ -246,6 +252,9 @@ class BundleMakerUI(Form, Base):
         self.epBox2.hide()
         self.seqBox2.hide()
         self.shBox2.hide()
+        self.timer = core.QTimer(self)
+        self.timer.setInterval(500)
+        self.timer.timeout.connect(self.callCreateBundle2)
 
         addKeyEvent(self.epBox, self.epBox2)
         addKeyEvent(self.seqBox, self.seqBox2)
@@ -327,6 +336,8 @@ class BundleMakerUI(Form, Base):
 
     def closeEvent(self, event):
         self.closeLogFile()
+        if hasattr(self.bundler, 'stop'):
+            self.bundler.stop()
         self.deleteLater()
         del self
 
@@ -364,13 +375,32 @@ class BundleMakerUI(Form, Base):
             if idx == self.currentIndex:
                 return -1
 
+    def processEvents(self):
+        if self.blocking():
+            qApp.processEvents()
+
+    def blocking(self):
+        return self.isCurrentScene() or not self.bgButton.isChecked()
+
     def start(self):
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
         self.bgButton.setEnabled(False)
-        if not self.bgButton.isChecked():
+        self.currentSceneButton.setEnabled(False)
+        self.pathBox.setEnabled(False)
+        if self.blocking():
             self.addButton.setEnabled(False)
             self.removeButton.setEnabled(False)
+            self.timer.setSingleShot(True)
+            if self.isCurrentScene():
+                self.timer.stop()
+        else:
+            self.timer.setSingleShot(False)
+            self.timer.start()
+
+    def pollForMore(self):
+        if not self.isCurrentScene() and not self.bgButton.isChecked():
+            self.timer.start()
 
     def stop(self):
         self.progressBar.hide()
@@ -378,10 +408,88 @@ class BundleMakerUI(Form, Base):
         self.bgButton.setEnabled(True)
         self.addButton.setEnabled(True)
         self.removeButton.setEnabled(True)
+        self.currentSceneButton.setEnabled(True)
+        self.pathBox.setEnabled(True)
         self.showLogFileMessage()
+        self.timer.stop()
+        if self.thread:
+            try:
+                self.thread.terminate()
+            except:
+                pass
 
     def callCreateBundle2(self):
-        pass
+        if not self.getPath(): # Bundle location path
+            return
+        if self.thread:
+            return
+
+        ep, seq, sh, pro = None, None, None, self.projectBox.currentText()
+        if self.isDeadlineCheck():
+            if pro == '--Project--':
+                msgBox.showMessage(self, title='Scene Bundle',
+                                msg='Project name not selected',
+                                icon=QMessageBox.Information)
+                return
+
+        if self.isCurrentScene():
+            self.bundler = BundleMaker(self)
+            self.filename = cmds.file(q=1, sn=1)
+            self.createBundle(project=pro, episode=self.getEp(),
+                    sequence=self.getSeq(), shot=self.getSh())
+            self.stop()
+
+        else:
+            total = self.filesBox.count()
+            if total == 0:
+                msgBox.showMessage(self, title='Scene Bundle',
+                        msg='No file added to the files box',
+                        icon=QMessageBox.Information)
+
+            idx = self.getNextPathIndex()
+            if idx >=0:
+                self.setStatus('Bundling Item '+ str(self.numDone()+1) + ' of '
+                        + str(total))
+                self.processEvents()
+                item = self.filesBox.item(idx)
+                text = item.text()
+
+                failed = False
+                if len(text.split(' | ')) < 5:
+                    failed = True
+                else:
+                    name, filename, ep, seq, sh = item.text().split(' | ')
+                    if not osp.splitext(filename)[-1] in ['.ma', '.mb']:
+                        failed = True
+                    if self.isDeadlineCheck():
+                        if not all([name, ep, seq, sh, filename]):
+                            failed=True
+                    else:
+                        if not all([name, filename]):
+                            failed=True
+
+                if failed:
+                    self.pathStatus[idx] = PathStatus.kFailed
+                    item.setBackground(Qt.darkRed)
+                else:
+                    if self.bgButton.isChecked():
+                        self.bundler = BundleProcess(self)
+                    else:
+                        self.bundler = BundleMaker(self)
+
+                    self.pathStatus[idx] = PathStatus.kBusy
+                    item.setBackground(Qt.darkGreen)
+                    self.processEvents()
+
+                    self.filename = filename
+                    self.bundler.filename = filename
+                    self.createBundle(name=name, project=pro, episode=ep,
+                            sequence=seq, shot=sh)
+                self.pollForMore()
+
+            else:
+                self.setStatus('Bundling Done')
+                self.stop()
 
     def callCreateBundle(self):
         self.progressBar.show()
@@ -389,7 +497,7 @@ class BundleMakerUI(Form, Base):
         self.bgButton.setEnabled(False)
         self.addButton.setEnabled(False)
         self.removeButton.setEnabled(False)
-        qApp.processEvents()
+        self.processEvents()
 
         ep, seq, sh = None, None, None
 
@@ -445,7 +553,7 @@ class BundleMakerUI(Form, Base):
                     if failed:
                         self.pathStatus[idx] = PathStatus.kFailed
                         item.setBackground(Qt.darkRed)
-                        qApp.processEvents()
+                        self.processEvents()
                         continue
                     else:
                         if self.bgButton.isChecked():
@@ -455,7 +563,7 @@ class BundleMakerUI(Form, Base):
 
                         self.pathStatus[idx] = PathStatus.kBusy
                         item.setBackground(Qt.darkGreen)
-                        qApp.processEvents()
+                        self.processEvents()
 
                         self.filename = filename
                         try:
@@ -475,8 +583,7 @@ class BundleMakerUI(Form, Base):
                     else:
                         self.pathStatus[idx] = PathStatus.kSuccess
                         item.setBackground(Qt.darkGray)
-                    qApp.processEvents()
-
+                    self.processEvents()
 
             else:
                 self.bundler = BundleMaker(self)
@@ -489,7 +596,7 @@ class BundleMakerUI(Form, Base):
             self.bgButton.setEnabled(True)
             self.addButton.setEnabled(True)
             self.removeButton.setEnabled(True)
-            qApp.processEvents()
+            self.processEvents()
             self.showLogFileMessage()
 
     def createBundle(self, name=None, project=None, episode=None,
@@ -646,22 +753,22 @@ class BundleMakerUI(Form, Base):
     def setStatus(self, msg):
         self.status = msg
         self.statusLabel.setText(msg)
-        qApp.processEvents()
+        self.processEvents()
 
     def setMaximum(self, maxx):
         self.maxx = maxx
         self.progressBar.setMaximum(maxx)
-        qApp.processEvents()
+        self.processEvents()
 
     def setValue(self, val):
         self.val = val
         self.progressBar.setValue(val)
-        qApp.processEvents()
+        self.processEvents()
 
     def setProcess(self, process):
         self.process = process
         self.statusLabel.setText('Process: %s ... ' % process)
-        qApp.processEvents()
+        self.processEvents()
 
     def done(self):
         cmds.file(new=1, f=1)
