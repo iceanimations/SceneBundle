@@ -6,10 +6,10 @@ import re
 import shutil
 
 import ideadline as dl
-reload(dl)
+# reload(dl)
 
 import ideadline.maya as dlm
-reload(dlm)
+# reload(dlm)
 import imaya
 
 variables = ['bundle_base', 'poolidx', 'project', 'episode', 'sequence', 'shot']
