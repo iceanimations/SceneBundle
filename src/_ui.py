@@ -151,8 +151,9 @@ class BundleMakerUIProcessAdapter(core.QObject, BundleMakerProcess):
     def stop(self):
         try: self.killProcess()
         except: pass
-        self.gui.thread.terminate()
-        self.gui.thread = None
+        if self.gui.thread:
+            self.gui.thread.terminate()
+            self.gui.thread = None
 
 BundleProcess = BundleMakerUIProcessAdapter
 
@@ -239,7 +240,7 @@ class BundleMakerUI(Form, Base):
 
         self.bgButton.setChecked(True)
 
-        if self.standalone:
+        if not isMaya or self.standalone:
             self.currentSceneButton.setEnabled(False)
         self.progressBar.hide()
         self.zdepthButton.hide()
@@ -264,9 +265,12 @@ class BundleMakerUI(Form, Base):
         self.seqBox2.setValidator(__validator__)
         self.shBox2.setValidator(__validator__)
 
+        self.logFile = None
         self.logFilePath = osp.join(osp.expanduser('~'), 'scene_bundle_log',
                 'latestErrorLog.txt')
         self.thread = None
+        self.currentItem = None
+        self.errorFlag = False
 
         appUsageApp.updateDatabase('sceneBundle')
 
@@ -364,10 +368,12 @@ class BundleMakerUI(Form, Base):
 
     def getNextPathIndex(self):
         count = self.filesBox.count()
-        idx = self.currentIndex if self.currentIndex < count else 0
+        if self.currentIndex >= count:
+            self.currentIndex = 0
+        idx = self.currentIndex
         while 1:
-            if self.pathStatus[idx] in [PathStatus.kFailed and
-                    PathStatus.kWaiting]:
+            if self.pathStatus[idx] in [PathStatus.kWaiting,
+                    PathStatus.kFailed]:
                 self.currentIndex = idx + 1
                 return idx
             else:
@@ -382,12 +388,13 @@ class BundleMakerUI(Form, Base):
     def blocking(self):
         return self.isCurrentScene() or not self.bgButton.isChecked()
 
-    def start(self):
+    def startPolling(self):
         self.progressBar.show()
         self.bundleButton.setEnabled(False)
         self.bgButton.setEnabled(False)
         self.currentSceneButton.setEnabled(False)
         self.pathBox.setEnabled(False)
+        self.openLogFile()
         if self.blocking():
             self.addButton.setEnabled(False)
             self.removeButton.setEnabled(False)
@@ -398,31 +405,44 @@ class BundleMakerUI(Form, Base):
             self.timer.setSingleShot(False)
             self.timer.start()
 
-    def pollForMore(self):
-        if not self.isCurrentScene() and not self.bgButton.isChecked():
+    def continuePolling(self):
+        if not self.isCurrentScene():
             self.timer.start()
 
-    def stop(self):
+    def stopPolling(self):
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         self.bgButton.setEnabled(True)
         self.addButton.setEnabled(True)
         self.removeButton.setEnabled(True)
-        self.currentSceneButton.setEnabled(True)
+        if isMaya and not self.standalone:
+            self.currentSceneButton.setEnabled(True)
         self.pathBox.setEnabled(True)
+        self.closeLogFile()
         self.showLogFileMessage()
         self.timer.stop()
         if self.thread:
             try:
                 self.thread.terminate()
+                self.thread = None
             except:
                 pass
 
-    def callCreateBundle2(self):
+    def callCreateBundle2(self, args=None):
+        self.startPolling()
         if not self.getPath(): # Bundle location path
             return
         if self.thread:
             return
+        if self.currentItem:
+            idx = self.filesBox.row(self.currentItem)
+            if self.errorFlag:
+                self.pathStatus[idx] = PathStatus.kError
+                self.currentItem.setBackground(Qt.darkYellow)
+            else:
+                self.pathStatus[idx] = PathStatus.kSuccess
+                self.currentItem.setBackground(Qt.darkGray)
+            self.currentItem = None
 
         ep, seq, sh, pro = None, None, None, self.projectBox.currentText()
         if self.isDeadlineCheck():
@@ -430,6 +450,7 @@ class BundleMakerUI(Form, Base):
                 msgBox.showMessage(self, title='Scene Bundle',
                                 msg='Project name not selected',
                                 icon=QMessageBox.Information)
+                self.stopPolling()
                 return
 
         if self.isCurrentScene():
@@ -437,7 +458,7 @@ class BundleMakerUI(Form, Base):
             self.filename = cmds.file(q=1, sn=1)
             self.createBundle(project=pro, episode=self.getEp(),
                     sequence=self.getSeq(), shot=self.getSh())
-            self.stop()
+            self.stopPolling()
 
         else:
             total = self.filesBox.count()
@@ -445,10 +466,12 @@ class BundleMakerUI(Form, Base):
                 msgBox.showMessage(self, title='Scene Bundle',
                         msg='No file added to the files box',
                         icon=QMessageBox.Information)
+                self.stopPolling()
+                return
 
             idx = self.getNextPathIndex()
             if idx >=0:
-                self.setStatus('Bundling Item '+ str(self.numDone()+1) + ' of '
+                self.setStatus('Bundles done: '+ str(self.numDone()) + ' of '
                         + str(total))
                 self.processEvents()
                 item = self.filesBox.item(idx)
@@ -483,13 +506,17 @@ class BundleMakerUI(Form, Base):
 
                     self.filename = filename
                     self.bundler.filename = filename
+                    self.currentItem = item
+                    self.errorFlag = False
                     self.createBundle(name=name, project=pro, episode=ep,
                             sequence=seq, shot=sh)
-                self.pollForMore()
+                self.continuePolling()
+                return
 
             else:
                 self.setStatus('Bundling Done')
-                self.stop()
+                self.stopPolling()
+                return
 
     def callCreateBundle(self):
         self.progressBar.show()
@@ -611,12 +638,9 @@ class BundleMakerUI(Form, Base):
         self.bundler.delete = not self.keepBundleButton.isChecked()
         self.bundler.keepReferences = self.keepReferencesButton.isChecked()
         self.bundler.textureExceptions = self.textureExceptions
-        try:
-            self.openLogFile()
-            self.bundler.createBundle(name=name, project=project,
-                    episode=episode, sequence=sequence, shot=shot)
-        finally:
-            self.closeLogFile()
+        self.openLogFile()
+        self.bundler.createBundle(name=name, project=project,
+                episode=episode, sequence=sequence, shot=shot)
 
     def showLogFileMessage(self):
         with open(self.logFilePath, 'rb') as f:
@@ -733,7 +757,8 @@ class BundleMakerUI(Form, Base):
 
     def openLogFile(self):
         try:
-            self.logFile = open(self.logFilePath, 'wb')
+            if not self.logFile:
+                self.logFile = open(self.logFilePath, 'wb')
         except:
             pass
 
@@ -780,11 +805,12 @@ class BundleMakerUI(Form, Base):
             self.thread = None
 
     def error(self, msg):
+        self.errorFlag = True
         exc = traceback.format_exc()
         if exc.strip() == str(None):
             exc = ''
         errMsg = '\r\n%s:' % self.currentFileName
-        errMsg = '\r\nError:' + msg + '\n'*2 + exc
+        errMsg += '\r\nError:' + msg + '\n'*2 + exc
         self.errors.append(errMsg)
         self.createLog(errMsg)
         if self.isCurrentScene():
@@ -847,7 +873,6 @@ class EditForm(Form1, Base1):
             self.epBox.hide()
             self.seqBox.hide()
             self.shBox.hide()
-
 
         self.okButton.clicked.connect(self.ok)
 

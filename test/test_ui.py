@@ -185,10 +185,20 @@ class TestBundleMakerUI_List(TestBase):
         paths.insert(2, filename)
         self.gui.setPaths(paths)
         self.gui.show()
+
+        def stop_decorator(func):
+            def stop():
+                func()
+                self.gui.deleteLater()
+                qApp.exit()
+            return stop
+
+        self.gui.stopPolling = stop_decorator(self.gui.stopPolling)
+
         QTest.mouseClick(self.gui.keepBundleButton, Qt.LeftButton)
         QTest.mouseClick(self.gui.deadlineCheck, Qt.LeftButton)
         QTest.mouseClick(self.gui.keepReferencesButton, Qt.LeftButton)
-        QTest.mouseClick(self.gui.bgButton, Qt.LeftButton)
+        # QTest.mouseClick(self.gui.bgButton, Qt.LeftButton)
 
         qApp.processEvents()
         QTest.mouseClick(self.gui.bundleButton, Qt.LeftButton)
