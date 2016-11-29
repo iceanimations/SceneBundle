@@ -423,6 +423,7 @@ class BundleMakerUI(Form, Base):
             self.timer.start()
 
     def stopPolling(self, arg=None):
+        self.timer.stop()
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         self.bgButton.setEnabled(True)
@@ -436,7 +437,6 @@ class BundleMakerUI(Form, Base):
         self.stopButton.hide()
         self.bundleButton.show()
         self.closeLogFile()
-        self.timer.stop()
         self.setStatus('Bundling Stopped')
         if hasattr(self.bundler, 'stop'):
             self.bundler.stop()
@@ -463,16 +463,16 @@ class BundleMakerUI(Form, Base):
             return
         if path:
             if not os.path.exists(path):
+                self.stopPolling()
                 msgBox.showMessage(self, title='Scene Bundle',
                                     msg='Specified path does not exist',
                                     icon=QMessageBox.Information)
-                self.stopPolling()
                 return
         else:
+            self.stopPolling()
             msgBox.showMessage(self, title='Scene Bundle',
                                 msg='Location path not specified',
                                 icon=QMessageBox.Information)
-            self.stopPolling()
             return
 
         # if a thread is already running do not do anything
@@ -494,10 +494,10 @@ class BundleMakerUI(Form, Base):
         ep, seq, sh, pro = None, None, None, self.projectBox.currentText()
         if self.isDeadlineCheck():
             if pro == '--Project--':
+                self.stopPolling()
                 msgBox.showMessage(self, title='Scene Bundle',
                                 msg='Project name not selected',
                                 icon=QMessageBox.Information)
-                self.stopPolling()
                 return
 
         if self.isCurrentScene():
@@ -543,9 +543,9 @@ class BundleMakerUI(Form, Base):
                         filename = ''
                         name = ''
                 self.filename = filename
-                if self.isDeadlineCheck():
-                    if not all([name, ep, seq, sh, filename]):
-                        failed=True
+                if self.isDeadlineCheck() and not all([name, ep, seq, sh,
+                    filename]):
+                    failed=True
                     if self.pathStatus[idx] != PathStatus.kFailed:
                         self.createLog(
                                 'Must specify name, filename & shot params')
