@@ -73,6 +73,10 @@ class BundleMakerProcess(BundleMakerBase):
 
     def communicate(self):
         while 1:
+            if self.process.poll() is not None:
+                self.error('Process Exited with %d'%self.process.poll())
+                self.done()
+                break
             if self.next_line is None:
                 self.line = self.process.stdout.readline()
             else:

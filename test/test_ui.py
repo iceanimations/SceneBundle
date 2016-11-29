@@ -183,6 +183,8 @@ class TestBundleMakerUI_List(TestBase):
         self.handler = TestBundleHandler()
         self.gui = BundleMakerUI()
         paths.insert(2, filename)
+        paths.insert(3, r'd:\hello.ma')
+        paths.insert(3, r'd:\deleting.txt')
         self.gui.setPaths(paths)
         self.gui.show()
 

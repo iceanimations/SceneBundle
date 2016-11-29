@@ -187,6 +187,13 @@ class PathStatus(object):
     kSuccess =  3
     kDone = kSuccess
 
+    fgColors = {kFailed: Qt.darkRed, kWaiting: Qt.black, kBusy: Qt.darkGreen,
+            kError: Qt.darkYellow, kDone: Qt.darkGray}
+
+    if isMayaGUI:
+        fgColors = {kFailed: Qt.red, kWaiting: Qt.darkGray, kBusy: Qt.green,
+                kError: Qt.yellow, kDone: Qt.lightGray}
+
 Form, Base = uic.loadUiType(osp.join(ui_path, 'bundle.ui'))
 class BundleMakerUI(Form, Base):
     settings = BundleSettings()
@@ -214,6 +221,8 @@ class BundleMakerUI(Form, Base):
         self.selectButton.setIcon(QIcon(osp.join(ic_path, 'ic_mark.png')))
         self.nameBox.setValidator(__validator__)
 
+        self.stopButton.hide()
+        self.stopButton.clicked.connect(self.stopPolling)
         self.bundleButton.clicked.connect(self.callCreateBundle2)
         self.browseButton.clicked.connect(self.browseFolder)
         self.nameBox.returnPressed.connect(self.callCreateBundle2)
@@ -394,6 +403,9 @@ class BundleMakerUI(Form, Base):
         self.bgButton.setEnabled(False)
         self.currentSceneButton.setEnabled(False)
         self.pathBox.setEnabled(False)
+        self.deadlineCheck.setEnabled(False)
+        self.stopButton.show()
+        self.bundleButton.hide()
         self.openLogFile()
         if self.blocking():
             self.addButton.setEnabled(False)
@@ -401,6 +413,8 @@ class BundleMakerUI(Form, Base):
             self.timer.setSingleShot(True)
             if self.isCurrentScene():
                 self.timer.stop()
+                self.addButton.setEnabled(False)
+                self.removeButton.setEnabled(False)
         else:
             self.timer.setSingleShot(False)
             self.timer.start()
@@ -409,39 +423,73 @@ class BundleMakerUI(Form, Base):
         if not self.isCurrentScene():
             self.timer.start()
 
-    def stopPolling(self):
+    def stopPolling(self, arg=None):
         self.progressBar.hide()
         self.bundleButton.setEnabled(True)
         self.bgButton.setEnabled(True)
         self.addButton.setEnabled(True)
         self.removeButton.setEnabled(True)
+        self.deadlineCheck.setEnabled(True)
         if isMaya and not self.standalone:
             self.currentSceneButton.setEnabled(True)
         self.pathBox.setEnabled(True)
         self.closeLogFile()
-        self.showLogFileMessage()
+        self.stopButton.hide()
+        self.bundleButton.show()
+        self.closeLogFile()
         self.timer.stop()
+        self.setStatus('Bundling Stopped')
+        if hasattr(self.bundler, 'stop'):
+            self.bundler.stop()
+        if self.currentItem:
+            idx = self.filesBox.row(self.currentItem)
+            self.pathStatus[idx] = PathStatus.kFailed
+            self.currentItem.setForeground(PathStatus.fgColors.get(
+                PathStatus.kFailed ))
+            self.currentItem = None
+            self.currentIndex = 0
         if self.thread:
             try:
                 self.thread.terminate()
                 self.thread = None
             except:
                 pass
+        self.showLogFileMessage()
 
     def callCreateBundle2(self, args=None):
         self.startPolling()
+
+        path = self.getPath()
         if not self.getPath(): # Bundle location path
             return
+        if path:
+            if not os.path.exists(path):
+                msgBox.showMessage(self, title='Scene Bundle',
+                                    msg='Specified path does not exist',
+                                    icon=QMessageBox.Information)
+                self.stopPolling()
+                return
+        else:
+            msgBox.showMessage(self, title='Scene Bundle',
+                                msg='Location path not specified',
+                                icon=QMessageBox.Information)
+            self.stopPolling()
+            return
+
+        # if a thread is already running do not do anything
         if self.thread:
             return
+
         if self.currentItem:
             idx = self.filesBox.row(self.currentItem)
             if self.errorFlag:
                 self.pathStatus[idx] = PathStatus.kError
-                self.currentItem.setBackground(Qt.darkYellow)
+                self.currentItem.setForeground( PathStatus.fgColors.get(
+                    PathStatus.kError ))
             else:
                 self.pathStatus[idx] = PathStatus.kSuccess
-                self.currentItem.setBackground(Qt.darkGray)
+                self.currentItem.setForeground( PathStatus.fgColors.get(
+                    PathStatus.kSuccess ))
             self.currentItem = None
 
         ep, seq, sh, pro = None, None, None, self.projectBox.currentText()
@@ -454,6 +502,14 @@ class BundleMakerUI(Form, Base):
                 return
 
         if self.isCurrentScene():
+            name = self.getName()
+            if not name:
+                msgBox.showMessage(self, title='Scene Bundle',
+                                    msg='Name not specified',
+                                    icon=QMessageBox.Information)
+                self.stopPolling()
+                return
+
             self.bundler = BundleMaker(self)
             self.filename = cmds.file(q=1, sn=1)
             self.createBundle(project=pro, episode=self.getEp(),
@@ -478,22 +534,40 @@ class BundleMakerUI(Form, Base):
                 text = item.text()
 
                 failed = False
-                if len(text.split(' | ')) < 5:
-                    failed = True
-                else:
-                    name, filename, ep, seq, sh = item.text().split(' | ')
-                    if not osp.splitext(filename)[-1] in ['.ma', '.mb']:
+                try:
+                    name, filename, ep, seq, sh = text.split(' | ')
+                except ValueError:
+                    try:
+                        name, filename = text.split(' | ')
+                    except ValueError:
                         failed = True
-                    if self.isDeadlineCheck():
-                        if not all([name, ep, seq, sh, filename]):
-                            failed=True
-                    else:
-                        if not all([name, filename]):
-                            failed=True
+                        filename = ''
+                        name = ''
+                self.filename = filename
+                if self.isDeadlineCheck():
+                    if not all([name, ep, seq, sh, filename]):
+                        failed=True
+                    if self.pathStatus[idx] != PathStatus.kFailed:
+                        self.createLog(
+                                'Must specify name, filename & shot params')
+                elif not all([name, filename]):
+                    failed=True
+                    if self.pathStatus[idx] != PathStatus.kFailed:
+                        self.createLog('Must specify name and filename')
+                elif filename and not os.path.exists(filename):
+                    failed = True
+                    if self.pathStatus[idx] != PathStatus.kFailed:
+                        self.createLog('File does not exist %s' % filename)
+                elif not osp.splitext(filename)[-1] in ['.ma', '.mb']:
+                    failed = True
+                    if self.pathStatus[idx] != PathStatus.kFailed:
+                        self.createLog('File %s is not the correct extension'%
+                                filename)
 
                 if failed:
                     self.pathStatus[idx] = PathStatus.kFailed
-                    item.setBackground(Qt.darkRed)
+                    item.setForeground( PathStatus.fgColors.get(
+                        PathStatus.kFailed ))
                 else:
                     if self.bgButton.isChecked():
                         self.bundler = BundleProcess(self)
@@ -501,7 +575,8 @@ class BundleMakerUI(Form, Base):
                         self.bundler = BundleMaker(self)
 
                     self.pathStatus[idx] = PathStatus.kBusy
-                    item.setBackground(Qt.darkGreen)
+                    item.setForeground( PathStatus.fgColors.get(
+                        PathStatus.kBusy ))
                     self.processEvents()
 
                     self.filename = filename
@@ -579,7 +654,8 @@ class BundleMakerUI(Form, Base):
                     errors = self.errors[:]
                     if failed:
                         self.pathStatus[idx] = PathStatus.kFailed
-                        item.setBackground(Qt.darkRed)
+                        item.setForeground( PathStatus.fgColors.get(
+                            PathStatus.kFailed ))
                         self.processEvents()
                         continue
                     else:
@@ -589,7 +665,8 @@ class BundleMakerUI(Form, Base):
                             self.bundler = BundleMaker(self)
 
                         self.pathStatus[idx] = PathStatus.kBusy
-                        item.setBackground(Qt.darkGreen)
+                        item.setForeground( PathStatus.fgColors.get(
+                            PathStatus.kBusy ))
                         self.processEvents()
 
                         self.filename = filename
@@ -606,10 +683,12 @@ class BundleMakerUI(Form, Base):
 
                     if len(errors) != len(self.errors):
                         self.pathStatus[idx] = PathStatus.kError
-                        item.setBackground(Qt.darkYellow)
+                        item.setForeground( PathStatus.fgColors.get(
+                            PathStatus.kError ))
                     else:
                         self.pathStatus[idx] = PathStatus.kSuccess
-                        item.setBackground(Qt.darkGray)
+                        item.setForeground( PathStatus.fgColors.get(
+                            PathStatus.kSuccess ))
                     self.processEvents()
 
             else:
@@ -657,27 +736,13 @@ class BundleMakerUI(Form, Base):
 
     def getPath(self):
         path = str(self.pathBox.text())
-        if path:
-            if osp.exists(path):
-                self.settings.bundle_path = path
-                return path
-            else:
-                msgBox.showMessage(self, title='Scene Bundle',
-                                   msg='Specified path does not exist',
-                                   icon=QMessageBox.Information)
-        else:
-            msgBox.showMessage(self, title='Scene Bundle',
-                               msg='Location path not specified',
-                               icon=QMessageBox.Information)
+        if path and osp.exists(path):
+            self.settings.bundle_path = path
+        return path
 
     def getName(self):
         name = str(self.nameBox.text())
-        if name:
-            return name
-        else:
-            msgBox.showMessage(self, title='Scene Bundle',
-                               msg='Name not specified',
-                               icon=QMessageBox.Information)
+        return name
 
     def getEp(self):
         text = self.epBox.currentText()
@@ -718,7 +783,8 @@ class BundleMakerUI(Form, Base):
                     self.filesBox.addItem(path)
                     item = self.filesBox.item(self.filesBox.count()-1)
                     self.pathStatus.append(PathStatus.kWaiting)
-                    item.setBackground(Qt.white)
+                    item.setForeground( PathStatus.fgColors.get(
+                        PathStatus.kWaiting ))
 
     def setPaths(self, paths):
         for row in range( len(paths) ):
@@ -729,11 +795,13 @@ class BundleMakerUI(Form, Base):
                     item.setText(paths[row])
                     if status == PathStatus.kFailed:
                         self.pathStatus[row] = PathStatus.kWaiting
-                        item.setBackground(Qt.white)
+                        item.setForeground(PathStatus.fgColors.get(
+                            PathStatus.kWaiting ))
             except IndexError:
                 self.filesBox.addItem(paths[row])
                 item = self.filesBox.item(self.filesBox.count()-1)
-                item.setBackground(Qt.white)
+                item.setForeground(PathStatus.fgColors.get( PathStatus.kWaiting
+                    ))
                 self.pathStatus.append(PathStatus.kWaiting)
 
     def getPaths(self):
@@ -809,8 +877,7 @@ class BundleMakerUI(Form, Base):
         exc = traceback.format_exc()
         if exc.strip() == str(None):
             exc = ''
-        errMsg = '\r\n%s:' % self.currentFileName
-        errMsg += '\r\nError:' + msg + '\n'*2 + exc
+        errMsg = '\r\nError:' + msg + '\n'*2 + exc
         self.errors.append(errMsg)
         self.createLog(errMsg)
         if self.isCurrentScene():

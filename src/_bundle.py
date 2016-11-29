@@ -103,12 +103,16 @@ class BundleMaker(BundleMakerBase):
 
         return script
 
+    @_restoreAttribute('onError')
     def openFile(self, filename=None):
         self.status.setProcess('FileOpen')
+        self.onError = OnError.LOG_RAISE
         if filename is None:
             filename = self.filename
         self.status.setStatus('Opening File %s for bundling!'%self.filename)
         try:
+            if not os.path.exists(filename):
+                raise RuntimeError, 'File Does Not Exist'
             imaya.openFile(self.filename)
         except RuntimeError as e:
             self.status.error('Cannot Open File %s ... %s' %(filename, str(e)))
@@ -790,6 +794,7 @@ class BundleMaker(BundleMakerBase):
             type=True)[0])
         self.status.setStatus('Scene Saved to location: %s'%scenePath)
 
+    @_restoreAttribute('onError')
     def submitToDeadline(self, name, project, episode, sequence, shot):
         ''' Submit Scene to Deadline '''
         #######################################################################
@@ -798,6 +803,7 @@ class BundleMaker(BundleMakerBase):
         self.status.setProcess('SubmitToDeadline')
         self.status.setMaximum(0)
         self.status.setStatus('configuring deadline submitter...')
+        self.onError = OnError.LOG_RAISE
         try:
             subm = deadline.DeadlineBundleSubmitter(name, project, episode,
                     sequence, shot)
