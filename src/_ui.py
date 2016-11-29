@@ -737,11 +737,11 @@ class BundleMakerUI(Form, Base):
         path = str(self.pathBox.text())
         if path and osp.exists(path):
             self.settings.bundle_path = path
-        return path
+        return path.strip()
 
     def getName(self):
         name = str(self.nameBox.text())
-        return name
+        return name.strip()
 
     def getEp(self):
         text = self.epBox.currentText()
