@@ -1,3 +1,3 @@
-import src._bundle as bdl
-reload(bdl)
-Window = bdl.BundleMaker
+import src._ui as ui
+reload(ui)
+Window = ui.BundleMakerUI
