@@ -67,8 +67,14 @@ class BundleMakerProcess(BundleMakerBase):
         for exc in self.textureExceptions:
             command.extend(['-e', exc])
         command.extend(['-err', str( self.onError )])
+
+        startupinfo = None
+        if os.name == 'nt':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         self.process = subprocess.Popen(command, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+                stderr=subprocess.STDOUT, stdin=subprocess.PIPE,
+                startupinfo=startupinfo)
         self.communicate()
 
     def communicate(self):

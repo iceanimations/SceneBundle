@@ -381,8 +381,7 @@ class BundleMakerUI(Form, Base):
             self.currentIndex = 0
         idx = self.currentIndex
         while 1:
-            if self.pathStatus[idx] in [PathStatus.kWaiting,
-                    PathStatus.kFailed]:
+            if self.pathStatus[idx] in [PathStatus.kWaiting]:
                 self.currentIndex = idx + 1
                 return idx
             else:
