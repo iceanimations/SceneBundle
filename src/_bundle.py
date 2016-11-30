@@ -73,6 +73,7 @@ class BundleMaker(BundleMakerBase):
     def createScriptNode(self):
         '''Creates a unique script node which remap file in bundles scripts'''
         self.status.setProcess('CreateScriptNode')
+        self.status.setMaximum(0)
         script = None
         try:
             script = filter(
@@ -135,7 +136,7 @@ class BundleMaker(BundleMakerBase):
             pc.workspace(self.rootPath, o=True)
             if self.collectTextures():
                 if self.collectRedshiftProxies():
-                    if self.collectRedshiftSprites():
+                    if self.collectRedshiftSpritesNMaps():
                         if self.collectReferences():
                             if self.collectCaches():
                                 pc.workspace(ws, o=True)
@@ -420,11 +421,12 @@ class BundleMaker(BundleMakerBase):
             self.status.setMaximum(0)
         return True
 
-    def collectRedshiftSprites(self):
-        self.status.setProcess('CollectRedshiftSprites')
-        self.status.setStatus('Collecting Redshift Sprites')
+    def collectRedshiftSpritesNMaps(self):
+        self.status.setProcess('CollectRedshiftSpritesNMaps')
+        self.status.setStatus('Collecting Redshift Sprites and Normal maps')
         try:
-            nodes = pc.ls(exactType=pc.nt.RedshiftSprite)
+            nodes = pc.ls(exactType=[ pc.nt.RedshiftSprite,
+                pc.nt.RedshiftNormalMap ])
         except AttributeError:
             return True
         if nodes:

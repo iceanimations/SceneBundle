@@ -10,7 +10,7 @@ import sys as pc
 import pymel.core as pm
 
 mapFiles = '''#ICE_BundleScript
-#version==0.2
+#version==0.3
 import pymel.core as pc
 import maya.cmds as cmds
 import os.path as osp
@@ -46,7 +46,14 @@ def getLast3(path):
 for node in pc.ls(type="file"):
     if pc.attributeQuery("excp", n=node, exists=True):
         continue
-    node.fileTextureName.set(osp.join(rootPath, getLast3(node.fileTextureName.get())).replace('\\\\', '/'))
+    node.fileTextureName.set(osp.join(rootPath, getLast3(
+            node.fileTextureName.get() )).replace('\\\\', '/'))
+
+for node in pc.ls(type=[ pc.nt.RedshiftSprite, pc.nt.RedshiftNormalMap ]):
+    if pc.attributeQuery("excp", n=node, exists=True):
+        continue
+    node.tex0.set(os.join(rootPath, getLast3(node.tex0.get())).replace('\\\\',
+            '/'))
 
 msg=False
 for node in pc.ls(type="cacheFile"):
@@ -61,7 +68,8 @@ for node in pc.ls(type="cacheFile"):
         else:
             msg=True
 if msg:
-    pc.confirmDialog(title="Scene Bundle", message="Could not apply some cache files", button="Ok")
+    pc.confirmDialog(title="Scene Bundle",
+            message="Could not apply some cache files", button="Ok")
 
 '''
 
