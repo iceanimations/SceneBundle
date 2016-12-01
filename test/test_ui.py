@@ -113,9 +113,11 @@ class TestBundleMakerUI_CurrentScene(TestBase):
         dh1 = DiagHelper(key=Qt.Key_Enter, time=1000,
                 keyword='CollectTextures')
         dh1.activate()
+
         dh2 = DiagHelper(key=Qt.Key_Escape, time=2000,
                 keyword='latestErrorLog')
         dh2.activate()
+
         QTest.mouseClick(self.gui.bundleButton, Qt.LeftButton)
         time.sleep(1)
 
@@ -201,6 +203,10 @@ class TestBundleMakerUI_List(TestBase):
         QTest.mouseClick(self.gui.deadlineCheck, Qt.LeftButton)
         QTest.mouseClick(self.gui.keepReferencesButton, Qt.LeftButton)
         # QTest.mouseClick(self.gui.bgButton, Qt.LeftButton)
+
+        dh2 = DiagHelper(key=Qt.Key_Escape, time=2000,
+                keyword='latestErrorLog')
+        dh2.activate()
 
         qApp.processEvents()
         QTest.mouseClick(self.gui.bundleButton, Qt.LeftButton)

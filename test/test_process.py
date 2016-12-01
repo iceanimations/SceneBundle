@@ -74,9 +74,10 @@ class TestBundleProcess(TestBase):
         self.assertTrue( os.path.exists(ref_file) )
 
     def testParsing(self):
+        print self.bp.status.counts
         self.assertEqual(self.bp.status.counts,
-                {'setMaximum': 16, 'setValue': 16, 'setProcess': 13,
-                    'setStatus': 19, 'done': 1, 'error': 1})
+                {'setMaximum': 17, 'setValue': 17, 'setProcess': 13,
+                    'setStatus': 19, 'done': 2, 'error': 2} )
 
 if __name__ == "__main__":
     unittest.main()

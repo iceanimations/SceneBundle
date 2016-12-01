@@ -82,8 +82,8 @@ class BundleMakerProcess(BundleMakerBase):
         count = 0
         while 1:
             if self.process.poll() is not None:
-                self.error('Process Exited Prematurely with %d'%self.process.poll())
-                self.done()
+                self.status.error('Process Exited Prematurely with %d'%self.process.poll())
+                self.status.done()
                 break
             if self.next_line is None:
                 count += 1
@@ -92,12 +92,12 @@ class BundleMakerProcess(BundleMakerBase):
                 self.line = self.next_line
                 self.next_line = None
             if not self.line:
-                self.error('Process Exited Prematurely with %r'%self.process.returncode)
-                self.done()
+                self.status.error('Process Exited Prematurely with %r'%self.process.returncode)
+                self.status.done()
                 break
             if self.process.poll() is not None:
-                self.error('Process Exited Prematurely with %d'%self.process.poll())
-                self.done()
+                self.status.error('Process Exited Prematurely with %d'%self.process.poll())
+                self.status.done()
                 break
             self._parseLine()
 
@@ -152,7 +152,7 @@ class BundleMakerProcess(BundleMakerBase):
         match = self.error_re.match(line)
         if match:
             error = match.group('msg')
-            while False:
+            while True:
                 self.next_line = self.process.stdout.readline()
                 if not self.next_line:
                     break
@@ -175,7 +175,7 @@ class BundleMakerProcess(BundleMakerBase):
         match = self.warning_re.match(line)
         if match:
             warning = match.group('msg')
-            while False:
+            while True:
                 self.next_line = self.process.stdout.readline()
                 if not self.next_line:
                     break
