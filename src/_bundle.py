@@ -74,6 +74,7 @@ class BundleMaker(BundleMakerBase):
         '''Creates a unique script node which remap file in bundles scripts'''
         self.status.setProcess('CreateScriptNode')
         self.status.setMaximum(0)
+        self.status.setValue(0)
         script = None
         try:
             script = filter(
@@ -107,6 +108,8 @@ class BundleMaker(BundleMakerBase):
     @_restoreAttribute('onError')
     def openFile(self, filename=None):
         self.status.setProcess('FileOpen')
+        self.status.setMaximum(0)
+        self.status.setValue(0)
         self.onError = OnError.LOG_RAISE
         if filename is None:
             filename = self.filename
@@ -126,6 +129,8 @@ class BundleMaker(BundleMakerBase):
         if sequence is None: sequence = self.sequence
         if shot is None: shot = self.shot
         self.status.setProcess('CreateBundle')
+        self.status.setMaximum(0)
+        self.status.setValue(0)
         ws = pc.workspace(o=True, q=True)
         if self.filename and cmds.file(q=1, sn=1) != self.filename:
             self.openFile()
@@ -253,6 +258,7 @@ class BundleMaker(BundleMakerBase):
         badTexturePaths = []
 
         self.status.setMaximum(0)
+        self.status.setValue(0)
         for node in textureFileNodes:
             try:
                 filePath = imaya.readPathAttr(node.fileTextureName)
@@ -289,6 +295,7 @@ class BundleMaker(BundleMakerBase):
         self.status.setStatus('collecting textures...')
         imagesPath = osp.join(self.rootPath, 'sourceImages')
         self.status.setMaximum(len(textureFileNodes))
+        self.status.setValue(0)
         self.status.setValue(0)
         for node in textureFileNodes:
             folderPath = osp.join(imagesPath, str(newName))
@@ -424,6 +431,8 @@ class BundleMaker(BundleMakerBase):
     def collectRedshiftSpritesNMaps(self):
         self.status.setProcess('CollectRedshiftSpritesNMaps')
         self.status.setStatus('Collecting Redshift Sprites and Normal maps')
+        self.status.setMaximum(0)
+        self.status.setValue(0)
         try:
             nodes = pc.ls(exactType=[ pc.nt.RedshiftSprite,
                 pc.nt.RedshiftNormalMap ])
@@ -536,8 +545,9 @@ class BundleMaker(BundleMakerBase):
 
     def collectCaches(self):
         self.status.setProcess('CollectCaches')
-
         self.status.setStatus('Prepering to collect cache files...')
+        self.status.setMaximum(0)
+        self.status.setValue(0)
         cacheNodes = self.getCacheNodes()
 
         badCachePaths = []
@@ -787,6 +797,8 @@ class BundleMaker(BundleMakerBase):
 
     def saveSceneAs(self, name=None):
         self.status.setProcess('SaveSceneAs')
+        self.status.setMaximum(0)
+        self.status.setValue(0)
         name = self.name
         self.status.setStatus('Saving Scene in New Location')
         self.createScriptNode()
@@ -880,6 +892,8 @@ class BundleMaker(BundleMakerBase):
     def removeBundle(self):
         self.status.setProcess('RemoveBundle')
         self.status.setStatus('Removing directory %s ...'%self.rootPath)
+        self.status.setMaximum(0)
+        self.status.setValue(0)
         try:
             shutil.rmtree(self.rootPath)
         except Exception as e:
