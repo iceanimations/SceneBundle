@@ -68,6 +68,7 @@ class BundleMakerProcess(BundleMakerBase):
             command.extend(['-e', exc])
         command.extend(['-err', str( self.onError )])
 
+        self.count  = 0
         startupinfo = None
         if os.name == 'nt':
             startupinfo = subprocess.STARTUPINFO()
@@ -78,17 +79,25 @@ class BundleMakerProcess(BundleMakerBase):
         self.communicate()
 
     def communicate(self):
+        count = 0
         while 1:
             if self.process.poll() is not None:
-                self.error('Process Exited with %d'%self.process.poll())
+                self.error('Process Exited Prematurely with %d'%self.process.poll())
                 self.done()
                 break
             if self.next_line is None:
+                count += 1
                 self.line = self.process.stdout.readline()
             else:
                 self.line = self.next_line
                 self.next_line = None
             if not self.line:
+                self.error('Process Exited Prematurely with %r'%self.process.returncode)
+                self.done()
+                break
+            if self.process.poll() is not None:
+                self.error('Process Exited Prematurely with %d'%self.process.poll())
+                self.done()
                 break
             self._parseLine()
 
@@ -143,16 +152,19 @@ class BundleMakerProcess(BundleMakerBase):
         match = self.error_re.match(line)
         if match:
             error = match.group('msg')
-            while True:
+            while False:
                 self.next_line = self.process.stdout.readline()
+                if not self.next_line:
+                    break
                 if not self.bundle_re.match(self.next_line):
                     error += self.next_line
                 else:
-                    try:
-                        self.status.error(error)
-                    except BundleException:
-                        self.killProcess()
                     break
+            try:
+                self.status.error(error)
+            except BundleException:
+                self.killProcess()
+                self.done()
         return match
 
     def _parseWarning(self, line=None, level='WARNING'):
@@ -163,13 +175,15 @@ class BundleMakerProcess(BundleMakerBase):
         match = self.warning_re.match(line)
         if match:
             warning = match.group('msg')
-            while not self.bundle_re.match(self.next_line):
+            while False:
                 self.next_line = self.process.stdout.readline()
+                if not self.next_line:
+                    break
                 if not self.bundle_re.match(self.next_line):
                     warning += self.next_line
                 else:
-                    self.status.warning(warning)
                     break
+            self.status.warning(warning)
         return match
 
     def _parseProcess(self, line=None, level='INFO'):
