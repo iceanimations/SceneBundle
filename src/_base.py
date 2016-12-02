@@ -6,7 +6,8 @@ import sys
 import types
 
 bundleFormatter = logging.Formatter(
-        fmt='%(name)s : %(levelname)s : %(asctime)s : %(message)s' )
+        fmt=('%(name)s : %(levelname)s : %(asctime)s : %(message)s :' +
+        ' END_%(name)s' ))
 loggerName = 'SCENE_BUNDLE'
 
 class OnError(object):

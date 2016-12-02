@@ -184,9 +184,6 @@ class TestBundleMakerUI_List(TestBase):
 
         self.handler = TestBundleHandler()
         self.gui = BundleMakerUI()
-        paths.insert(2, filename)
-        paths.insert(3, r'd:\hello.ma')
-        paths.insert(3, r'd:\deleting.txt')
         self.gui.setPaths(paths)
         self.gui.show()
 
@@ -204,7 +201,7 @@ class TestBundleMakerUI_List(TestBase):
         QTest.mouseClick(self.gui.keepReferencesButton, Qt.LeftButton)
         # QTest.mouseClick(self.gui.bgButton, Qt.LeftButton)
 
-        dh2 = DiagHelper(key=Qt.Key_Escape, time=2000,
+        dh2 = DiagHelper(key=Qt.Key_Enter, time=2000,
                 keyword='latestErrorLog')
         dh2.activate()
 
@@ -260,7 +257,7 @@ class TestBundleMakerUI_List(TestBase):
         for srcdir, bundledir in zip( self.srcdir, self.bundledir ):
             tearDown(os.path.join(self.tmpdir, srcdir))
             tearDown(os.path.join(self.tmpdir, bundledir))
-            # tearDown(os.path.join(self.tmpdir, 'mayaproj'))
+        tearDown(os.path.join(self.tmpdir, 'mayaproj'))
 
 
 if __name__ == "__main__":

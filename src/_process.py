@@ -28,16 +28,20 @@ class BundleMakerProcess(BundleMakerBase):
             '\s*(?P<level>[^\s]*)\s*:' +
             r'\s*(?P<time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}?)\s*:' +
             r'(?P<stuff>.*)')
+    sentinel_re = re.compile(r'\s*:\s*(?P<sentinel>END_%s)' % loggerName)
     question_re = re.compile(
-            r'\s*Question\s*:\s*(?P<question>.*)')
+            r'\s*Question\s*:\s*(?P<question>.*)' + sentinel_re.pattern)
     progress_re = re.compile( '\s*Progress\s*:' +
-            '\s*(?P<process>[^\s]*)\s*:\s*(?P<val>\d+)\s*of\s*(?P<maxx>\d+)\s*')
-    error_re = re.compile( r'\s*(?P<msg>.*)\s*')
-    warning_re = re.compile( r'\s*(?P<msg>.*)\s*' )
-    process_re = re.compile( r'\s*Process\s*:\s*(?P<process>[^\s]*)\s*')
+            '\s*(?P<process>[^\s]*)\s*:\s*(?P<val>\d+)\s*of\s*(?P<maxx>\d+)\s*'
+            + sentinel_re.pattern)
+    error_re = re.compile( r'\s*(?P<msg>.*)\s*(' + sentinel_re.pattern + ')?\s*')
+    warning_re = re.compile( r'\s*(?P<msg>.*)\s*'  + sentinel_re.pattern +
+            '?\s*')
+    process_re = re.compile( r'\s*Process\s*:\s*(?P<process>[^\s]*)\s*' +
+            sentinel_re.pattern)
     status_re = re.compile( r'\s*Status\s*:\s*(?P<process>[^\s]*)\s*:' +
-            r'\s*(?P<status>.*)\s*')
-    done_re = re.compile( r'\s*DONE\s*')
+            r'\s*(?P<status>.*)\s*' + sentinel_re.pattern)
+    done_re = re.compile( r'\s*DONE\s*' + sentinel_re.pattern)
 
     def createBundle(self, name=None, project=None, episode=None,
             sequence=None, shot=None):
@@ -68,7 +72,6 @@ class BundleMakerProcess(BundleMakerBase):
             command.extend(['-e', exc])
         command.extend(['-err', str( self.onError )])
 
-        self.count  = 0
         startupinfo = None
         if os.name == 'nt':
             startupinfo = subprocess.STARTUPINFO()
@@ -79,30 +82,24 @@ class BundleMakerProcess(BundleMakerBase):
         self.communicate()
 
     def communicate(self):
-        count = 0
-        while 1:
-            if self.process.poll() is not None:
-                self.status.error('Process Exited Prematurely with %d'%self.process.poll())
-                self.status.done()
-                break
-            if self.next_line is None:
-                count += 1
-                self.line = self.process.stdout.readline()
-            else:
-                self.line = self.next_line
-                self.next_line = None
-            if not self.line:
-                self.status.error('Process Exited Prematurely with %r'%self.process.returncode)
-                self.status.done()
-                break
-            if self.process.poll() is not None:
-                self.status.error('Process Exited Prematurely with %d'%self.process.poll())
-                self.status.done()
-                break
-            self._parseLine()
 
-    def _parseLine(self):
-        match = self.bundle_re.match(self.line)
+        while self.process.poll() is None:
+            for line in iter( self.process.stdout.readline, b''):
+                self.line = line
+                self._parseLine()
+        retcode = self.process.returncode
+        if retcode is None:
+            self.status.error('Process Exited Prematurely')
+        elif retcode != 0:
+            self.status.error('Process Exited Prematurely: Exit Code %d' %
+                    retcode)
+            self.done()
+        return
+
+    def _parseLine(self, line=None):
+        if line is None:
+            line = self.line
+        match = self.bundle_re.match(line)
         if match:
             stuff = match.group('stuff')
             level = match.group('level')
@@ -152,14 +149,14 @@ class BundleMakerProcess(BundleMakerBase):
         match = self.error_re.match(line)
         if match:
             error = match.group('msg')
-            while True:
-                self.next_line = self.process.stdout.readline()
-                if not self.next_line:
-                    break
-                if not self.bundle_re.match(self.next_line):
-                    error += self.next_line
-                else:
-                    break
+            _match = self.sentinel_re.search(self.line)
+            if not _match:
+                for self.line in iter(self.process.stdout.readline, b''):
+                    _match = self.sentinel_re.search(self.line)
+                    if _match:
+                        error += self.sentinel_re.sub('', self.line)
+                        break
+                    else: error += self.line
             try:
                 self.status.error(error)
             except BundleException:
@@ -175,14 +172,14 @@ class BundleMakerProcess(BundleMakerBase):
         match = self.warning_re.match(line)
         if match:
             warning = match.group('msg')
-            while True:
-                self.next_line = self.process.stdout.readline()
-                if not self.next_line:
-                    break
-                if not self.bundle_re.match(self.next_line):
-                    warning += self.next_line
-                else:
-                    break
+            _match = self.sentinel_re.search(self.line)
+            if not _match:
+                for self.line in iter(self.process.stdout.readline, b''):
+                    _match = self.sentinel_re.search(self.line)
+                    if _match:
+                        warning += self.sentinel_re.sub('', self.line)
+                        break
+                    else: warning += self.line
             self.status.warning(warning)
         return match
 

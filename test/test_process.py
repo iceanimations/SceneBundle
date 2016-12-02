@@ -77,7 +77,7 @@ class TestBundleProcess(TestBase):
         print self.bp.status.counts
         self.assertEqual(self.bp.status.counts,
                 {'setMaximum': 17, 'setValue': 17, 'setProcess': 13,
-                    'setStatus': 19, 'done': 2, 'error': 2} )
+                    'setStatus': 19, 'done': 1, 'error': 1} )
 
 if __name__ == "__main__":
     unittest.main()

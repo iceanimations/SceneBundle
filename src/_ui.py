@@ -673,7 +673,6 @@ class BundleMakerUI(Form, Base):
                             self.bundler.openFile(filename)
                         except:
                             pass
-                        self.bundler.filename = filename
                         self.createBundle(name=name, project=pro, episode=ep,
                                 sequence=seq, shot=sh)
 
