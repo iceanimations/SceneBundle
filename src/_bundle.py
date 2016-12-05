@@ -172,7 +172,7 @@ class BundleMaker(BundleMakerBase):
         pc.workspace(ws, o=True)
 
     def deleteCacheNodes(self):
-        pc.delete(pc.ls(type=['cacheFile', pc.nt.RedshiftProxyMesh]))
+        pc.delete(pc.ls(type=['cacheFile', 'RedshiftProxyMesh']))
 
     def createProjectFolder(self, name=None):
         self.clearData()
@@ -369,7 +369,7 @@ class BundleMaker(BundleMakerBase):
 
     def collectRedshiftProxies(self):
         try:
-            nodes = pc.ls(type=pc.nt.RedshiftProxyMesh)
+            nodes = pc.ls(type='RedshiftProxyMesh')
         except AttributeError:
             return True
         if nodes:
@@ -434,8 +434,8 @@ class BundleMaker(BundleMakerBase):
         self.status.setMaximum(0)
         self.status.setValue(0)
         try:
-            nodes = pc.ls(exactType=[ pc.nt.RedshiftSprite,
-                pc.nt.RedshiftNormalMap ])
+            nodes = pc.ls(exactType=[ 'RedshiftSprite',
+                'RedshiftNormalMap' ])
         except AttributeError:
             return True
         if nodes:

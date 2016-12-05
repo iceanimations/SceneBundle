@@ -520,6 +520,7 @@ class BundleMakerUI(Form, Base):
 
             self.bundler = BundleMaker(self)
             self.filename = cmds.file(q=1, sn=1)
+            self.bundler.open = False
             self.createBundle(project=pro, episode=self.getEp(),
                     sequence=self.getSeq(), shot=self.getSh())
             self.stopPolling()
