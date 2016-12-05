@@ -755,22 +755,30 @@ class BundleMakerUI(Form, Base):
 
     def getEp(self):
         text = self.epBox.currentText()
+        self.settings.bundle_episode = text
         if text == 'Custom':
-            return self.epBox2.text()
+            text = self.epBox2.text()
+            self.settings.bundle_custom_episode = text
+            return text
         if text == '--Episode--':
             text = ''
         return text
 
     def getSeq(self):
         text = self.seqBox.currentText()
+        self.settings.bundle_sequence = text
         if text == 'Custom':
-            return self.seqBox2.text()
+            text = self.seqBox2.text()
+            self.settings.bundle_custom_sequence
+            return text
+
         if text == '--Sequence--':
             text = ''
         return text
 
     def getSh(self):
         text = self.shBox.currentText()
+        self.settings.bundle_shot = text
         if text == 'Custom':
             return self.shBox2.text()
         if text == '--Shot--':
