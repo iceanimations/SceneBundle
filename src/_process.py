@@ -1,27 +1,53 @@
 import subprocess
 import re
 import os
+import time
 
 from ._base import ( OnError, loggerName, BundleException, BundleMakerBase )
+import tempfile
 
 currentdir = os.path.dirname(os.path.abspath( __file__ ))
+
+mayaPathTemplate = r"C:\Program Files%(bits)s\Autodesk\Maya%(ver)d\bin\%(exe)s"
+def getMayaPath(is64=True, ver=2015, exe='mayabatch',
+        template=mayaPathTemplate):
+    params = { 'bits': '' if is64 else ' (x86)',
+               'ver': ver,
+               'exe': exe + '.exe' }
+    return template%params
+
 mayapyPaths = {
-        '2014x64': r"C:\Program Files\Autodesk\Maya2014\bin\mayapy.exe",
-        '2014x86': r"C:\Program Files (x86)\Autodesk\Maya2014\bin\mayapy.exe",
-        '2015x64': r"C:\Program Files\Autodesk\Maya2015\bin\mayapy.exe",
-        '2015x86': r"C:\Program Files (x86)\Autodesk\Maya2015\bin\mayapy.exe",
-        '2016x64': r"C:\Program Files\Autodesk\Maya2016\bin\mayapy.exe",
-        '2016x86': r"C:\Program Files (x86)\Autodesk\Maya2016\bin\mayapy.exe",
-}
+        (str(ver)+('x64' if is64 else 'x86')): getMayaPath(is64, ver, 'mayapy')
+        for ver in range(2010, 2018)
+        for is64 in [True, False] }
+
+mayabatchPaths = {
+        (str(ver)+('x64' if is64 else 'x86')): getMayaPath(is64, ver,
+            'mayabatch')
+        for ver in range(2010, 2018)
+        for is64 in [True, False] }
+
+scriptStart = '''
+import sys
+s = r"%s"
+sys.path.insert(0, s)
+import sceneBundle
+from sceneBundle import main
+args = []
+''' % os.path.dirname( os.path.dirname(currentdir) )
+scriptEnd = '''
+bm = main(args=args)
+'''
 
 class BundleMakerProcess(BundleMakerBase):
     ''' Creates a bundle in a separate maya process by providing it appropriate
     data, parses output to give status '''
     process = None
-    mayaversion = '2015x64'
     line = ''
     next_line = None
     resp = OnError.LOG
+    mayapyPath = None
+    mayabatchPath = None
 
     # regular expressions for parsing output
     bundle_re = re.compile( r'\s*%s\s*:'%loggerName +
@@ -43,6 +69,17 @@ class BundleMakerProcess(BundleMakerBase):
             r'\s*(?P<status>.*)\s*' + sentinel_re.pattern)
     done_re = re.compile( r'\s*DONE\s*' + sentinel_re.pattern)
 
+    def __init__(self, *args, **kwargs):
+        self.mayabatch = kwargs.pop('mayabatch', True)
+        self.is64 = kwargs.pop('is64', True)
+        self.ver = kwargs.pop('version', 2015)
+        self.mayapyPath = getMayaPath(is64=self.is64, ver=self.ver,
+                exe='mayapy')
+        self.mayabatchPath = getMayaPath(is64=self.is64, ver=self.ver,
+                exe='mayabatch')
+        self.pythonFileName = None
+        super(BundleMakerProcess, self).__init__(*args, **kwargs)
+
     def createBundle(self, name=None, project=None, episode=None,
             sequence=None, shot=None):
         if name is None: name = self.name
@@ -50,8 +87,74 @@ class BundleMakerProcess(BundleMakerBase):
         if episode is None: episode = self.episode
         if sequence is None: sequence = self.sequence
         if shot is None: shot = self.shot
+        if self.mayabatch:
+            self._createByMayaBatch(name=name, project=project,
+                    episode=episode, sequence=sequence, shot=shot)
+        else:
+            self._createByMayaPy(name=name, project=project,
+                    episode=episode, sequence=sequence, shot=shot)
+
+    def launchProcess(self, command):
+        startupinfo = None
+        if os.name == 'nt':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        self.process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, stdin=subprocess.PIPE,
+                startupinfo=startupinfo)
+
+    def _createByMayaBatch(self, name=None, project=None, episode=None,
+            sequence=None, shot=None):
+        self.pythonFileName = tempfile.mktemp(
+                prefix=time.strftime( "%Y_%m_%d_%H_%M_%S", time.localtime()).replace(' ', '_'),
+                suffix='.py')
+        with open(self.pythonFileName, 'w+') as pythonFile:
+            pythonFile.write(scriptStart)
+            pythonFile.write('args.append(\"%s\")\n'%self.filename.replace('\\',
+                '/'))
+            pythonFile.write('args.append("-tp")\n')
+            pythonFile.write('args.append("%s")\n'%self.path.replace('\\', '/'))
+            pythonFile.write('args.append("-n")\n')
+            pythonFile.write('args.append("%s")\n'%self.name)
+            if self.keepReferences:
+                pythonFile.write('args.append("-r")\n')
+            if self.archive:
+                pythonFile.write('args.append("-a")\n')
+            if self.delete:
+                pythonFile.write('args.append("-x")\n')
+            if self.deadline:
+                pythonFile.write('args.append("-d")\n')
+                pythonFile.write('args.append("-p")\n')
+                pythonFile.write('args.append("%s")\n'%self.project)
+                pythonFile.write('args.append("-ep")\n')
+                pythonFile.write('args.append("%s")\n'%self.episode)
+                pythonFile.write('args.append("-s")\n')
+                pythonFile.write('args.append("%s")\n'%self.sequence)
+                pythonFile.write('args.append("-t")\n')
+                pythonFile.write('args.append("%s")\n'%self.shot)
+            for exc in self.textureExceptions:
+                pythonFile.write('args.append("-e")')
+                pythonFile.write('args.append("%s")\n'%exc)
+            pythonFile.write(scriptEnd)
+
+        melcommand = ( 'eval( "python( \\"execfile( \\\\\\"' +
+                self.pythonFileName.replace( "\\", "/" ) +
+                '\\\\\\" )\\" );");'  )
+
         command = []
-        command.append(mayapyPaths.get(self.mayaversion))
+        command.append(self.mayabatchPath)
+        command.append('-file')
+        command.append(self.filename)
+        command.append('-command')
+        command.append(melcommand)
+
+        self.launchProcess(command)
+        self.communicate()
+
+    def _createByMayaPy(self, name=None, project=None, episode=None,
+            sequence=None, shot=None):
+        command = []
+        command.append(self.mayapyPath)
         command.append(os.path.dirname(currentdir))
         command.append(self.filename)
         command.extend(['-tp', self.path])
@@ -72,17 +175,10 @@ class BundleMakerProcess(BundleMakerBase):
             command.extend(['-e', exc])
         command.extend(['-err', str( self.onError )])
 
-        startupinfo = None
-        if os.name == 'nt':
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        self.process = subprocess.Popen(command, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, stdin=subprocess.PIPE,
-                startupinfo=startupinfo)
+        self.launchProcess(command)
         self.communicate()
 
     def communicate(self):
-
         while self.process.poll() is None:
             for line in iter( self.process.stdout.readline, b''):
                 self.line = line
@@ -93,7 +189,7 @@ class BundleMakerProcess(BundleMakerBase):
         elif retcode != 0:
             self.status.error('Process Exited Prematurely: Exit Code %d' %
                     retcode)
-            self.done()
+            self.status.done()
         return
 
     def _parseLine(self, line=None):

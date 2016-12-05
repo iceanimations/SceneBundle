@@ -35,6 +35,7 @@ class TestBundleProcess(TestBase):
 
     @classmethod
     def tearDownClass(self):
+        self.bp.killProcess()
         super(TestBundleProcess, self).tearDownClass()
         shutil.rmtree( os.path.join( self.bp.path, self.bp.name ) )
 
@@ -77,7 +78,7 @@ class TestBundleProcess(TestBase):
         print self.bp.status.counts
         self.assertEqual(self.bp.status.counts,
                 {'setMaximum': 17, 'setValue': 17, 'setProcess': 13,
-                    'setStatus': 19, 'done': 1, 'error': 1} )
+                    'setStatus': 18, 'done': 1, 'error': 1} )
 
 if __name__ == "__main__":
     unittest.main()

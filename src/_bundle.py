@@ -21,11 +21,11 @@ from ._base import BundleMakerBase, OnError, ProgressLogHandler
 class BundleMakerHandler(ProgressLogHandler):
     def exit(self, code=0):
         self.logger.info('ExitMaya')
-        if pc.about(q=True, batch=True):
+        # if pc.about(q=True, batch=True):
+        if os.path.basename(sys.executable) == 'mayapy.exe':
             sys.exit(code)
         else:
             pc.quit(a=1,ec=code)
-
 
 mapFiles = util.mapFiles
 class BundleMaker(BundleMakerBase):
