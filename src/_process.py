@@ -112,6 +112,7 @@ class BundleMakerProcess(BundleMakerBase):
             pythonFile.write(scriptStart)
             pythonFile.write('args.append(\"%s\")\n'%self.filename.replace('\\',
                 '/'))
+            pythonFile.write('args.append("-do")\n')
             pythonFile.write('args.append("-tp")\n')
             pythonFile.write('args.append("%s")\n'%self.path.replace('\\', '/'))
             pythonFile.write('args.append("-n")\n')

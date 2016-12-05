@@ -34,6 +34,8 @@ def build_parser():
             help="don't import references copy them in")
     parser.add_argument('-z', '--zdepth', action='store_true',
             help="turn zdepth render layer on")
+    parser.add_argument('-do', '--dontOpen', action='store_false',
+            help="dont open the file before bundling (for internal use)")
     proArg = parser.add_argument('-p', '--project')
     epArg = parser.add_argument('-ep', '--episode')
     seqArg = parser.add_argument('-s', '--sequence')
@@ -119,7 +121,7 @@ def bundleMain( bm=None, args=None ):
     bm.onError = args.onError
     if args.addException:
         bm.addExceptions( args.addException )
-    bm.openFile()
+    bm.open = args.dontOpen
     bm.createBundle()
     mainHandler.remove()
     return bm

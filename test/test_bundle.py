@@ -30,6 +30,7 @@ class TestBundle(TestBase):
         if os.path.exists(rootPath):
             shutil.rmtree(rootPath)
 
+        self.bm.open = False
         self.bm.openFile()
         self.bm.createBundle()
 

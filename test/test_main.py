@@ -24,6 +24,7 @@ class TestMain(TestBase):
         self.name = self.bundledir
         args = [os.path.join( self.tmpdir, 'mayaproj', 'scenes',
             'mayaproj.ma'), '-n', self.name, '-tp', self.tmpdir, '-r']
+        self.bm.open = True
         self.bm.name = self.name
         self.bm.path = self.tmpdir
         self.bm.rootPath = normpath(os.path.join( self.bm.path, self.bm.name ))

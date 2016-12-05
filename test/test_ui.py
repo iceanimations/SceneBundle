@@ -94,6 +94,7 @@ class TestBundleMakerUI_CurrentScene(TestBase):
         self.gui.bundler.progressHandler=self.handler
         self.gui.bundler.filename = os.path.join(self.tmpdir, self.srcdir,
                 'scenes', 'mayaproj.ma')
+        self.gui.bundler.open = False
         self.gui.bundler.openFile()
 
         QTest.mouseClick(self.gui.currentSceneButton, Qt.LeftButton)
@@ -199,7 +200,7 @@ class TestBundleMakerUI_List(TestBase):
         QTest.mouseClick(self.gui.keepBundleButton, Qt.LeftButton)
         QTest.mouseClick(self.gui.deadlineCheck, Qt.LeftButton)
         QTest.mouseClick(self.gui.keepReferencesButton, Qt.LeftButton)
-        # QTest.mouseClick(self.gui.bgButton, Qt.LeftButton)
+        QTest.mouseClick(self.gui.bgButton, Qt.LeftButton)
 
         dh2 = DiagHelper(key=Qt.Key_Enter, time=2000,
                 keyword='latestErrorLog')
@@ -254,6 +255,8 @@ class TestBundleMakerUI_List(TestBase):
 
     @classmethod
     def tearDownClass(self):
+        if hasattr(self.gui.bundler, 'stop'):
+            self.gui.bundler.stop()
         for srcdir, bundledir in zip( self.srcdir, self.bundledir ):
             tearDown(os.path.join(self.tmpdir, srcdir))
             tearDown(os.path.join(self.tmpdir, bundledir))

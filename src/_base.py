@@ -184,7 +184,7 @@ class BundleMakerBase(object):
     def __init__(self, progressHandler=None, path=None, filename=None,
             name=None, deadline=True, doArchive=False, delete=False,
             keepReferences=False, project=None, zdepth=None, sequence=None,
-            episode=None, shot=None):
+            episode=None, shot=None, open=True):
         ''':type progressHandler: BundleProgressHandler'''
         self.textureExceptions = []
         self.deadline = deadline
@@ -199,6 +199,7 @@ class BundleMakerBase(object):
         self.episode = episode
         self.shot = shot
         self.filename = filename
+        self.open = open
         self.setProgressHandler(progressHandler)
 
     def setProgressHandler(self, ph=None):

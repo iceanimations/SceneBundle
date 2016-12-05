@@ -132,7 +132,7 @@ class BundleMaker(BundleMakerBase):
         self.status.setMaximum(0)
         self.status.setValue(0)
         ws = pc.workspace(o=True, q=True)
-        if self.filename and cmds.file(q=1, sn=1) != self.filename:
+        if self.open:
             self.openFile()
         if self.createProjectFolder(name):
             if self.deadline:

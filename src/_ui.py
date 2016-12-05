@@ -224,6 +224,7 @@ class BundleMakerUI(Form, Base):
         self.stopButton.hide()
         self.stopButton.clicked.connect(self.stopPolling)
         self.bundleButton.clicked.connect(self.callCreateBundle2)
+        self.bundleButton.clicked.connect(self.resetFailed)
         self.browseButton.clicked.connect(self.browseFolder)
         self.nameBox.returnPressed.connect(self.callCreateBundle2)
         self.pathBox.returnPressed.connect(self.callCreateBundle2)
@@ -381,7 +382,8 @@ class BundleMakerUI(Form, Base):
             self.currentIndex = 0
         idx = self.currentIndex
         while 1:
-            if self.pathStatus[idx] in [PathStatus.kWaiting]:
+            if self.pathStatus[idx] in [PathStatus.kWaiting,
+                    PathStatus.kFailed]:
                 self.currentIndex = idx + 1
                 return idx
             else:
@@ -395,6 +397,13 @@ class BundleMakerUI(Form, Base):
 
     def blocking(self):
         return self.isCurrentScene() or not self.bgButton.isChecked()
+
+    def resetFailed(self):
+        for idx, status in enumerate(self.pathStatus):
+            if status == PathStatus.kFailed:
+                self.pathStatus[idx] = PathStatus.kWaiting
+                self.filesBox.item(idx).setForeground( PathStatus.fgColors.get(
+                    PathStatus.kWaiting ) )
 
     def startPolling(self):
         self.progressBar.show()
@@ -670,6 +679,7 @@ class BundleMakerUI(Form, Base):
 
                         self.filename = filename
                         try:
+                            self.bundler.open=False
                             self.bundler.openFile(filename)
                         except:
                             pass
