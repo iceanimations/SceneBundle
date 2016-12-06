@@ -769,7 +769,7 @@ class BundleMakerUI(Form, Base):
         self.settings.bundle_sequence = text
         if text == 'Custom':
             text = self.seqBox2.text()
-            self.settings.bundle_custom_sequence
+            self.settings.bundle_custom_sequence = text
             return text
 
         if text == '--Sequence--':
