@@ -16,16 +16,7 @@ from . import _archiving as arch
 from . import _deadline as deadline
 from . import _utilities as util
 
-from ._base import BundleMakerBase, OnError, ProgressLogHandler
-
-class BundleMakerHandler(ProgressLogHandler):
-    def exit(self, code=0):
-        self.logger.info('ExitMaya')
-        # if pc.about(q=True, batch=True):
-        if os.path.basename(sys.executable) == 'mayapy.exe':
-            sys.exit(code)
-        else:
-            pc.quit(a=1,ec=code)
+from ._base import BundleMakerBase, OnError, BundleMakerHandler
 
 mapFiles = util.mapFiles
 class BundleMaker(BundleMakerBase):

@@ -77,8 +77,8 @@ class TestBundleProcess(TestBase):
     def testParsing(self):
         print self.bp.status.counts
         self.assertEqual(self.bp.status.counts,
-                {'setMaximum': 17, 'setValue': 17, 'setProcess': 12,
-                    'setStatus': 17, 'done': 1, 'error': 1} )
+                {'setMaximum': 15, 'setValue': 15, 'setProcess': 12,
+                    'setStatus': 18, 'done': 1, 'error': 1} )
 
 if __name__ == "__main__":
     unittest.main()

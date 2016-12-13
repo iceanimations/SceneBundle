@@ -3,26 +3,28 @@ import re
 import os
 import time
 
-from ._base import ( OnError, loggerName, BundleException, BundleMakerBase )
+from ._base import ( OnError, loggerName, BundleException, BundleMakerBase,
+        mayaVersion, isMaya64 )
 import tempfile
 
 currentdir = os.path.dirname(os.path.abspath( __file__ ))
 
-mayaPathTemplate = r"C:\Program Files%(bits)s\Autodesk\Maya%(ver)d\bin\%(exe)s"
-def getMayaPath(is64=True, ver=2015, exe='mayabatch',
+mayaPathTemplate = r"C:\Program Files%(bits)s\Autodesk\Maya%(ver)s\bin\%(exe)s"
+def getMayaPath(is64=True, ver='2015', exe='mayabatch',
         template=mayaPathTemplate):
     params = { 'bits': '' if is64 else ' (x86)',
-               'ver': ver,
-               'exe': exe + '.exe' }
+            'ver': str(ver),
+            'exe': exe + '.exe' }
     return template%params
 
 mayapyPaths = {
-        (str(ver)+('x64' if is64 else 'x86')): getMayaPath(is64, ver, 'mayapy')
+        (str(ver)+('x64' if is64 else 'x86')): getMayaPath(is64, str(ver),
+            'mayapy')
         for ver in range(2010, 2018)
         for is64 in [True, False] }
 
 mayabatchPaths = {
-        (str(ver)+('x64' if is64 else 'x86')): getMayaPath(is64, ver,
+        (str(ver)+('x64' if is64 else 'x86')): getMayaPath(is64, str(ver),
             'mayabatch')
         for ver in range(2010, 2018)
         for is64 in [True, False] }
@@ -60,7 +62,8 @@ class BundleMakerProcess(BundleMakerBase):
     progress_re = re.compile( '\s*Progress\s*:' +
             '\s*(?P<process>[^\s]*)\s*:\s*(?P<val>\d+)\s*of\s*(?P<maxx>\d+)\s*'
             + sentinel_re.pattern)
-    error_re = re.compile( r'\s*(?P<msg>.*)\s*(' + sentinel_re.pattern + ')?\s*')
+    error_re = re.compile( r'\s*(?P<msg>.*)\s*(' + sentinel_re.pattern +
+            ')?\s*')
     warning_re = re.compile( r'\s*(?P<msg>.*)\s*'  + sentinel_re.pattern +
             '?\s*')
     process_re = re.compile( r'\s*Process\s*:\s*(?P<process>[^\s]*)\s*' +
@@ -70,9 +73,11 @@ class BundleMakerProcess(BundleMakerBase):
     done_re = re.compile( r'\s*DONE\s*' + sentinel_re.pattern)
 
     def __init__(self, *args, **kwargs):
-        self.mayabatch = kwargs.pop('mayabatch', True)
-        self.is64 = kwargs.pop('is64', True)
-        self.ver = kwargs.pop('version', 2015)
+        self.mayabatch = kwargs.pop('mayabatch', False)
+        self.is64 = kwargs.pop('is64', isMaya64 if isMaya64 is not None else
+                True)
+        self.ver = kwargs.pop('version', mayaVersion if mayaVersion else
+                '2015')
         self.mayapyPath = getMayaPath(is64=self.is64, ver=self.ver,
                 exe='mayapy')
         self.mayabatchPath = getMayaPath(is64=self.is64, ver=self.ver,
@@ -218,9 +223,18 @@ class BundleMakerProcess(BundleMakerBase):
         if _match: return _match
         return match
 
+    def cleanup(self):
+        try:
+            if self.pythonFileName:
+                os.unlink(self.pythonFileName)
+        except:
+            pass
+
     def killProcess(self):
-        try: self.process.kill()
+        try:
+            self.process.kill()
         except WindowsError: pass
+        self.cleanup()
 
     def _parseQuestion(self, line=None, level='INFO'):
         if line is None:

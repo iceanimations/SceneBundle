@@ -5,10 +5,36 @@ import abc
 import sys
 import types
 
+_pc = None
 bundleFormatter = logging.Formatter(
         fmt=('%(name)s : %(levelname)s : %(asctime)s : %(message)s :' +
         ' END_%(name)s' ))
 loggerName = 'SCENE_BUNDLE'
+
+isMaya = True
+isMayaGUI = True
+isMayaPy = True
+isMayaBatch = True
+mayaVersion = None
+isMaya64 = None
+try:
+    import pymel.core as _pc
+    if _pc.about(q=True, batch=True):
+        _executable = osp.splitext(osp.basename(sys.executable))[0]
+        isMayaGUI = False
+        if _executable.lower() == 'mayapy':
+            isMayaPy, isMayaBatch = True, False
+        elif _executable.lower() == 'mayabatch':
+            isMayaPy, isMayaBatch = False, True
+    else:
+        isMayaPy, isMayaBatch = False, False
+    mayaVersion = _pc.about(v=True)
+    isMaya64 = _pc.about(is64=True)
+except ImportError:
+    isMaya = False
+    isMayaGUI = False
+    isMayaPy = False
+    isMayaBatch = False
 
 class OnError(object):
     IGNORE    = 0b0000
@@ -177,6 +203,15 @@ class ProgressLogHandler(BaseBundleHandler):
     @progressHandler.deleter
     def progressHandler(self):
         self._progressHandler = None
+
+class BundleMakerHandler(ProgressLogHandler):
+    def exit(self, code=0):
+        self.logger.info('ExitMaya')
+        # if pc.about(q=True, batch=True):
+        if isMaya or not isMayaPy:
+            _pc.quit(a=1, ec=code)
+        else:
+            sys.exit(code)
 
 class BundleMakerBase(object):
     '''Base Bundle Maker Class Having all properties'''

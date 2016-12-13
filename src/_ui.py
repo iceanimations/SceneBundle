@@ -3,40 +3,42 @@ Created on Nov 5, 2014
 
 @author: qurban.ali
 '''
+from ._base import isMayaGUI, isMaya
+from . import _process
+BundleMakerProcess = _process.BundleMakerProcess
+from . import _base
+OnError = _base.OnError
+
+if isMaya:
+    import maya.cmds as cmds
+
+    from . import _bundle
+    BundleMaker = _bundle.BundleMaker
+
+else:
+    BundleMaker = _process.BundleMakerProcess
+
 from uiContainer import uic
-import msgBox
-# reload(msgBox)
 from PyQt4.QtGui import ( QMessageBox, QFileDialog, qApp, QIcon,
         QRegExpValidator )
 from PyQt4.QtCore import ( Qt, QPropertyAnimation, QRect, QEasingCurve,
         QRegExp )
-import qtify_maya_window as qtfy
 import PyQt4.QtCore as core
+
+mainWindow = None
+if isMaya:
+    import qtify_maya_window as qtfy
+    mainWindow = qtfy.getMayaWindow()
+
 import os.path as osp
 import os
 import subprocess
-import _utilities as util
 import appUsageApp
 import yaml
 import traceback
 import logging
-import time
 
-isMaya = True
-isMayaGUI = True
-try:
-    import maya.cmds as cmds
-    if cmds.about(q=True, batch=True):
-        isMayaGUI = False
-except ImportError:
-    isMaya = False
-    isMayaGUI = False
-
-from . import _bundle
-from . import _process
-BundleMaker = _bundle.BundleMaker
-BundleMakerProcess = _process.BundleMakerProcess
-OnError = _bundle.OnError
+import msgBox
 
 root_path = osp.dirname(osp.dirname(__file__))
 ui_path = osp.join(root_path, 'ui')
@@ -45,8 +47,6 @@ conf_path = osp.join(root_path, 'config')
 
 _regexp = QRegExp('[a-zA-Z0-9_]*')
 __validator__ = QRegExpValidator(_regexp)
-
-mapFiles = util.mapFiles
 
 projects_list = [
     'Dubai_Park',
@@ -202,7 +202,7 @@ class BundleMakerUI(Form, Base):
     onError = OnError.LOG
     pathStatus = None
 
-    def __init__(self, parent=qtfy.getMayaWindow(), standalone=False):
+    def __init__(self, parent=mainWindow, standalone=False):
         super(BundleMakerUI, self).__init__(parent)
         self.standalone = standalone
         self.setupUi(self)
@@ -512,14 +512,15 @@ class BundleMakerUI(Form, Base):
         if self.isCurrentScene():
             name = self.getName()
             if not name:
+                self.stopPolling()
                 msgBox.showMessage(self, title='Scene Bundle',
                                     msg='Name not specified',
                                     icon=QMessageBox.Information)
-                self.stopPolling()
                 return
 
             self.bundler = BundleMaker(self)
-            self.filename = cmds.file(q=1, sn=1)
+            if isMaya:
+                self.filename = cmds.file(q=1, sn=1)
             self.bundler.open = False
             self.createBundle(project=pro, episode=self.getEp(),
                     sequence=self.getSeq(), shot=self.getSh())
@@ -528,10 +529,10 @@ class BundleMakerUI(Form, Base):
         else:
             total = self.filesBox.count()
             if total == 0:
+                self.stopPolling()
                 msgBox.showMessage(self, title='Scene Bundle',
                         msg='No file added to the files box',
                         icon=QMessageBox.Information)
-                self.stopPolling()
                 return
 
             idx = self.getNextPathIndex()
@@ -598,8 +599,8 @@ class BundleMakerUI(Form, Base):
                 return
 
             else:
-                self.setStatus('Bundling Done')
                 self.stopPolling()
+                self.setStatus('Bundling Done')
                 return
 
     def callCreateBundle(self):
@@ -702,7 +703,8 @@ class BundleMakerUI(Form, Base):
 
             else:
                 self.bundler = BundleMaker(self)
-                self.filename = cmds.file(q=1, sn=1)
+                if isMaya:
+                    self.filename = cmds.file(q=1, sn=1)
                 self.createBundle(project=pro, episode=self.getEp(),
                         sequence=self.getSeq(), shot=self.getSh())
         finally:
@@ -881,7 +883,8 @@ class BundleMakerUI(Form, Base):
         self.processEvents()
 
     def done(self):
-        cmds.file(new=1, f=1)
+        if isMaya:
+            cmds.file(new=1, f=1)
         if self.thread:
             try:
                 self.thread.terminate
@@ -916,7 +919,7 @@ class BundleMakerUI(Form, Base):
         self.createLog('\r\nWarning:' + msg)
 
     def currentFileName(self):
-        if self.isCurrentScene():
+        if self.isCurrentScene() and isMaya:
             return cmds.file(location=True, q=True)
         return self.filename
 
