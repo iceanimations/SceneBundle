@@ -69,7 +69,7 @@ def build_parser():
             default=sys.stdout)
     parser.add_argument('-err', '--onError', type=int, dest='onError',
             choices=range(OnError.ALL), default=OnError.LOG)
-    parser.add_argument('-v', '--mayaVersion', type=str, dest='onError',
+    parser.add_argument('-v', '--mayaVersion', type=str,
             choices=[ str(r) for r in range(2011, 2018) ], default='2015',
             help='use a specific mayaVersion (not used inside maya)')
     parser.add_argument('-32', '--useMaya32bit', action='store_false',
@@ -168,7 +168,7 @@ def bundleInProcess(args, bm=None):
     mainHandler = MainBundleHandler(args.outfile)
     if bm is None:
         bm = BundleMakerProcess(mainHandler, ver=args.mayaVersion,
-                is64=args.useMaya32bit, mayabatch=args.mayabatch)
+                is64=args.useMaya32bit, mayabatch=args.useMayaBatch)
     argsToAttr(args, bm)
     bm.createBundle()
     mainHandler.remove()
