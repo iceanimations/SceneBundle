@@ -73,17 +73,21 @@ class BundleMakerProcess(BundleMakerBase):
     done_re = re.compile( r'\s*DONE\s*' + sentinel_re.pattern)
 
     def __init__(self, *args, **kwargs):
-        self.mayabatch = kwargs.pop('mayabatch', False)
+        self.mayabatch = kwargs.pop('mayabatch', True)
         self.is64 = kwargs.pop('is64', isMaya64 if isMaya64 is not None else
                 True)
         self.ver = kwargs.pop('version', mayaVersion if mayaVersion else
                 '2015')
-        self.mayapyPath = getMayaPath(is64=self.is64, ver=self.ver,
-                exe='mayapy')
-        self.mayabatchPath = getMayaPath(is64=self.is64, ver=self.ver,
-                exe='mayabatch')
         self.pythonFileName = None
         super(BundleMakerProcess, self).__init__(*args, **kwargs)
+
+    @property
+    def mayaPyPath(self):
+        return getMayaPath(is64=self.is64, ver=self.ver, exe='mayapy')
+
+    @property
+    def mayabatchPath(self):
+        return getMayaPath(is64=self.is64, ver=self.ver, exe='mayabatch')
 
     def createBundle(self, name=None, project=None, episode=None,
             sequence=None, shot=None):
@@ -100,6 +104,10 @@ class BundleMakerProcess(BundleMakerBase):
                     episode=episode, sequence=sequence, shot=shot)
 
     def launchProcess(self, command):
+        self.status.setProcess('LaunchProcess')
+        self.status.setStatus( 'Launching Maya in Background while opening %s'
+                %self.filename)
+
         startupinfo = None
         if os.name == 'nt':
             startupinfo = subprocess.STARTUPINFO()
@@ -111,8 +119,8 @@ class BundleMakerProcess(BundleMakerBase):
     def _createByMayaBatch(self, name=None, project=None, episode=None,
             sequence=None, shot=None):
         self.pythonFileName = tempfile.mktemp(
-                prefix=time.strftime( "%Y_%m_%d_%H_%M_%S", time.localtime()).replace(' ', '_'),
-                suffix='.py')
+                prefix=time.strftime( "%Y_%m_%d_%H_%M_%S",
+                    time.localtime()).replace(' ', '_'), suffix='.py')
         with open(self.pythonFileName, 'w+') as pythonFile:
             pythonFile.write(scriptStart)
             pythonFile.write('args.append(\"%s\")\n'%self.filename.replace('\\',

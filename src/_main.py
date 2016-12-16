@@ -108,18 +108,24 @@ class MainBundleHandler(BundleMakerHandler):
                 return OnError.LOG
             if resp == 'e' or resp == 'E':
                 return OnError.LOG_EXIT
-        return OnError.LOG_RAISE
+        return OnError.LOG
 
     def done(self):
         sys.exit(0)
         return OnError.LOG_EXIT
 
-    def warning(self, msg): pass
-    def step(self): pass
-    def setProcess(self, process): pass
-    def setMaximum(self, maxx): pass
-    def setStatus(self, status): pass
-    def setValue(self, val): pass
+    def warning(self, msg):
+        pass
+    def step(self):
+        pass
+    def setProcess(self, process):
+        pass
+    def setMaximum(self, maxx):
+        pass
+    def setStatus(self, status):
+        pass
+    def setValue(self, val):
+        pass
 
 def bundleMain( bm=None, args=None ):
     parser = build_parser()
