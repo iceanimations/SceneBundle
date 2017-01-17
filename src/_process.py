@@ -48,8 +48,6 @@ class BundleMakerProcess(BundleMakerBase):
     line = ''
     next_line = None
     resp = OnError.LOG
-    mayapyPath = None
-    mayabatchPath = None
 
     # regular expressions for parsing output
     bundle_re = re.compile( r'\s*%s\s*:'%loggerName +
@@ -82,7 +80,7 @@ class BundleMakerProcess(BundleMakerBase):
         super(BundleMakerProcess, self).__init__(*args, **kwargs)
 
     @property
-    def mayaPyPath(self):
+    def mayapyPath(self):
         return getMayaPath(is64=self.is64, ver=self.ver, exe='mayapy')
 
     @property
@@ -104,6 +102,7 @@ class BundleMakerProcess(BundleMakerBase):
                     episode=episode, sequence=sequence, shot=shot)
 
     def launchProcess(self, command):
+        ''':type command: list'''
         self.status.setProcess('LaunchProcess')
         self.status.setStatus( 'Launching Maya in Background while opening %s'
                 %self.filename)
@@ -118,6 +117,11 @@ class BundleMakerProcess(BundleMakerBase):
 
     def _createByMayaBatch(self, name=None, project=None, episode=None,
             sequence=None, shot=None):
+        name = self.name if name is None else name
+        project = self.project if project is None else project
+        episode = self.episode if episode is None else episode
+        sequence = self.sequence if sequence is None else sequence
+        shot = self.shot if shot is None else shot
         self.pythonFileName = tempfile.mktemp(
                 prefix=time.strftime( "%Y_%m_%d_%H_%M_%S",
                     time.localtime()).replace(' ', '_'), suffix='.py')
@@ -129,7 +133,7 @@ class BundleMakerProcess(BundleMakerBase):
             pythonFile.write('args.append("-tp")\n')
             pythonFile.write('args.append("%s")\n'%self.path.replace('\\', '/'))
             pythonFile.write('args.append("-n")\n')
-            pythonFile.write('args.append("%s")\n'%self.name)
+            pythonFile.write('args.append("%s")\n'%name)
             if self.keepReferences:
                 pythonFile.write('args.append("-r")\n')
             if self.archive:
@@ -139,13 +143,13 @@ class BundleMakerProcess(BundleMakerBase):
             if self.deadline:
                 pythonFile.write('args.append("-d")\n')
                 pythonFile.write('args.append("-p")\n')
-                pythonFile.write('args.append("%s")\n'%self.project)
+                pythonFile.write('args.append("%s")\n'%project)
                 pythonFile.write('args.append("-ep")\n')
-                pythonFile.write('args.append("%s")\n'%self.episode)
+                pythonFile.write('args.append("%s")\n'%episode)
                 pythonFile.write('args.append("-s")\n')
-                pythonFile.write('args.append("%s")\n'%self.sequence)
+                pythonFile.write('args.append("%s")\n'%sequence)
                 pythonFile.write('args.append("-t")\n')
-                pythonFile.write('args.append("%s")\n'%self.shot)
+                pythonFile.write('args.append("%s")\n'%shot)
             for exc in self.textureExceptions:
                 pythonFile.write('args.append("-e")')
                 pythonFile.write('args.append("%s")\n'%exc)
@@ -167,12 +171,17 @@ class BundleMakerProcess(BundleMakerBase):
 
     def _createByMayaPy(self, name=None, project=None, episode=None,
             sequence=None, shot=None):
+        name = self.name if name is None else name
+        project = self.project if project is None else project
+        episode = self.episode if episode is None else episode
+        sequence = self.sequence if sequence is None else sequence
+        shot = self.shot if shot is None else shot
         command = []
         command.append(self.mayapyPath)
         command.append(os.path.dirname(currentdir))
         command.append(self.filename)
         command.extend(['-tp', self.path])
-        command.extend(['-n', self.name])
+        command.extend(['-n', name])
         if self.keepReferences:
             command.append('-r')
         if self.archive:
@@ -181,10 +190,10 @@ class BundleMakerProcess(BundleMakerBase):
             command.extend(['-x'])
         if self.deadline:
             command.append('-d')
-            command.extend(['-p', self.project])
-            command.extend(['-ep', self.episode])
-            command.extend(['-s', self.sequence])
-            command.extend(['-t', self.shot])
+            command.extend(['-p', project])
+            command.extend(['-ep', episode])
+            command.extend(['-s', sequence])
+            command.extend(['-t', shot])
         for exc in self.textureExceptions:
             command.extend(['-e', exc])
         command.extend(['-err', str( self.onError )])
