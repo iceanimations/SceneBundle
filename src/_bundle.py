@@ -413,6 +413,14 @@ class BundleMaker(BundleMakerBase):
                                     and not phile.endswith('.link') ]
                             for phile in files:
                                 shutil.copy(phile, newTexturePath)
+                        # copy the co-existing textures
+                        proxyDir = osp.dirname(path)
+                        files = [phile for phile in os.listdir(proxyDir) if osp.splitext(phile)[-1] in ['.jpg', '.png', '.tga', '.tiff', '.tif', '.bmp', '.rsmap', '.jpeg']]
+                        for phile in files:
+                            try:
+                                shutil.copy(osp.join(proxyDir, phile), newProxyPath)
+                            except:
+                                pass
                     node.fileName.set( osp.join(newProxyPath,
                         osp.basename(path)) )
                 self.status.setValue(i+1)
