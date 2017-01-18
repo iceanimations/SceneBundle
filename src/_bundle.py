@@ -5,7 +5,6 @@ import os
 import os.path as osp
 import re
 import shutil
-import sys
 
 # local libraries
 import imaya
@@ -14,6 +13,7 @@ import iutil
 # relative imports
 from . import _archiving as arch
 from . import _deadline as deadline
+reload(deadline)
 from . import _utilities as util
 
 from ._base import BundleMakerBase, OnError, BundleMakerHandler
@@ -415,10 +415,14 @@ class BundleMaker(BundleMakerBase):
                                 shutil.copy(phile, newTexturePath)
                         # copy the co-existing textures
                         proxyDir = osp.dirname(path)
-                        files = [phile for phile in os.listdir(proxyDir) if osp.splitext(phile)[-1] in ['.jpg', '.png', '.tga', '.tiff', '.tif', '.bmp', '.rsmap', '.jpeg']]
+                        files = [phile for phile in os.listdir(proxyDir) if
+                                osp.splitext(phile)[-1] in ['.jpg', '.png',
+                                    '.tga', '.tiff', '.tif', '.bmp', '.rsmap',
+                                    '.jpeg']]
                         for phile in files:
                             try:
-                                shutil.copy(osp.join(proxyDir, phile), newProxyPath)
+                                shutil.copy(osp.join(proxyDir, phile),
+                                        newProxyPath)
                             except:
                                 pass
                     node.fileName.set( osp.join(newProxyPath,
