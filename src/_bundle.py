@@ -643,7 +643,7 @@ class BundleMaker(BundleMakerBase):
         self.status.setStatus('Collecting particle cache...')
 
         path = self.getParticleCacheDirectory()
-        if path:
+        if path and osp.exists(path):
             particlePath = osp.join(self.rootPath, 'cache', 'particles')
             particleCachePath = osp.join(particlePath, osp.basename(path))
             os.mkdir(particleCachePath)
