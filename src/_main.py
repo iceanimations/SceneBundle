@@ -97,7 +97,7 @@ class MainBundleHandler(BundleMakerHandler):
         self.logger.removeHandler(self.logHandler)
 
     def error(self, msg):
-        ask = None
+        ask = False
         if self.bundler:
             ask = self.bundler.onError & OnError.ASK
         if ask:

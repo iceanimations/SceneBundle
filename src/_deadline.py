@@ -13,6 +13,7 @@ import ideadline as dl
 import ideadline.maya as dlm
 import imaya
 
+
 variables = ['bundle_base', 'poolidx', 'project', 'episode', 'sequence', 'shot']
 num_pools = 3
 bundle_base = r'\\hp-001\drive%(poolidx)d'

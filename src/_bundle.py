@@ -249,7 +249,6 @@ class BundleMaker(BundleMakerBase):
     def collectTextures(self):
         self.status.setProcess('CollectTextures')
         self.status.setStatus('Checking texture files...')
-        self.onError = OnError.LOG_ASK
         textureFileNodes = self.getFileNodes()
         badTexturePaths = []
 
