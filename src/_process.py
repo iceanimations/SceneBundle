@@ -98,8 +98,8 @@ class BundleMakerProcess(BundleMakerBase):
             self._createByMayaBatch(name=name, project=project,
                     episode=episode, sequence=sequence, shot=shot)
         else:
-            self._createByMayaPy(name=name, project=project,
-                    episode=episode, sequence=sequence, shot=shot)
+            self._createByMayaPy(name=name, project=project, episode=episode,
+                    sequence=sequence, shot=shot)
 
     def launchProcess(self, command):
         ''':type command: list'''

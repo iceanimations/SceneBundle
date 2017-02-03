@@ -5,6 +5,9 @@ import time
 import re
 import shutil
 
+import sys
+sys.path.insert(0, r'd:\talha.ahmed\workspace\pyenv_maya')
+
 import ideadline as dl
 
 import ideadline.maya as dlm
@@ -42,7 +45,8 @@ if not config:
     config['illegal_camera_names'] = []
     config['pools'] = {
         'none':{
-            'bases':[bundle_base%{'poolidx':idx} for idx in range(1, num_pools+1)],
+            'bases':[bundle_base%{'poolidx':idx} for idx in range(1,
+                num_pools+1)],
             'base_selection': 'random_choice'
         }
     }
@@ -78,6 +82,7 @@ if not config:
 
 
 random.seed(time.time())
+
 
 class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
 
@@ -261,7 +266,6 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
         elif method == 'user_sequential':
             choice=random.choice(range(len(pools.keys())))
             seqFile = os.path.join(os.path.expanduser('~'), '.sceneBundleChoice')
-            print seqFile
             try:
                 with open(seqFile) as fil:
                     choice = int(fil.read())
@@ -270,7 +274,6 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
             choice %= len(pools.keys())
             with open(seqFile, 'w+') as fil:
                 fil.write(str(choice+1))
-            print choice
             return pools.keys()[choice]
         else:
             return random.choice(pools.keys())
@@ -319,4 +322,72 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
             valid_pools = config['pools']
 
         self.conf['pools'] = valid_pools
+
+from _base import BundleMakerBase
+
+
+###############################
+#  Deadline Scene Bundle Job  #
+###############################
+
+class DeadlineSceneBundleException(dl.DeadlineWrapperException):
+    pass
+
+class DeadlineSceneBundlePluginInfo(dl.DeadlinePluginInfo):
+    sceneFile = dl.DeadlineAttr('SceneFile', '', str)
+    name = dl.DeadlineAttr('Name', '', str)
+    archive = dl.DeadlineAttr('Archive', 0, int)
+    keepBundle = dl.DeadlineAttr('KeepBundle', 0, int)
+    keepReferences = dl.DeadlineAttr('KeepBundle', 0, int)
+    exceptions = dl.DeadlineAttr('Exceptions', '', str)
+    onError = dl.DeadlineAttr('OnError', 1, int)
+    zDepth = dl.DeadlineAttr('zDepth', 1, int)
+    deadline = dl.DeadlineAttr('Deadline', 1, int)
+    project = dl.DeadlineAttr('Project', '', str)
+    episode = dl.DeadlineAttr('Episode', '', str)
+    sequence = dl.DeadlineAttr('Sequence', '', str)
+    shot = dl.DeadlineAttr('Shot', '', str)
+    version = dl.DeadlineAttr('Version', '', str)
+    build = dl.DeadlineAttr('Build', '', str)
+
+class DeadlineSceneBundleJob(dl.DeadlineJob):
+    exception = DeadlineSceneBundleException
+    pluginInfoClass = DeadlineSceneBundlePluginInfo
+
+class BundleMakerDeadline(BundleMakerBase):
+    job = None
+
+    def createBundle(self, name=None, project=None, episode=None,
+            sequence=None, shot=None):
+        if name is None: name = self.name
+        if project is None: project = self.project
+        if episode is None: episode = self.episode
+        if sequence is None: sequence = self.sequence
+        if shot is None: shot = self.shot
+
+        self.status.setProcess('SubmitBundleJob')
+        self.status.setStatus('Submitting Bundling Job to Deadline')
+        self.job = DeadlineSceneBundleJob()
+
+        self.job.jobInfo.chunkSize = 1
+        self.job.jobInfo.frames = 1
+        self.job.jobInfo.onJobComplete = 'Nothing'
+        self.job.jobInfo.outputFilename0 = ''
+        self.job.jobInfo.pool = 'none'
+
+        self.job.pluginInfo.sceneFile = self.filename
+        self.job.pluginInfo.name = name
+        self.job.pluginInfo.archive = int(self.archive)
+        self.job.pluginInfo.keepBundle = int(not self.delete)
+        self.job.pluginInfo.keepReferences = int( self.keepReferences )
+        self.job.pluginInfo.exceptions = ';'.join(self.textureExceptions)
+        self.job.pluginInfo.onError = self.onError
+        self.job.pluginInfo.zDepth = self.zdepth
+        self.job.pluginInfo.deadline = self.deadline
+        if self.job.pluginInfo.deadline:
+            self.job.pluginInfo.project = project
+            self.job.pluginInfo.episode = episode
+            self.job.pluginInfo.sequence = sequence
+            self.job.pluginInfo.shot = shot
+        self.job.submit()
 

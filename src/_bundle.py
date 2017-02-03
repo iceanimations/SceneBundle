@@ -40,6 +40,7 @@ class BundleMaker(BundleMakerBase):
     def _restoreAttribute(attrName):
         def _decorator(method):
             def _wrapper(self, *args, **kwargs):
+                ret = None
                 val = getattr(self, attrName)
                 try:
                     ret = method(self, *args, **kwargs)
@@ -112,6 +113,11 @@ class BundleMaker(BundleMakerBase):
         except RuntimeError as e:
             self.status.error('Cannot Open File %s ... %s' %(filename, str(e)))
 
+    def closeFile(self):
+        self.status.setProcess('CloseFile')
+        self.status.setStatus('Closing File ...')
+        imaya.newScene()
+
     def createBundle(self, name=None, project=None, episode=None, sequence=None,
             shot=None):
         if name is None: name = self.name
@@ -154,8 +160,7 @@ class BundleMaker(BundleMakerBase):
                                                 episode, sequence, shot)
                                     if self.delete:
                                         self.deleteCacheNodes()
-                                        self.status.setStatus(
-                                                'removing bundle ...')
+                                        self.closeFile()
                                         self.removeBundle()
                                     self.status.setStatus(
                                             'Scene bundled successfully...')
