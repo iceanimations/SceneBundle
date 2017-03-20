@@ -29,6 +29,15 @@ mayabatchPaths = {
         for ver in range(2010, 2018)
         for is64 in [True, False] }
 
+mountCommand = '''
+import sys
+if sys.platform == 'win32':
+    import subprocess
+    proc = subprocess.Popen(r"\\ice-tactic\pipeline\mount\mount.bat", shell=True,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    out, _ = proc.communicate()
+    print (out)
+'''
 scriptStart = '''
 import sys
 s = r"%s"
@@ -37,6 +46,7 @@ import sceneBundle
 from sceneBundle import main
 args = []
 ''' % os.path.dirname( os.path.dirname(currentdir) )
+
 scriptEnd = '''
 bm = main(args=args)
 '''
@@ -115,17 +125,20 @@ class BundleMakerProcess(BundleMakerBase):
                 stderr=subprocess.STDOUT, stdin=subprocess.PIPE,
                 startupinfo=startupinfo)
 
-    def _createByMayaBatch(self, name=None, project=None, episode=None,
-            sequence=None, shot=None):
+    def writePyFile(self, name=None, project=None, episode=None, sequence=None,
+            shot=None, pythonFileName=None):
+        '''Write python file to disk'''
+        if pythonFileName is None:
+            pythonFileName = self.pythonFileName
+
         name = self.name if name is None else name
         project = self.project if project is None else project
         episode = self.episode if episode is None else episode
         sequence = self.sequence if sequence is None else sequence
         shot = self.shot if shot is None else shot
-        self.pythonFileName = tempfile.mktemp(
-                prefix=time.strftime( "%Y_%m_%d_%H_%M_%S",
-                    time.localtime()).replace(' ', '_'), suffix='.py')
-        with open(self.pythonFileName, 'w+') as pythonFile:
+
+        with open(pythonFileName, 'w+') as pythonFile:
+            pythonFile.write(mountCommand)
             pythonFile.write(scriptStart)
             pythonFile.write('args.append(\"%s\")\n'%self.filename.replace('\\',
                 '/'))
@@ -154,6 +167,21 @@ class BundleMakerProcess(BundleMakerBase):
                 pythonFile.write('args.append("-e")')
                 pythonFile.write('args.append("%s")\n'%exc)
             pythonFile.write(scriptEnd)
+
+    def _createByMayaBatch(self, name=None, project=None, episode=None,
+            sequence=None, shot=None):
+        name = self.name if name is None else name
+        project = self.project if project is None else project
+        episode = self.episode if episode is None else episode
+        sequence = self.sequence if sequence is None else sequence
+        shot = self.shot if shot is None else shot
+        self.pythonFileName = tempfile.mktemp(
+                prefix=time.strftime( "%Y_%m_%d_%H_%M_%S",
+                    time.localtime()).replace(' ', '_'), suffix='.py')
+
+        self.writePyFile(name=name, project=project, episode=episode,
+                sequence=sequence, shot=shot,
+                pythonFileName=self.pythonFileName)
 
         melcommand = ( 'eval( "python( \\"execfile( \\\\\\"' +
                 self.pythonFileName.replace( "\\", "/" ) +

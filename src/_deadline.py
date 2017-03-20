@@ -84,7 +84,6 @@ if not config:
 
 random.seed(time.time())
 
-
 class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
 
     def __init__(self, name, project, episode, sequence, shot, *args, **kwargs):

@@ -18,7 +18,7 @@ if isMaya:
 else:
     BundleMaker = _process.BundleMakerProcess
 
-from uiContainer import uic
+from uiContainer import uic, getPathsFromFileDialogResult
 from PyQt4.QtGui import ( QMessageBox, QFileDialog, qApp, QIcon,
         QRegExpValidator )
 from PyQt4.QtCore import ( Qt, QPropertyAnimation, QRect, QEasingCurve,
@@ -790,12 +790,14 @@ class BundleMakerUI(Form, Base):
     def browseFolder(self):
         path = QFileDialog.getExistingDirectory(self, 'Select Folder',
                 self.getPath())
+        path = getPathsFromFileDialogResult(path)
         if path:
             self.pathBox.setText(path)
 
     def browseFolder2(self):
-        paths = QFileDialog.getOpenFileNames(self, 'Select Folder', '',
+        paths = QFileDialog.getOpenFileNames(self, 'Select Maya File', '',
                 '*.ma *.mb')
+        paths = getPathsFromFileDialogResult(paths)
         if paths:
             for path in paths:
                 if osp.splitext(path)[-1] in ['.ma', '.mb']:
@@ -819,8 +821,8 @@ class BundleMakerUI(Form, Base):
             except IndexError:
                 self.filesBox.addItem(paths[row])
                 item = self.filesBox.item(self.filesBox.count()-1)
-                item.setForeground(PathStatus.fgColors.get( PathStatus.kWaiting
-                    ))
+                item.setForeground(PathStatus.fgColors.get(
+                    PathStatus.kWaiting))
                 self.pathStatus.append(PathStatus.kWaiting)
 
     def getPaths(self):
@@ -1092,6 +1094,7 @@ class InputField(Form2, Base2):
     def browseFolder(self):
         filename = QFileDialog.getSaveFileName(self, 'Select File', '',
                 '*.ma *.mb')
+        filename = getPathsFromFileDialogResult(filename)
         if filename:
             self.pathBox.setText(filename)
 
