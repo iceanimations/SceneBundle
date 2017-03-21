@@ -788,14 +788,14 @@ class BundleMakerUI(Form, Base):
         return text
 
     def browseFolder(self):
-        path = QFileDialog.getExistingDirectory(self, 'Select Folder',
+        path = QFileDialog().getExistingDirectory(self, 'Select Folder',
                 self.getPath())
         path = getPathsFromFileDialogResult(path)
         if path:
             self.pathBox.setText(path)
 
     def browseFolder2(self):
-        paths = QFileDialog.getOpenFileNames(self, 'Select Maya File', '',
+        paths = QFileDialog().getOpenFileNames(self, 'Select Maya File', '',
                 '*.ma *.mb')
         paths = getPathsFromFileDialogResult(paths)
         if paths:
@@ -1092,7 +1092,7 @@ class InputField(Form2, Base2):
         del self
 
     def browseFolder(self):
-        filename = QFileDialog.getSaveFileName(self, 'Select File', '',
+        filename = QFileDialog().getSaveFileName(self, 'Select File', '',
                 '*.ma *.mb')
         filename = getPathsFromFileDialogResult(filename)
         if filename:
