@@ -130,14 +130,13 @@ class MainBundleHandler(BundleMakerHandler):
 def bundleMain( bm=None, args=None ):
     parser = build_parser()
     args = parser.parse_args( args )
-    if bm is None:
-        if args.gui:
-            showBundleMakerUI(args)
-            bm = None
-        elif isMaya:
-            bm = makeBundle(args, bm)
-        else:
-            bm = bundleInProcess(args, bm)
+    if args.gui:
+        showBundleMakerUI(args)
+        bm = None
+    elif isMaya:
+        bm = makeBundle(args, bm)
+    else:
+        bm = bundleInProcess(args, bm)
     return bm
 
 def argsToAttr(args, bm):

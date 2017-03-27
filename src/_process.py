@@ -38,6 +38,7 @@ if sys.platform == 'win32':
     out, _ = proc.communicate()
     print (out)
 '''
+
 scriptStart = '''
 import sys
 s = r"%s"
@@ -113,7 +114,7 @@ class BundleMakerProcess(BundleMakerBase):
 
     def launchProcess(self, command):
         ''':type command: list'''
-        self.status.setProcess('LaunchProcess')
+        self.status.setProcess( 'LaunchProcess' )
         self.status.setStatus( 'Launching Maya in Background while opening %s'
                 %self.filename)
 

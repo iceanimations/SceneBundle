@@ -11,17 +11,18 @@ sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya\tactic")
 sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya\tactic\app")
 sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya\maya2015\PyQt")
 
-from uiContainer import uic
+from uiContainer import _setPySide
+_setPySide()
+
 from PyQt4.QtGui import QApplication, qApp
 from PyQt4.QtTest import QTest
 from PyQt4.QtCore import Qt, QObject, QTimer
 
+app = QApplication(sys.argv)
+
 from _testbase import TestBase, TestBundleHandler, setUp, tearDown
 
 import maya.cmds as mc
-
-app = QApplication(sys.argv)
-
 import src._ui as ui
 BundleMakerUI = ui.BundleMakerUI
 

@@ -6,6 +6,7 @@ site.addsitedir(os.path.abspath('..'))
 site.addsitedir(r'R:\Python_Scripts\plugins\utilities')
 
 from src._bundle import BundleMaker
+from src._main import bundleMain
 from _testbase import TestBase, normpath
 
 import pymel.core as pc
@@ -28,11 +29,8 @@ class TestMain(TestBase):
         self.bm.name = self.name
         self.bm.path = self.tmpdir
         self.bm.rootPath = normpath(os.path.join( self.bm.path, self.bm.name ))
-        args.insert(0, os.path.dirname(currentdir))
-        args.insert(0, sys.executable)
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE,
-                stdin=subprocess.PIPE)
-        out, err = proc.communicate('y\n')
+
+        bundleMain(bm=self.bm, args=args)
 
     @classmethod
     def tearDownClass(self):
