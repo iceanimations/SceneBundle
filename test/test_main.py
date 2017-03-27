@@ -1,7 +1,7 @@
 import os
 import site
 import unittest
-import sys
+
 site.addsitedir(os.path.abspath('..'))
 site.addsitedir(r'R:\Python_Scripts\plugins\utilities')
 
@@ -10,8 +10,6 @@ from src._main import bundleMain
 from _testbase import TestBase, normpath
 
 import pymel.core as pc
-
-import subprocess
 
 currentdir = os.path.dirname(__file__)
 
