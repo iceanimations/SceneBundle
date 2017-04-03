@@ -132,6 +132,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="deferCheck">
+        <property name="text">
+         <string>Defer To Deadline</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="makeZipButton">
         <property name="toolTip">
          <string>Also create zip file from bundle folder</string>

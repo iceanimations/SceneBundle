@@ -316,6 +316,7 @@ class BundleMakerUI(Form, Base):
         switchBox(self.seqBox, self.seqBox2)
         self.shBox.show()
         switchBox(self.shBox, self.shBox2)
+        self.deferCheck.show()
 
     def hideBoxes(self):
         self.epBox.hide()
@@ -324,6 +325,7 @@ class BundleMakerUI(Form, Base):
         self.seqBox2.hide()
         self.shBox.hide()
         self.shBox2.hide()
+        self.deferCheck.hide()
 
     def showEditForm(self):
         EditForm(self).show()

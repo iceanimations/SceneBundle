@@ -130,6 +130,8 @@ class BundleMakerProcess(BundleMakerBase):
             shot=None, pythonFileName=None):
         '''Write python file to disk'''
         if pythonFileName is None:
+            if self.pythonFileName is None:
+                self.setPythonFileName()
             pythonFileName = self.pythonFileName
 
         name = self.name if name is None else name
@@ -169,6 +171,14 @@ class BundleMakerProcess(BundleMakerBase):
                 pythonFile.write('args.append("%s")\n'%exc)
             pythonFile.write(scriptEnd)
 
+    def setPythonFileName(self, filename=None):
+        if filename is None:
+            self.pythonFileName = tempfile.mktemp( prefix=time.strftime(
+                "%Y_%m_%d_%H_%M_%S", time.localtime()).replace(' ', '_'),
+                suffix='.py')
+        else:
+            self.pythonFileName = filename
+
     def _createByMayaBatch(self, name=None, project=None, episode=None,
             sequence=None, shot=None):
         name = self.name if name is None else name
@@ -176,13 +186,9 @@ class BundleMakerProcess(BundleMakerBase):
         episode = self.episode if episode is None else episode
         sequence = self.sequence if sequence is None else sequence
         shot = self.shot if shot is None else shot
-        self.pythonFileName = tempfile.mktemp(
-                prefix=time.strftime( "%Y_%m_%d_%H_%M_%S",
-                    time.localtime()).replace(' ', '_'), suffix='.py')
 
-        self.writePyFile(name=name, project=project, episode=episode,
-                sequence=sequence, shot=shot,
-                pythonFileName=self.pythonFileName)
+        self.setPythonFileName()
+        self.writePyFile()
 
         melcommand = ( 'eval( "python( \\"execfile( \\\\\\"' +
                 self.pythonFileName.replace( "\\", "/" ) +
@@ -270,6 +276,7 @@ class BundleMakerProcess(BundleMakerBase):
         return match
 
     def cleanup(self):
+        return
         try:
             if self.pythonFileName:
                 os.unlink(self.pythonFileName)
