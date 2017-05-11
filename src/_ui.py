@@ -48,21 +48,60 @@ conf_path = osp.join(root_path, 'config')
 _regexp = QRegExp('[a-zA-Z0-9_]*')
 __validator__ = QRegExpValidator(_regexp)
 
-projects_list = [
-    'Dubai_Park',
-    'Ding_Dong',
-    'Al_Mansour_Season_02',
-    'Captain_Khalfan',
-    'Lavalantula',
-]
+class _ProjectConf(dict):
+    default_conf = {
+            'Al_Mansour_Season_04' : None,
+            'KungPow'              : None,
+            'Knorr_Intros'         : {
+                'episodes'         : [
+                    'Beauty'      , 'HumorGeneric'  , 'Cartoon'        ,
+                    'Cinema'      , 'Sports'         , 'Drama'          ,
+                    'VideoGames' , 'HumorBulbulay' , 'JeetoPakistan' ,
+                    'Cafeteria']  ,
+                'sequences'        : [''] },
+            'Shaan_Food'       : None,
+            'Prince_Choc_2'    : None,
+            'Candyland_Cocomo' : None,
+            'PTC_SLA'          : None,
+            'DP_World'         : None,
+            'SOT'              : None,
+            'Senyar'           : None
+            }
+    _project_conf_file = osp.join(conf_path, '_projects.yml')
 
-try:
-    _project_conf = osp.join(conf_path, '_projects.yml')
-    with open(_project_conf) as f:
-        projects_list = yaml.load(f)
-except IOError as e:
-    logging.getLogger(__name__).warning(
-        'Error: %r \r\nCannot read projects config file ... using defaults'%e )
+    def updateFromConfFile(self, clear=True):
+        if clear: self.clear()
+        _projects_conf = self.default_conf
+        try:
+            with open(self._project_conf_file) as f:
+                _projects_conf = yaml.load(f)
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                'Error: %r \r\nCannot read projects config file ... using defaults'%e,
+                exc_info=True)
+        self.update(_projects_conf)
+
+    def _getElementList(self, project, element, default=None):
+        _list = [] if default is None else default
+        _project = self.get(project)
+        if isinstance(_project, dict):
+             _list = _project.get(element, _list)
+        return _list
+
+    def getEpisodes(self, project):
+        default = ['EP'+str(val).zfill(3) for val in range(1, 27)]
+        return self._getElementList(project, 'episodes', default)
+
+    def getSequences(self, project):
+        default = ['SQ'+str(val).zfill(3) for val in range(1, 31)]
+        return self._getElementList(project, 'sequences', default)
+
+    def getShots(self, project):
+        default = ['SH'+str(val).zfill(3) for val in range(1, 101)]
+        return self._getElementList(project, 'shots', default)
+
+projects_conf = _ProjectConf()
+projects_conf.updateFromConfFile()
 
 class BundleMakerUIProcessAdapter(core.QObject, BundleMakerProcess):
     gui = None
@@ -222,6 +261,9 @@ class BundleMakerUI(Form, Base):
         self.nameBox.setValidator(__validator__)
 
         self.stopButton.hide()
+        self.projectBox.currentIndexChanged.connect(
+                lambda: populateBoxes(self.epBox, self.seqBox, self.shBox,
+                    self.project))
         self.stopButton.clicked.connect(self.stopPolling)
         self.bundleButton.clicked.connect(self.callCreateBundle2)
         self.bundleButton.clicked.connect(self.resetFailed)
@@ -256,8 +298,9 @@ class BundleMakerUI(Form, Base):
         self.zdepthButton.hide()
         self.pathBox.setText(self.settings.bundle_path)
         setComboBoxText(self.projectBox, self.settings.bundle_project)
-        populateBoxes(self.epBox, self.seqBox, self.shBox)
         populateProjectsBox(self.projectBox)
+        self.setBoxesFromSettings()
+        populateBoxes(self.epBox, self.seqBox, self.shBox, self.project)
         self.setBoxesFromSettings()
         self.hideBoxes()
         self.epBox2.hide()
@@ -284,17 +327,16 @@ class BundleMakerUI(Form, Base):
 
         appUsageApp.updateDatabase('sceneBundle')
 
+    def getProject(self):
+        return self.projectBox.currentText()
+    project = property(getProject)
+
     def makeButtonsExclussive(self, btn):
         if not any([self.deadlineCheck.isChecked(),
                    self.makeZipButton.isChecked(),
                    self.keepBundleButton.isChecked()]):
             btn.setChecked(True)
         self.toggleBoxes()
-
-    def populateBoxes(self):
-        self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
-        self.epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
-        self.seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
 
     def setBoxesFromSettings(self):
         setComboBoxText(self.seqBox, self.settings.bundle_sequence)
@@ -936,7 +978,7 @@ class EditForm(Form1, Base1):
         self.parentWin = parent
         self.inputFields = []
 
-        populateBoxes(self.epBox, self.seqBox, self.shBox)
+        populateBoxes(self.epBox, self.seqBox, self.shBox, self.project)
         self.populate()
         self.epBox.currentIndexChanged.connect(self.switchAllBoxes)
         self.seqBox.currentIndexChanged.connect(self.switchAllBoxes)
@@ -967,10 +1009,9 @@ class EditForm(Form1, Base1):
 
         self.okButton.clicked.connect(self.ok)
 
-    def populateBoxes(self):
-        self.shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
-        self.epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
-        self.seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
+    @property
+    def project(self):
+        return self.parentWin.project
 
     def populate(self):
         paths = self.parentWin.getPaths()
@@ -1047,8 +1088,9 @@ class InputField(Form2, Base2):
             sh=None):
         super(InputField, self).__init__(parent)
         self.setupUi(self)
+        self.parentWin = parent
 
-        populateBoxes(self.epBox, self.seqBox, self.shBox)
+        populateBoxes(self.epBox, self.seqBox, self.shBox, self.project)
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2,
                 self.seqBox2, self.shBox2)
 
@@ -1088,6 +1130,10 @@ class InputField(Form2, Base2):
                 [self.epBox2, self.seqBox2, self.shBox2])
 
         self.browseButton.clicked.connect(self.browseFolder)
+
+    @property
+    def project(self):
+        return self.parentWin.project
 
     def closeEvent(self, event):
         self.deleteLater()
@@ -1211,12 +1257,25 @@ def fillName(epBox, seqBox, shBox, epBox2, seqBox2, shBox2, nameBox):
     nameBox.setText(name)
 
 def populateProjectsBox(box):
-    box.addItems(projects_list)
+    #using conf to populate project combo box
+    box.addItems(projects_conf.keys())
 
-def populateBoxes(epBox, seqBox, shBox):
-    shBox.addItems(['SH'+str(val).zfill(3) for val in range(1, 101)])
-    epBox.addItems(['EP'+str(val).zfill(3) for val in range(1, 27)])
-    seqBox.addItems(['SQ'+str(val).zfill(3) for val in range(1, 31)])
+def populateBoxes(epBox, seqBox, shBox, project):
+    # using conf and project name to populate ep, seq and sh boxes
+    currentShot = shBox.currentText()
+    shBox.clear()
+    shBox.addItems(projects_conf.getShots(project))
+    setComboBoxText(shBox, currentShot)
+
+    currentEpisode = epBox.currentText()
+    epBox.clear()
+    epBox.addItems(projects_conf.getEpisodes(project))
+    setComboBoxText(shBox, currentEpisode)
+
+    currentSequence = epBox.currentText()
+    seqBox.clear()
+    seqBox.addItems(projects_conf.getSequences(project))
+    setComboBoxText(seqBox, currentSequence)
 
     for item in [epBox, seqBox, shBox]:
         item.addItem('Custom')
