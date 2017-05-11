@@ -301,9 +301,8 @@ class BundleMakerUI(Form, Base):
         self.progressBar.hide()
         self.zdepthButton.hide()
         self.pathBox.setText(self.settings.bundle_path)
-        setComboBoxText(self.projectBox, self.settings.bundle_project)
         populateProjectsBox(self.projectBox)
-        self.setBoxesFromSettings()
+        setComboBoxText(self.projectBox, self.settings.bundle_project)
         populateBoxes(self.epBox, self.seqBox, self.shBox, self.project)
         self.setBoxesFromSettings()
         self.hideBoxes()
@@ -341,7 +340,8 @@ class BundleMakerUI(Form, Base):
 
     def getProject(self):
         pro = self.projectBox.currentText()
-        self.settings.bundle_project = pro
+        if pro != '--Project--':
+            self.settings.bundle_project = pro
         return pro
     project = property(getProject)
 
@@ -353,10 +353,10 @@ class BundleMakerUI(Form, Base):
         self.toggleBoxes()
 
     def setBoxesFromSettings(self):
+        setComboBoxText(self.projectBox, self.settings.bundle_project)
         setComboBoxText(self.shBox, self.settings.bundle_shot)
         setComboBoxText(self.seqBox, self.settings.bundle_sequence)
         setComboBoxText(self.epBox, self.settings.bundle_episode)
-        setComboBoxText(self.projectBox, self.settings.bundle_project)
         self.seqBox2.setText(self.settings.bundle_custom_sequence)
         self.epBox2.setText(self.settings.bundle_custom_episode)
         self.shBox2.setText(self.settings.bundle_custom_shot)
