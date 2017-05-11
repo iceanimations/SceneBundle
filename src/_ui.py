@@ -213,8 +213,10 @@ class BundleSettings(core.QSettings):
     bundle_project = Setting('bundle_project', None)
     bundle_sequence = Setting('bundle_sequence', None)
     bundle_episode = Setting('bundle_episode', None)
+    bundle_shot = Setting('bundle_shot', None)
     bundle_custom_sequence = Setting('bundle_custom_sequence', '')
     bundle_custom_episode = Setting('bundle_custom_episode', '')
+    bundle_custom_episode = Setting('bundle_custom_shot', '')
 
     def __init__(self, organization='ICE Animations', product='Scene Bundle'):
         super(BundleSettings, self).__init__(organization, product)
@@ -338,7 +340,9 @@ class BundleMakerUI(Form, Base):
             setBoxFromPathTokens(self.shBox, self.filename)
 
     def getProject(self):
-        return self.projectBox.currentText()
+        pro = self.projectBox.currentText()
+        self.settings.bundle_project = pro
+        return pro
     project = property(getProject)
 
     def makeButtonsExclussive(self, btn):
@@ -349,11 +353,13 @@ class BundleMakerUI(Form, Base):
         self.toggleBoxes()
 
     def setBoxesFromSettings(self):
+        setComboBoxText(self.shBox, self.settings.bundle_shot)
         setComboBoxText(self.seqBox, self.settings.bundle_sequence)
         setComboBoxText(self.epBox, self.settings.bundle_episode)
         setComboBoxText(self.projectBox, self.settings.bundle_project)
         self.seqBox2.setText(self.settings.bundle_custom_sequence)
         self.epBox2.setText(self.settings.bundle_custom_episode)
+        self.shBox2.setText(self.settings.bundle_custom_shot)
 
     def toggleBoxes(self):
         if self.isCurrentScene() and self.isDeadlineCheck():
@@ -554,7 +560,7 @@ class BundleMakerUI(Form, Base):
                     PathStatus.kSuccess ))
             self.currentItem = None
 
-        ep, seq, sh, pro = None, None, None, self.projectBox.currentText()
+        ep, seq, sh, pro = None, None, None, self.project
         if self.isDeadlineCheck():
             if pro == '--Project--':
                 self.stopPolling()
@@ -668,7 +674,7 @@ class BundleMakerUI(Form, Base):
         ep, seq, sh = None, None, None
 
         try:
-            pro = self.projectBox.currentText()
+            pro = self.project
             if self.isDeadlineCheck():
                 if pro == '--Project--':
                     msgBox.showMessage(self, title='Scene Bundle',
@@ -836,7 +842,9 @@ class BundleMakerUI(Form, Base):
         text = self.shBox.currentText()
         self.settings.bundle_shot = text
         if text == 'Custom':
-            return self.shBox2.text()
+            text = self.shBox2.text()
+            self.settings.bundle_custom_shot = text
+            return text
         if text == '--Shot--':
             text = ''
         return text
