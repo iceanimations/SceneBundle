@@ -36,7 +36,7 @@ illegal_camera_names: []
 #default path and name settings
 #variable names can be bundle_base, project, episode, sequence, shot, name
 bundle_loc: '%(bundle_base)s\%(project)s\%(episode)s\%(sequence)s\%(shot)s'
-output_loc: '\\renders\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
+output_loc: '\\ice-lac\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
 job_name: '%(project)s_%(episode)s_%(sequence)s_%(shot)s - %(name)s'
 
 #default pool to basepath mapping
@@ -114,102 +114,16 @@ overrides:
         bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
         base_selection: random_choice
 
-# Override 5: for project Mansour non production
+# Override 5: for project mansour non production
 - conditions:
-  - [project, 'Al_Mansour_Season_03']
+  - [project, 'al_mansour_season_03']
   - [episode, 'not matches', '(?i)ep\d+']
-  - [sequence, 'not matches', '(?i)sq\d+']
-  - [shot, 'not matches', '(?i)sh\d+']
   match_all: true
   settings:
     pools:
       redshift:
         bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
         base_selection: random_choice
-
-# Override 6: for project KungPow non production
-- conditions:
-  - [project, 'KungPow']
-  - [episode, 'not matches', '(?i)ep\d+']
-  - [sequence, 'not matches', '(?i)sq\d+']
-  - [shot, 'not matches', '(?i)sh\d+']
-  match_all: true
-  settings:
-    pools:
-      kungpow:
-        bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
-        base_selection: random_choice
-
-
-# Override 7: for project Mansour non production
-- conditions:
-  - [project, 'DW4']
-  match_all: true
-  settings:
-    pools:
-      arnold:
-        bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
-        base_selection: random_choice
-
-# Override 8: for project Mansour non production
-- conditions:
-  - [project, 'Dronewars']
-  match_all: true
-  settings:
-    pools:
-      vfx:
-        bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
-        base_selection: random_choice
-
-# Override 8: for project Mansour non production
-- conditions:
-  - [project, 'Day_of_Reckoning']
-  match_all: true
-  settings:
-    pools:
-      dayofreckoning:
-        bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
-        base_selection: random_choice
-
-# Override 9: for project Mansour new drive testing
-- conditions:
-  - [project, 'Al_Mansour_Season_03']
-  - [episode, 'matches', '(?i)ep02[3456]']
-  match_all: true
-  settings:
-    pools:
-      mansour:
-        bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
-        base_selection: random_choice
-    output_loc: '\\cnas\Storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
-
-# Override 10: for Prince Choc 2
-- conditions:
-  - [project, 'Prince_Choc_2']
-  match_all: true
-  settings:
-    pools:
-      vfx:
-        bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
-        base_selection: random_choice
-
-# Override 11: for PTC_SLA
-- conditions:
-  - [project, 'PTC_SLA']
-  match_all: true
-  settings:
-    pools:
-      redshift:
-        bases: [\\hp-001\drive1, \\hp-001\drive2, \\hp-001\drive3]
-        base_selection: random_choice
-
-## Override 9: episode 18 goes to different location
-#- conditions:
-  #- [project, 'Al_Mansour_Season_03']
-  #- [episode, 'EP018']
-  #match_all: true
-  #settings:
-      #output_loc: '\\newren\storage\Projects\external\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
 
 ## Example: if project name contains mansour (caseinsensitive)
 ## and episode is a non standard string,
@@ -254,5 +168,4 @@ overrides:
         #base_selection: random_choice
     #priority: 40
 
-#vim: et sw=2 sts=2 ts=4 rl nu
 
