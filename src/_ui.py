@@ -216,7 +216,7 @@ class BundleSettings(core.QSettings):
     bundle_shot = Setting('bundle_shot', None)
     bundle_custom_sequence = Setting('bundle_custom_sequence', '')
     bundle_custom_episode = Setting('bundle_custom_episode', '')
-    bundle_custom_episode = Setting('bundle_custom_shot', '')
+    bundle_custom_shot = Setting('bundle_custom_shot', '')
 
     def __init__(self, organization='ICE Animations', product='Scene Bundle'):
         super(BundleSettings, self).__init__(organization, product)
