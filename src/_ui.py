@@ -84,6 +84,8 @@ class _ProjectConf(dict):
 
     def _getElementList(self, project, element, default=None):
         _list = [] if default is None else default
+        if project not in self.keys():
+            return []
         _project = self.get(project)
         if isinstance(_project, dict):
              _list = _project.get(element, _list)
