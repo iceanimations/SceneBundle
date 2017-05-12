@@ -70,12 +70,12 @@ class _ProjectConf(dict):
             }
     _project_conf_file = osp.join(conf_path, '_projects.yml')
 
-    def updateFromConfFile(self, clear=True):
+    def updateFromConfFile(self, file_=_project_conf_file, clear=True):
         if clear: self.clear()
         _projects_conf = self.default_conf
         try:
-            with open(self._project_conf_file) as f:
-                _projects_conf = yaml.load(f)
+            with open(file_) as file_obj:
+                _projects_conf = yaml.load(file_obj)
         except Exception as e:
             logging.getLogger(__name__).warning(
                 'Error: %r \r\nCannot read projects config file ... using defaults'%e,
@@ -84,7 +84,7 @@ class _ProjectConf(dict):
 
     def writeToConfFile(self, file_=_project_conf_file):
         with open(file_, 'w+') as file_obj:
-            file_obj.write(yaml.dump(dict(self)))
+            yaml.dump(dict(self), file_obj)
 
     def _getElementList(self, project, element, default=None):
         _list = [] if default is None else default
