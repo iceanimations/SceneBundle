@@ -82,6 +82,10 @@ class _ProjectConf(dict):
                 exc_info=True)
         self.update(_projects_conf)
 
+    def writeToConfFile(self, file_=_project_conf_file):
+        with open(file_, 'w+') as file_obj:
+            file_obj.write(yaml.dump(dict(self)))
+
     def _getElementList(self, project, element, default=None):
         _list = [] if default is None else default
         if project not in self.keys():
