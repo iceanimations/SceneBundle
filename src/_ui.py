@@ -66,8 +66,7 @@ class _ProjectConf(dict):
             'PTC_SLA'          : None,
             'DP_World'         : None,
             'SOT'              : None,
-            'Senyar'           : None
-            }
+            'Senyar'           : None }
     _project_conf_file = osp.join(conf_path, '_projects.yml')
 
     def updateFromConfFile(self, file_=_project_conf_file, clear=True):
@@ -620,7 +619,7 @@ class BundleMakerUI(Form, Base):
                         filename = ''
                         name = ''
                 self.filename = filename
-                if self.isDeadlineCheck() and not all([name, ep, seq, sh,
+                if self.isDeadlineCheck() and not all([name, any([ep,seq,sh]),
                     filename]):
                     failed=True
                     if self.pathStatus[idx] != PathStatus.kFailed:
