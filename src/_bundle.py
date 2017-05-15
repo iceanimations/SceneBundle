@@ -330,7 +330,7 @@ class BundleMaker(BundleMakerBase):
                                                 osp.basename(fileNames[0])))
                                 else:
                                     relativeFilePath = osp.join(relativePath,
-                                            re.sub('\d{4}', '<f>.',
+                                            re.sub('\d{4}', '<f>',
                                                 osp.basename(fileNames[0])))
                                 relativeFilePath = relativeFilePath.replace(
                                         '\\', '/' )
