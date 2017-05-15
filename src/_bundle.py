@@ -247,6 +247,7 @@ class BundleMaker(BundleMakerBase):
 
     @_restoreAttribute('onError')
     def collectTextures(self):
+        print 'called'
         self.status.setProcess('CollectTextures')
         self.status.setStatus('Checking texture files...')
         textureFileNodes = self.getFileNodes()
@@ -321,15 +322,15 @@ class BundleMaker(BundleMakerBase):
                                 for phile in fileNames:
                                     shutil.copy(phile, folderPath)
                                     self.copyRSFile(phile, folderPath)
-                                match = re.search('(?i)<udim>\.',
+                                match = re.search('(?i)<udim>',
                                         textureFilePath)
                                 if match:
                                     relativeFilePath = osp.join(relativePath,
-                                            re.sub('\d{4}\.', match.group(),
+                                            re.sub('\d{4}', match.group(),
                                                 osp.basename(fileNames[0])))
                                 else:
                                     relativeFilePath = osp.join(relativePath,
-                                            re.sub('\d{4}\.', '<f>.',
+                                            re.sub('\d{4}', '<f>.',
                                                 osp.basename(fileNames[0])))
                                 relativeFilePath = relativeFilePath.replace(
                                         '\\', '/' )

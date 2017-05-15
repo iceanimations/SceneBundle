@@ -13,6 +13,7 @@ if isMaya:
     import maya.cmds as cmds
 
     from . import _bundle
+    reload(_bundle)
     BundleMaker = _bundle.BundleMaker
 
 else:
