@@ -450,7 +450,7 @@ class BundleMaker(BundleMakerBase):
             badPaths = []
             for node in nodes:
                 path = node.tex0.get()
-                if not osp.exists(path):
+                if path and not osp.exists(path):
                     badPaths.append(path)
             if badPaths:
                 detail=('Could not find following Redshift Sprite Textures\r\n'
@@ -472,7 +472,7 @@ class BundleMaker(BundleMakerBase):
                     os.mkdir(newPath)
                 path = node.tex0.get()
 
-                if osp.exists(path) and osp.isfile(path):
+                if path and osp.exists(path) and osp.isfile(path):
                     files = []
                     if node.useFrameExtension.get():
                         parts = osp.basename(path).split('.')
