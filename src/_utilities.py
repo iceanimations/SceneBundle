@@ -49,7 +49,7 @@ for node in pc.ls(type="file"):
     node.fileTextureName.set(osp.join(rootPath, getLast3(
             node.fileTextureName.get() )).replace('\\\\', '/'))
 
-for node in pc.ls(type=[ pc.nt.RedshiftSprite, pc.nt.RedshiftNormalMap ]):
+for node in pc.ls(type=[ "RedshiftSprite", "RedshiftNormalMap" ]):
     if pc.attributeQuery("excp", n=node, exists=True):
         continue
     node.tex0.set(os.join(rootPath, getLast3(node.tex0.get())).replace('\\\\',
