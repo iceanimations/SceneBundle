@@ -1122,6 +1122,17 @@ class InputField(Form2, Base2):
         self.seqBox2.hide()
         self.shBox2.hide()
 
+        self.nameBox.setValidator(__validator__)
+        self.epBox2.setValidator(__validator__)
+        self.seqBox2.setValidator(__validator__)
+        self.shBox2.setValidator(__validator__)
+        boxes = [self.epBox, self.seqBox, self.shBox, self.epBox2,
+                self.seqBox2, self.shBox2, self.nameBox]
+        map(lambda box: box.currentIndexChanged.connect(lambda:
+            fillName(*boxes)), [self.epBox, self.seqBox, self.shBox])
+        map(lambda box: box.textChanged.connect(lambda: fillName(*boxes)),
+                [self.epBox2, self.seqBox2, self.shBox2])
+
         if name:
             self.nameBox.setText(name)
         if path:
@@ -1143,17 +1154,6 @@ class InputField(Form2, Base2):
             self.epBox.hide()
             self.seqBox.hide()
             self.shBox.hide()
-
-        self.nameBox.setValidator(__validator__)
-        self.epBox2.setValidator(__validator__)
-        self.seqBox2.setValidator(__validator__)
-        self.shBox2.setValidator(__validator__)
-        boxes = [self.epBox, self.seqBox, self.shBox, self.epBox2,
-                self.seqBox2, self.shBox2, self.nameBox]
-        map(lambda box: box.currentIndexChanged.connect(lambda:
-            fillName(*boxes)), [self.epBox, self.seqBox, self.shBox])
-        map(lambda box: box.textChanged.connect(lambda: fillName(*boxes)),
-                [self.epBox2, self.seqBox2, self.shBox2])
 
         self.browseButton.clicked.connect(self.browseFolder)
 
