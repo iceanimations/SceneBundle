@@ -18,6 +18,9 @@ from . import _utilities as util
 
 from ._base import BundleMakerBase, OnError, BundleMakerHandler
 
+
+MAX_PATH_LENGTH = 256
+
 mapFiles = util.mapFiles
 class BundleMaker(BundleMakerBase):
     '''Bundle Maker class containing all functions'''
@@ -33,6 +36,7 @@ class BundleMaker(BundleMakerBase):
         self.refNodes = []
         self.cacheMapping = {}
         self.paths = []
+        self.copiedFiles = []
 
     def setProgressHandler(self, ph=None):
         self.status.progressHandler = ph
@@ -112,6 +116,13 @@ class BundleMaker(BundleMakerBase):
             imaya.openFile(self.filename)
         except RuntimeError as e:
             self.status.error('Cannot Open File %s ... %s' %(filename, str(e)))
+
+    def copyfile(self, file_, folder):
+        path = osp.relpath(
+                osp.normpath(osp.join(folder, osp.basename(file_))),
+                start=self.rootPath )
+        shutil.copy(file_, folder)
+        self.copiedFiles = [os.path.normpath(path)]
 
     def closeFile(self):
         self.status.setProcess('CloseFile')
@@ -320,7 +331,7 @@ class BundleMaker(BundleMakerBase):
                             fileNames = self.getUDIMFiles(textureFilePath)
                             if fileNames:
                                 for phile in fileNames:
-                                    shutil.copy(phile, folderPath)
+                                    self.copyfile(phile, folderPath)
                                     self.copyRSFile(phile, folderPath)
                                 match = re.search('(?i)<udim>',
                                         textureFilePath)
@@ -338,7 +349,7 @@ class BundleMaker(BundleMakerBase):
                             else: continue
                         else:
                             if osp.exists(textureFilePath):
-                                shutil.copy(textureFilePath, folderPath)
+                                self.copyfile(textureFilePath, folderPath)
                                 self.copyRSFile(textureFilePath, folderPath)
                                 relativeFilePath = osp.join(relativePath,
                                         osp.basename(textureFilePath))
@@ -408,7 +419,7 @@ class BundleMaker(BundleMakerBase):
                 if osp.exists(path):
                     if not osp.exists(osp.join( newProxyPath,
                         osp.basename(path) )):
-                        shutil.copy(path, newProxyPath)
+                        self.copyfile(path, newProxyPath)
                         if osp.exists(texturePath):
                             iutil.mkdir( assetPath, 'texture' if not lowRes
                                     else osp.join('texture', 'low_res') )
@@ -417,7 +428,7 @@ class BundleMaker(BundleMakerBase):
                                     osp.isfile(osp.join(texturePath, phile))
                                     and not phile.endswith('.link') ]
                             for phile in files:
-                                shutil.copy(phile, newTexturePath)
+                                self.copyfile(phile, newTexturePath)
                         # copy the co-existing textures
                         proxyDir = osp.dirname(path)
                         files = [phile for phile in os.listdir(proxyDir) if
@@ -426,7 +437,7 @@ class BundleMaker(BundleMakerBase):
                                     '.jpeg']]
                         for phile in files:
                             try:
-                                shutil.copy(osp.join(proxyDir, phile),
+                                self.copyfile(osp.join(proxyDir, phile),
                                         newProxyPath)
                             except:
                                 pass
@@ -490,7 +501,7 @@ class BundleMaker(BundleMakerBase):
                         files.append(path)
                     if files:
                         for phile in files:
-                            shutil.copy(phile, newPath)
+                            self.copyfile(phile, newPath)
                         node.tex0.set( osp.join(newPath,
                             osp.basename(files[0])) )
 
@@ -502,10 +513,10 @@ class BundleMaker(BundleMakerBase):
         directoryPath, ext = osp.splitext(path)
         directoryPath += '.rstexbin'
         if osp.exists(directoryPath):
-            shutil.copy(directoryPath, path2)
+            self.copyfile(directoryPath, path2)
         directoryPath += '.tx'
         if osp.exists(directoryPath):
-            shutil.copy(directoryPath, path2)
+            self.copyfile(directoryPath, path2)
 
     def getRefNodes(self):
         nodes = []
@@ -595,8 +606,8 @@ class BundleMaker(BundleMakerBase):
                 newName = newName + 1
                 folderPath = cacheFolder
                 try:
-                    shutil.copy(cacheXMLFilePath, folderPath)
-                    shutil.copy(cacheMCFilePath, folderPath)
+                    self.copyfile(cacheXMLFilePath, folderPath)
+                    self.copyfile(cacheMCFilePath, folderPath)
                 except Exception as ex:
                     errors[osp.splitext(cacheMCFilePath)[0]] = str(ex)
                 self.cacheMapping[node] = osp.join(folderPath,
@@ -637,7 +648,7 @@ class BundleMaker(BundleMakerBase):
                 fullPath = osp.join(path, fl)
                 if osp.isfile(fullPath):
                     if osp.splitext(fullPath)[-1] == '.mcfi':
-                        shutil.copy(fullPath, targetPath)
+                        self.copyfile(fullPath, targetPath)
                 self.status.setValue(count)
                 count += 1
             self.status.setMaximum(0)
@@ -661,7 +672,7 @@ class BundleMaker(BundleMakerBase):
                 for phile in files:
                     fullPath = osp.join(path, phile)
                     try:
-                        shutil.copy(fullPath, particleCachePath)
+                        self.copyfile(fullPath, particleCachePath)
                     except Exception as ex:
                         errors[fullPath] = str(ex)
                     self.status.setValue(count)
@@ -696,7 +707,7 @@ class BundleMaker(BundleMakerBase):
                     if osp.exists(osp.normpath(newPath)):
                         ref.replaceWith(newPath.replace('\\', '/'))
                         continue
-                    shutil.copy(ref.path, refsPath)
+                    self.copyfile(ref.path, refsPath)
                     ref.replaceWith(newPath.replace('\\', '/'))
                 except Exception as ex:
                     errors[ref] = str(ex)
@@ -868,6 +879,11 @@ class BundleMaker(BundleMakerBase):
                 import traceback
                 traceback.print_exc()
                 detail = "\nError in copying to directory" + projectPath
+                if self.copiedFiles:
+                    lengths = [len(x) for x in self.copiedFiles]
+                    max_len = max(lengths)
+                    if len(projectPath) + max_len > MAX_PATH_LENGTH:
+                        detail += "\nNAMES ARE TOO LONG"
                 detail += "\n" + str(e)
                 self.onError |= OnError.RAISE
                 self.status.error(detail, exc_info=True)
