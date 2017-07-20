@@ -5,4 +5,4 @@ REM @"C:\Program Files\Autodesk\Maya2015\bin\mayapy.exe" -m unittest discover te
 REM @"C:\Program Files\Autodesk\Maya2015\bin\mayapy.exe" -m unittest discover test test_main*
 REM @"C:\Program Files\Autodesk\Maya2015\bin\mayapy.exe" -m unittest discover test test_bundle*
 
-@"C:\Program Files\Autodesk\Maya2015\bin\mayapy.exe" -m unittest -v test.test_process test.test_main test.test_bundle
+@"C:\Program Files\Autodesk\Maya2015\bin\mayapy.exe" -m unittest -v test.test_process test.test_bundle

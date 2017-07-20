@@ -122,7 +122,7 @@ class BundleMaker(BundleMakerBase):
                 osp.normpath(osp.join(folder, osp.basename(file_))),
                 start=self.rootPath )
         shutil.copy(file_, folder)
-        self.copiedFiles = [os.path.normpath(path)]
+        self.copiedFiles.append(os.path.normpath(path))
 
     def closeFile(self):
         self.status.setProcess('CloseFile')
@@ -397,55 +397,96 @@ class BundleMaker(BundleMakerBase):
             self.status.setMaximum(nodesLen)
             self.status.setValue(0)
             for i, node in enumerate(nodes):
-                path = node.fileName.get()
-                if osp.basename(osp.dirname(path)) == 'low_res':
-                    lowRes = True
-                    mainPath = iutil.dirname(path, 3)
-                else:
-                    lowRes = False
-                    mainPath = iutil.dirname(path, 2)
-                assetName = osp.basename(mainPath)
-                texturePath = osp.join(mainPath, 'texture')
-                if lowRes:
-                    texturePath = osp.join(texturePath, 'low_res')
-                assetPath = osp.join(proxyPath, assetName)
-                if not osp.exists(assetPath):
-                    os.mkdir(assetPath)
-                relPath = osp.dirname(osp.relpath(path, mainPath))
-                iutil.mkdir(assetPath, relPath)
-                newProxyPath = osp.join(assetPath, relPath)
-                newTexturePath = osp.join(assetPath, 'texture')
-                if lowRes: newTexturePath = osp.join(newTexturePath, 'low_res')
-                if osp.exists(path):
-                    if not osp.exists(osp.join( newProxyPath,
-                        osp.basename(path) )):
-                        self.copyfile(path, newProxyPath)
-                        if osp.exists(texturePath):
-                            iutil.mkdir( assetPath, 'texture' if not lowRes
-                                    else osp.join('texture', 'low_res') )
-                            files = [ osp.join(texturePath, phile) for phile in
-                                    os.listdir(texturePath) if
-                                    osp.isfile(osp.join(texturePath, phile))
-                                    and not phile.endswith('.link') ]
-                            for phile in files:
-                                self.copyfile(phile, newTexturePath)
-                        # copy the co-existing textures
-                        proxyDir = osp.dirname(path)
-                        files = [phile for phile in os.listdir(proxyDir) if
-                                osp.splitext(phile)[-1] in ['.jpg', '.png',
-                                    '.tga', '.tiff', '.tif', '.bmp', '.rsmap',
-                                    '.jpeg']]
-                        for phile in files:
-                            try:
-                                self.copyfile(osp.join(proxyDir, phile),
-                                        newProxyPath)
-                            except:
-                                pass
-                    node.fileName.set( osp.join(newProxyPath,
-                        osp.basename(path)) )
+                newProxyPath = self.collectOneRSProxy(node, proxyPath)
+                if newProxyPath:
+                    node.fileName.set(newProxyPath)
                 self.status.setValue(i+1)
             self.status.setMaximum(0)
         return True
+
+    def collectOneRSProxy(self, node, bundleProxyDir):
+        '''Given a proxy node copy the proxy pointed to and its textures to
+        appropriate locations within the given bundleProxyDir'''
+        path = node.fileName.get()
+
+        if not osp.exists(path):
+            return None
+
+        path = osp.normpath(path)
+        dirname = osp.dirname(path)
+        basename = osp.basename(path)
+
+        # get base context ( = process)
+        rank = 999
+        process = ''
+        process_candidates = ['shaded', 'model', 'rig', 'texture']
+        for candidate in process_candidates:
+            try:
+                index = dirname.split(os.sep).index(candidate)
+                if index < rank:   # and candidate in basename.split('_'):
+                    process = candidate
+                    rank = index
+            except ValueError:
+                pass
+
+        # asset_name, asset_dir and rel_dir
+        asset_name = basename
+        asset_name = re.sub('[._]?v\d+.*$', '', asset_name)
+        asset_name = re.sub('_?' + process + '.*$', '', asset_name)
+        if not asset_name:
+            asset_name = osp.splitext(basename)[0]
+        asset_dir = dirname
+
+        if process and rank > 0:
+            asset_name = dirname.split(os.sep)[rank-1]
+            asset_dir = os.sep.join(dirname.split(os.sep)[:rank])
+        rel_dir = osp.relpath(dirname, asset_dir)
+
+        new_asset_dir = osp.join(bundleProxyDir, asset_name)
+        if not osp.exists(new_asset_dir):
+            iutil.mkdir(bundleProxyDir, asset_name)
+
+        # if this is a shaded proxy we need to find and copy its textures
+        if process == 'shaded':
+            rel_texture_dir = os.sep.join(['texture'] +
+                                          rel_dir.split(os.sep)[1:])
+            texture_dir = osp.join(asset_dir, rel_texture_dir)
+            if osp.exists(texture_dir):
+                # make texture directory
+                new_texture_dir = osp.join(new_asset_dir, rel_texture_dir)
+                if not osp.exists(new_texture_dir):
+                    iutil.mkdir(new_asset_dir, rel_texture_dir)
+                # find files
+                files = [osp.join(texture_dir, file_)
+                         for file_ in os.listdir(texture_dir)
+                         if osp.isfile(osp.join(texture_dir, file_)) and
+                         not file_.endswith('.link') and
+                         not file_.startswith('.')]
+                # copy over
+                for file_ in files:
+                    self.copyfile(file_, new_texture_dir)
+
+        # copy co-existing textures
+        files = [phile for phile in os.listdir(dirname) if
+                 osp.splitext(phile)[-1] in ['.jpg', '.png', '.tga',
+                 '.tiff', '.tif', '.bmp', '.rsmap', '.jpeg']]
+
+        # make proxy dir
+        new_proxy_dir = osp.join(new_asset_dir, rel_dir)
+        if not osp.exists(new_proxy_dir):
+            iutil.mkdir(new_asset_dir, rel_dir)
+
+        # copy textures
+        for phile in files:
+            try:
+                self.copyfile(osp.join(dirname, phile), new_proxy_dir)
+            except:
+                pass
+
+        # copy the actual proxy
+        self.copyfile(path, new_proxy_dir)
+
+        return osp.join(new_proxy_dir, basename)
 
     def collectRedshiftSpritesNMaps(self):
         self.status.setProcess('CollectRedshiftSpritesNMaps')

@@ -60,7 +60,7 @@ class TestBundleProcess(TestBase):
                 self.name, cache ) ) )
 
     def testRsProxies(self):
-        proxies = [ r"proxies\bundle\data\air_horn_shaded_v001.rs" ]
+        proxies = [ r"proxies\air_horn_shaded_v001\air_horn_shaded_v001.rs" ]
         for proxy in proxies:
             self.assertTrue( os.path.exists( os.path.join( self.tmpdir,
                 self.name, proxy ) ) )
@@ -77,7 +77,7 @@ class TestBundleProcess(TestBase):
     def testParsing(self):
         print self.bp.status.counts
         self.assertEqual(self.bp.status.counts,
-                {'setMaximum': 15, 'setValue': 15, 'setProcess': 13,
+                {'setMaximum': 20, 'setValue': 20, 'setProcess': 13,
                     'setStatus': 18, 'done': 1, 'error': 1} )
 
 if __name__ == "__main__":
