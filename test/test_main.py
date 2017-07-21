@@ -2,17 +2,18 @@ import os
 import site
 import unittest
 
-site.addsitedir(os.path.abspath('..'))
+site.addsitedir(os.path.abspath('.'))
+site.addsitedir(os.path.dirname(__file__))
 site.addsitedir(r'R:\Python_Scripts\plugins\utilities')
 
-from src._bundle import BundleMaker
 from src._main import bundleMain
-
 from _testbase import TestBase, normpath
 
 import pymel.core as pc
 
 currentdir = os.path.dirname(__file__)
+
+from src._bundle import BundleMaker
 
 class TestMain(TestBase):
     bm = BundleMaker()
@@ -61,7 +62,7 @@ class TestMain(TestBase):
                 self.name, cache ) ) )
 
     def testRsProxies(self):
-        proxies = [ r"proxies\bundle\data\air_horn_shaded_v001.rs" ]
+        proxies = [ r"proxies\air_horn_shaded_v001\air_horn_shaded_v001.rs" ]
         for proxy in proxies:
             self.assertTrue( os.path.exists( os.path.join( self.tmpdir,
                 self.name, proxy ) ) )
