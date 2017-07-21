@@ -4,15 +4,17 @@ import sys
 import time
 import shutil
 
-sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_common")
+# sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_common")
 sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_common\utilities")
-sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya")
-sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya\tactic")
-sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya\tactic\app")
-sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya\maya2015\PyQt")
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.dirname(__file__))
+# sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya")
+# sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya\tactic")
+# sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya\tactic\app")
+# sys.path.insert(0, r"D:\talha.ahmed\workspace\pyenv_maya\maya2015\PyQt")
 
-from uiContainer import _setPySide
-_setPySide()
+from uiContainer import setPyQt4
+setPyQt4()
 
 from PyQt4.QtGui import QApplication, qApp
 from PyQt4.QtTest import QTest
@@ -27,7 +29,6 @@ import src._ui as ui
 BundleMakerUI = ui.BundleMakerUI
 
 currentdir = os.path.dirname(__file__)
-
 
 class DiagHelper(QObject):
     key = None
@@ -149,7 +150,7 @@ class TestBundleMakerUI_CurrentScene(TestBase):
                 cache)))
 
     def testRsProxies(self):
-        proxies = [r"proxies\bundle\data\air_horn_shaded_v001.rs"]
+        proxies = [ r"proxies\air_horn_shaded_v001\air_horn_shaded_v001.rs" ]
         for proxy in proxies:
             self.assertTrue(os.path.exists(os.path.join(self.tmpdir, self.name,
                 proxy)))
@@ -236,11 +237,10 @@ class TestBundleMakerUI_List(TestBase):
 
     def testRsProxies(self):
         for bundledir in self.bundledir:
-            proxies = ["proxies\\"+ 'bundle' +
-                    r"\data\air_horn_shaded_v001.rs"]
+            proxies = [ r"proxies\air_horn_shaded_v001\air_horn_shaded_v001.rs" ]
             for proxy in proxies:
-                self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
-                    bundledir, proxy)))
+                path = os.path.join(self.tmpdir, bundledir, proxy)
+                self.assertTrue(os.path.exists(path))
 
     def testMayaFile(self):
         for bundledir in self.bundledir:
