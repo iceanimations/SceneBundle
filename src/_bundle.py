@@ -225,6 +225,7 @@ class BundleMaker(BundleMakerBase):
         if not osp.exists(dirname):
             return []
         fileName = osp.basename(path)
+        first, last = None, None
         if '<udim>' in fileName.lower():
             try:
                 parts = fileName.split('<udim>')
@@ -245,6 +246,10 @@ class BundleMaker(BundleMakerBase):
                 first, last = parts
             except:
                 return []
+
+        if first is None or last is None:
+            return []
+
         pattern = first + '\d+' + last
         goodFiles = []
         fileNames = os.listdir(dirname)
