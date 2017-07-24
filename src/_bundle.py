@@ -245,7 +245,7 @@ class BundleMaker(BundleMakerBase):
                 first, last = parts
             except:
                 return []
-        pattern = first +'\d+'+ last
+        pattern = first + '\d+' + last
         goodFiles = []
         fileNames = os.listdir(dirname)
         for fName in fileNames:
@@ -495,20 +495,25 @@ class BundleMaker(BundleMakerBase):
         self.status.setMaximum(0)
         self.status.setValue(0)
         try:
-            nodes = pc.ls(exactType=[ 'RedshiftSprite',
-                'RedshiftNormalMap' ])
+            nodes = pc.ls(exactType=['RedshiftSprite', 'RedshiftNormalMap'])
         except AttributeError:
             return True
+
+        udim_map = {}
         if nodes:
             badPaths = []
             for node in nodes:
                 path = node.tex0.get()
-                if path and not osp.exists(path):
+                udims = self.getUDIMFiles(path)
+                if path and udims:
+                    udim_map[path] = udims
+                if path and not osp.exists(path) and not udims:
                     badPaths.append(path)
+
             if badPaths:
-                detail=('Could not find following Redshift Sprite Textures\r\n'
-                        + '\r\n'.join(badPaths))
-                #self.createLog(detail)
+                detail = (
+                    'Could not find following Redshift Sprite Textures\r\n' +
+                    '\r\n'.join(badPaths))
                 self.status.error(detail)
 
             self.status.setStatus('Collecting Redshift Sprite Textures...')
@@ -525,29 +530,32 @@ class BundleMaker(BundleMakerBase):
                     os.mkdir(newPath)
                 path = node.tex0.get()
 
+                files = []
                 if path and osp.exists(path) and osp.isfile(path):
-                    files = []
                     if node.useFrameExtension.get():
                         parts = osp.basename(path).split('.')
                         if len(parts) == 3:
                             for phile in os.listdir(osp.dirname(path)):
-                                if re.match(parts[0]+'\.\d+\.'+parts[2],
-                                        phile):
+                                if re.match(parts[0] + '\.\d+\.' + parts[2],
+                                            phile):
                                     files.append(osp.join(osp.dirname(path),
-                                        phile))
+                                                          phile))
                             if not files:
                                 files.append(path)
                         else:
                             files.append(path)
                     else:
                         files.append(path)
-                    if files:
-                        for phile in files:
-                            self.copyfile(phile, newPath)
-                        node.tex0.set( osp.join(newPath,
-                            osp.basename(files[0])) )
+                else:
+                    files.extend(udim_map.get(path, []))
+
+                if files:
+                    for phile in files:
+                        self.copyfile(phile, newPath)
+                    node.tex0.set(osp.join(newPath, osp.basename(files[0])))
 
                 self.status.setValue(i+1)
+
         self.status.setMaximum(0)
         return True
 
