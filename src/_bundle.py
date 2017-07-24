@@ -317,7 +317,8 @@ class BundleMaker(BundleMakerBase):
             if textureFilePath:
                 try:
                     if node.useFrameExtension.get():
-                        self.textureExceptions.append(textureFilePath)
+                        continue
+                        #self.textureExceptions.append(textureFilePath)
                 except AttributeError:
                     pass
                 if osp.normcase(osp.normpath(textureFilePath)) not in [
