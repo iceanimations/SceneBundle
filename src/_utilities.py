@@ -52,7 +52,7 @@ for node in pc.ls(type="file"):
 for node in pc.ls(type=[ "RedshiftSprite", "RedshiftNormalMap" ]):
     if pc.attributeQuery("excp", n=node, exists=True):
         continue
-    node.tex0.set(os.join(rootPath, getLast3(node.tex0.get())).replace('\\\\',
+    node.tex0.set(osp.join(rootPath, getLast3(node.tex0.get())).replace('\\\\',
             '/'))
 
 msg=False
