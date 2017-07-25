@@ -8,7 +8,7 @@ import types
 _pc = None
 bundleFormatter = logging.Formatter(
         fmt=('%(name)s : %(levelname)s : %(asctime)s : %(message)s :' +
-        ' END_%(name)s' ))
+             ' END_%(name)s'))
 loggerName = 'SCENE_BUNDLE'
 
 isMaya = True
@@ -36,21 +36,24 @@ except ImportError:
     isMayaPy = False
     isMayaBatch = False
 
+
 class OnError(object):
-    IGNORE    = 0b0000
-    LOG       = 0b0001
-    RAISE     = 0b0010
-    ASK       = 0b0100
-    EXIT      = 0b1000
-    THROW     = RAISE
-    QUIT      = EXIT
+    IGNORE = 0b0000
+    LOG = 0b0001
+    RAISE = 0b0010
+    ASK = 0b0100
+    EXIT = 0b1000
+    THROW = RAISE
+    QUIT = EXIT
     LOG_RAISE = LOG | RAISE
-    LOG_ASK   = LOG | ASK
-    LOG_EXIT  = LOG | EXIT
+    LOG_ASK = LOG | ASK
+    LOG_EXIT = LOG | EXIT
     ALL = LOG | RAISE | ASK | EXIT
+
 
 class BundleException(Exception):
     pass
+
 
 class BaseBundleHandler(object):
     __metaclass__ = abc.ABCMeta
@@ -84,6 +87,7 @@ class BaseBundleHandler(object):
     def done(self):
         pass
 
+
 class ProgressLogHandler(BaseBundleHandler):
     _progressHandler = None
     errors = None
@@ -103,12 +107,12 @@ class ProgressLogHandler(BaseBundleHandler):
             os.mkdir(path)
         self.logFilePath = osp.join(path, 'log.txt')
 
-        self.logger = logging.getLogger( self.logKey )
-        self.logger.setLevel( logging.INFO )
-        self.logHandler = logging.FileHandler( self.logFilePath )
-        self.logHandler.setFormatter( self.formatter )
+        self.logger = logging.getLogger(self.logKey)
+        self.logger.setLevel(logging.INFO)
+        self.logHandler = logging.FileHandler(self.logFilePath)
+        self.logHandler.setFormatter(self.formatter)
         if not self.logger.handlers:
-            self.logger.addHandler( self.logHandler )
+            self.logger.addHandler(self.logHandler)
         self.setMaximum(0)
         self.complete = False
 
@@ -119,10 +123,10 @@ class ProgressLogHandler(BaseBundleHandler):
         ''':type desc: str'''
         if self.progressHandler:
             resp = self.progressHandler.setProcess(process)
-            self.onError = resp or ( self.onError if resp is None else resp )
+            self.onError = resp or (self.onError if resp is None else resp)
         self.process = process
         self.setMaximum(0)
-        self.logger.info('Process : %s'%self.process)
+        self.logger.info('Process : %s' % self.process)
 
     def setStatus(self, msg):
         self.status = msg
@@ -140,26 +144,27 @@ class ProgressLogHandler(BaseBundleHandler):
     def setValue(self, val):
         self.value = val
         if self.maxx > 0:
-            self.logger.info('Progress : %s : %s of %s' % (self.process, self.value,
-                self.maxx))
+            self.logger.info(
+                    'Progress : %s : %s of %s' % (self.process, self.value,
+                                                  self.maxx))
         if self.progressHandler:
             self.progressHandler.setValue(val)
 
-    def error(self,msg, exc_info=True):
+    def error(self, msg, exc_info=True):
         onError = self.onError
         self.errors.append(msg)
         if onError & OnError.LOG:
             self.logger.error(msg, exc_info=exc_info)
         if self.progressHandler:
-            resp = self.progressHandler.error('%s : %s'%( self.process, msg ))
+            resp = self.progressHandler.error('%s : %s' % (self.process, msg))
             onError = resp or onError
         if onError & OnError.RAISE:
-            raise BundleException, msg
+            raise BundleException(msg)
         if onError & OnError.EXIT:
             self.exit(1)
 
     def warning(self, msg):
-        self.warnings.append('%s : %s'%( self.process, msg ))
+        self.warnings.append('%s : %s' % (self.process, msg))
         self.logger.warning(msg)
         if self.progressHandler:
             self.progressHandler.warning(msg)
@@ -191,18 +196,20 @@ class ProgressLogHandler(BaseBundleHandler):
     def progressHandler(self, ph):
         if isinstance(ph, BaseBundleHandler) or all((
                 hasattr(ph, fun) for fun in dir(BaseBundleHandler)
-                if ( not fun.startswith('_') ) and type(
-                    getattr(BaseBundleHandler, fun) == types.MethodType)
-                and hasattr ( fun, '__isabstractmethod__' ) and
-                fun.__isabstractmethod__ )):
+                if (not fun.startswith('_')) and
+                isinstance(getattr(BaseBundleHandler, fun),
+                           types.MethodType) and
+                hasattr(fun, '__isabstractmethod__') and
+                fun.__isabstractmethod__)):
             self._progressHandler = ph
         else:
-            raise ( TypeError,
-                    'progressHandler must be of type "BundleProgressHandler"' )
+            raise TypeError(
+                    'progressHandler must be of type "BundleProgressHandler"')
 
     @progressHandler.deleter
     def progressHandler(self):
         self._progressHandler = None
+
 
 class BundleMakerHandler(ProgressLogHandler):
     def exit(self, code=0):
@@ -213,13 +220,15 @@ class BundleMakerHandler(ProgressLogHandler):
         else:
             sys.exit(code)
 
+
 class BundleMakerBase(object):
     '''Base Bundle Maker Class Having all properties'''
 
-    def __init__(self, progressHandler=None, path=None, filename=None,
-            name=None, deadline=True, doArchive=False, delete=False,
-            keepReferences=False, project=None, zdepth=None, sequence=None,
-            episode=None, shot=None, open=True):
+    def __init__(
+            self, progressHandler=None, path=None, filename=None, name=None,
+            deadline=True, doArchive=False, delete=False, keepReferences=False,
+            project=None, zdepth=None, sequence=None, episode=None, shot=None,
+            open=True):
         ''':type progressHandler: BundleProgressHandler'''
         self.textureExceptions = []
         self.deadline = deadline
@@ -258,12 +267,14 @@ class BundleMakerBase(object):
 
     def getPath(self):
         return self._path
+
     def setPath(self, path):
         self._path = path
     path = property(fget=getPath, fset=setPath)
 
     def getName(self):
         return self._name
+
     def setName(self, name):
         self._name = name
     name = property(fget=getName, fset=setName)
@@ -289,11 +300,11 @@ class BundleMakerBase(object):
 
     def addExceptions(self, paths):
         self._textureExceptions = paths[:]
+
     def getTextureExceptions(self):
         return self._textureExceptions[:]
     textureExceptions = property(fget=getTextureExceptions,
-            fset=addExceptions)
+                                 fset=addExceptions)
 
     def clearData(self):
         self.textureExceptions = []
-

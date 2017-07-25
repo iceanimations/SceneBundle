@@ -36,6 +36,7 @@ class BundleMaker(BundleMakerBase):
         ''':type progressHandler: BundleProgressHandler'''
         self.status = BundleMakerHandler()
         super(BundleMaker, self).__init__(*args, **kwargs)
+
         self.textureExceptions = []
         self.rootPath = None
         self.texturesMapping = {}
