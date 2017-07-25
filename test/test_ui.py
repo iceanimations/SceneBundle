@@ -30,6 +30,7 @@ BundleMakerUI = ui.BundleMakerUI
 
 currentdir = os.path.dirname(__file__)
 
+
 class DiagHelper(QObject):
     key = None
     func = None
@@ -47,8 +48,10 @@ class DiagHelper(QObject):
         if self.keyword is None:
             return True
         text = ''
-        try: text = obj.text()
-        except AttributeError: pass
+        try:
+            text = obj.text()
+        except AttributeError:
+            pass
         if self.keyword.lower() in text.lower():
             return True
         return False
@@ -93,9 +96,9 @@ class TestBundleMakerUI_CurrentScene(TestBase):
         qApp.processEvents()
         time.sleep(0.5)
 
-        self.gui.bundler.progressHandler=self.handler
+        self.gui.bundler.progressHandler = self.handler
         self.gui.bundler.filename = os.path.join(self.tmpdir, self.srcdir,
-                'scenes', 'mayaproj.ma')
+                                                 'scenes', 'mayaproj.ma')
         self.gui.bundler.open = False
         self.gui.bundler.openFile()
 
@@ -113,12 +116,12 @@ class TestBundleMakerUI_CurrentScene(TestBase):
         qApp.processEvents()
         time.sleep(1)
 
-        dh1 = DiagHelper(key=Qt.Key_Enter, time=1000,
-                keyword='CollectTextures')
+        dh1 = DiagHelper(
+            key=Qt.Key_Enter, time=1000, keyword='CollectTextures')
         dh1.activate()
 
-        dh2 = DiagHelper(key=Qt.Key_Escape, time=2000,
-                keyword='latestErrorLog')
+        dh2 = DiagHelper(
+            key=Qt.Key_Escape, time=2000, keyword='latestErrorLog')
         dh2.activate()
 
         QTest.mouseClick(self.gui.bundleButton, Qt.LeftButton)
@@ -135,33 +138,35 @@ class TestBundleMakerUI_CurrentScene(TestBase):
 
     def testTextures(self):
         images = []
-        images.append ( r"sourceimages\1\Form_1001.png" )
-        images.append ( r"sourceimages\1\Form_1002.png" )
-        images = [os.path.join(self.tmpdir, self.bundledir, image) for image in
-                images]
-        self.assertTrue( ( any(os.path.exists(image)) for image in images ) )
+        images.append(r"sourceimages\1\Form_1001.png")
+        images.append(r"sourceimages\1\Form_1002.png")
+        images = [
+            os.path.join(self.tmpdir, self.bundledir, image)
+            for image in images
+        ]
+        self.assertTrue((any(os.path.exists(image)) for image in images))
 
     def testCaches(self):
         caches = []
         caches.append(r"data\air_hornShape.xml")
         caches.append(r"data\air_hornShape.mcx")
         for cache in caches:
-            self.assertTrue(os.path.exists(os.path.join(self.tmpdir, self.name,
-                cache)))
+            self.assertTrue(
+                os.path.exists(os.path.join(self.tmpdir, self.name, cache)))
 
     def testRsProxies(self):
-        proxies = [ r"proxies\air_horn_shaded_v001\air_horn_shaded_v001.rs" ]
+        proxies = [r"proxies\air_horn_shaded_v001\air_horn_shaded_v001.rs"]
         for proxy in proxies:
-            self.assertTrue(os.path.exists(os.path.join(self.tmpdir, self.name,
-                proxy)))
+            self.assertTrue(
+                os.path.exists(os.path.join(self.tmpdir, self.name, proxy)))
 
     def testMayaFile(self):
-        mayafile = os.path.join( self.tmpdir, self.name, r"scenes\bundle.ma" )
+        mayafile = os.path.join(self.tmpdir, self.name, r"scenes\bundle.ma")
         self.assertTrue(os.path.exists(mayafile))
 
     def testReferences(self):
         ref_file = os.path.join(self.tmpdir, self.name,
-                r"scenes\refs\air_horn_shaded.ma")
+                                r"scenes\refs\air_horn_shaded.ma")
         self.assertTrue(os.path.exists(ref_file))
 
 
@@ -176,13 +181,14 @@ class TestBundleMakerUI_List(TestBase):
         self.rootPaths = []
         paths = []
         for srcdir, bundledir, zipfileName in zip(self.srcdir, self.bundledir,
-                self.zipfileName):
-            setUp(self.tmpdir, os.path.join( self.tmpdir, srcdir ),
-                    os.path.join( self.tmpdir, bundledir ), zipfileName)
+                                                  self.zipfileName):
+            setUp(self.tmpdir,
+                  os.path.join(self.tmpdir, srcdir),
+                  os.path.join(self.tmpdir, bundledir), zipfileName)
             self.rootPaths.append(os.path.join(self.tmpdir, bundledir))
             filename = os.path.join(self.tmpdir, srcdir, 'scenes',
-                    'mayaproj.ma')
-            paths.append(' | '.join( [bundledir, filename, '', '', ''] ))
+                                    'mayaproj.ma')
+            paths.append(' | '.join([bundledir, filename, '', '', '']))
         self.rootPaths = tuple(self.rootPaths)
 
         self.handler = TestBundleHandler()
@@ -195,6 +201,7 @@ class TestBundleMakerUI_List(TestBase):
                 func()
                 self.gui.deleteLater()
                 qApp.exit()
+
             return stop
 
         self.gui.stopPolling = stop_decorator(self.gui.stopPolling)
@@ -204,8 +211,7 @@ class TestBundleMakerUI_List(TestBase):
         QTest.mouseClick(self.gui.keepReferencesButton, Qt.LeftButton)
         QTest.mouseClick(self.gui.bgButton, Qt.LeftButton)
 
-        dh2 = DiagHelper(key=Qt.Key_Enter, time=2000,
-                keyword='latestErrorLog')
+        dh2 = DiagHelper(key=Qt.Key_Enter, time=2000, keyword='latestErrorLog')
         dh2.activate()
 
         qApp.processEvents()
@@ -214,16 +220,17 @@ class TestBundleMakerUI_List(TestBase):
         qApp.exec_()
 
     def testRootPaths(self):
-       for rootPath in self.rootPaths:
+        for rootPath in self.rootPaths:
             self.assertTrue(os.path.exists(rootPath))
 
     def testTextures(self):
         for bundledir in self.bundledir:
             images = []
-            images.append ( r"sourceimages\1\Form_1001.png" )
-            images.append ( r"sourceimages\1\Form_1002.png" )
-            images = [os.path.join(self.tmpdir, bundledir, image) for image in
-                    images]
+            images.append(r"sourceimages\1\Form_1001.png")
+            images.append(r"sourceimages\1\Form_1002.png")
+            images = [
+                os.path.join(self.tmpdir, bundledir, image) for image in images
+            ]
             self.assertTrue((any(os.path.exists(image)) for image in images))
 
     def testCaches(self):
@@ -232,33 +239,34 @@ class TestBundleMakerUI_List(TestBase):
             caches.append(r"data\air_hornShape.xml")
             caches.append(r"data\air_hornShape.mcx")
             for cache in caches:
-                self.assertTrue(os.path.exists(os.path.join(self.tmpdir,
-                    bundledir, cache)))
+                self.assertTrue(
+                    os.path.exists(
+                        os.path.join(self.tmpdir, bundledir, cache)))
 
     def testRsProxies(self):
         for bundledir in self.bundledir:
-            proxies = [ r"proxies\air_horn_shaded_v001\air_horn_shaded_v001.rs" ]
+            proxies = [r"proxies\air_horn_shaded_v001\air_horn_shaded_v001.rs"]
             for proxy in proxies:
                 path = os.path.join(self.tmpdir, bundledir, proxy)
                 self.assertTrue(os.path.exists(path))
 
     def testMayaFile(self):
         for bundledir in self.bundledir:
-            mayafile = os.path.join( self.tmpdir, bundledir, "scenes",
-                    bundledir + ".ma" )
+            mayafile = os.path.join(self.tmpdir, bundledir, "scenes",
+                                    bundledir + ".ma")
             self.assertTrue(os.path.exists(mayafile))
 
     def testReferences(self):
         for bundledir in self.bundledir:
             ref_file = os.path.join(self.tmpdir, bundledir,
-                    r"scenes\refs\air_horn_shaded.ma")
+                                    r"scenes\refs\air_horn_shaded.ma")
             self.assertTrue(os.path.exists(ref_file))
 
     @classmethod
     def tearDownClass(self):
         if hasattr(self.gui.bundler, 'stop'):
             self.gui.bundler.stop()
-        for srcdir, bundledir in zip( self.srcdir, self.bundledir ):
+        for srcdir, bundledir in zip(self.srcdir, self.bundledir):
             tearDown(os.path.join(self.tmpdir, srcdir))
             tearDown(os.path.join(self.tmpdir, bundledir))
         tearDown(os.path.join(self.tmpdir, 'mayaproj'))
