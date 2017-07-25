@@ -35,7 +35,11 @@ for node in pc.ls(type="reference"):
         msg = True
 
 if msg:
-    pc.confirmDialog(title="Scene Bundle", message="Could not load all references, please see the Reference Editor", button="Ok")
+    pc.confirmDialog(
+        title="Scene Bundle",
+        message=("Could not load all references,"
+                 " please see the Reference Editor"),
+        button="Ok")
 
 def getLast3(path):
     b1 = osp.basename(path)
@@ -73,6 +77,7 @@ if msg:
 
 '''
 
+
 def which(cmd, mode=os.F_OK | os.X_OK, path=None):
     """Given a command, mode, and a PATH string, return the path which
     conforms to the given mode on the PATH, or None if there is no such
@@ -83,12 +88,13 @@ def which(cmd, mode=os.F_OK | os.X_OK, path=None):
     path.
 
     """
+
     # Check that a given file can be accessed with the correct mode.
     # Additionally check that `file` is not a directory, as on Windows
     # directories pass the os.access check.
     def _access_check(fn, mode):
-        return (os.path.exists(fn) and os.access(fn, mode)
-                and not os.path.isdir(fn))
+        return (os.path.exists(fn) and os.access(fn, mode) and
+                not os.path.isdir(fn))
 
     # Short circuit. If we're given a full path which matches the mode
     # and it exists, we're done here.
@@ -99,7 +105,7 @@ def which(cmd, mode=os.F_OK | os.X_OK, path=None):
 
     if sys.platform == "win32":
         # The current directory takes precedence on Windows.
-        if not os.curdir in path:
+        if os.curdir not in path:
             path.insert(0, os.curdir)
 
         pathext = os.environ.get("PATHEXT", "").split(os.pathsep)
@@ -111,7 +117,7 @@ def which(cmd, mode=os.F_OK | os.X_OK, path=None):
     seen = set()
     for dir in path:
         dir = os.path.normcase(dir)
-        if not dir in seen:
+        if dir not in seen:
             seen.add(dir)
             for thefile in files:
                 name = os.path.join(dir, thefile)
@@ -147,12 +153,14 @@ def findUIObjectByLabel(parentUI, objType, label, case=True):
         print parentUI, e
         return None
 
+
 def turnZdepthOn():
     for layer in pm.ls(type=pm.nt.RenderLayer):
         if 'depth' in layer.name():
             layer.renderable.set(1)
         else:
             layer.renderable.set(0)
+
 
 reconnectAiAOVScript = """
 global proc reconnectAiAOVs()
@@ -164,7 +172,8 @@ global proc reconnectAiAOVs()
     {
         $outputs = `listConnections -t aiOptions $thisAOV `;
         if (!size( $outputs )){
-            connectAttr -f -na ($thisAOV + ".message") defaultArnoldRenderOptions.aovList;
+            connectAttr -f -na ($thisAOV + ".message")
+                    defaultArnoldRenderOptions.aovList;
         }
 
     }
@@ -172,8 +181,7 @@ global proc reconnectAiAOVs()
 reconnectAiAOVs();
 """
 
+
 def createReconnectAiAOVScript():
-    return pm.scriptNode(name='reconnectAiAOV', bs=reconnectAiAOVScript,
-            stp='mel', st=1)
-
-
+    return pm.scriptNode(
+        name='reconnectAiAOV', bs=reconnectAiAOVScript, stp='mel', st=1)
