@@ -339,6 +339,7 @@ class BundleMaker(BundleMakerBase):
             if textureFilePath:
                 try:
                     if node.useFrameExtension.get():
+                        self.addExceptionAttr(node)
                         continue
                 except AttributeError:
                     pass
@@ -389,10 +390,8 @@ class BundleMaker(BundleMakerBase):
                                 textureFilePath]
                         continue
                 else:
-                    if not pc.attributeQuery('excp', n=node, exists=True):
-                        pc.addAttr(node, sn='excp', ln='exception',
-                                   dt='string')
-                        continue
+                    self.addExceptionAttr(node)
+                    continue
             else:
                 continue
             newName = newName + 1
@@ -400,6 +399,11 @@ class BundleMaker(BundleMakerBase):
         self.status.setMaximum(0)
         self.status.setStatus('All textures collected successfully...')
         return True
+    
+    def addExceptionAttr(self, node):
+        if not pc.attributeQuery('excp', n=node, exists=True):
+            pc.addAttr(node, sn='excp', ln='exception',
+                       dt='string')
 
     def collectRedshiftProxies(self):
         try:
