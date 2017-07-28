@@ -45,6 +45,7 @@ class BundleMaker(BundleMakerBase):
         self.cacheMapping = {}
         self.paths = []
         self.copiedFiles = []
+        self.seq_size_limit = 300L * 1024 * 1024
 
     def setProgressHandler(self, ph=None):
         self.status.progressHandler = ph
@@ -280,7 +281,6 @@ class BundleMaker(BundleMakerBase):
 
     @_restoreAttribute('onError')
     def collectTextures(self):
-        print 'called'
         self.status.setProcess('CollectTextures')
         self.status.setStatus('Checking texture files...')
         textureFileNodes = self.getFileNodes()
@@ -321,12 +321,13 @@ class BundleMaker(BundleMakerBase):
             self.status.error(detail)
 
         newName = 0
+        count = 0
         self.status.setStatus('collecting textures...')
         imagesPath = osp.join(self.rootPath, 'sourceImages')
         self.status.setMaximum(len(textureFileNodes))
         self.status.setValue(0)
-        self.status.setValue(0)
         for node in textureFileNodes:
+            count += 1
             folderPath = osp.join(imagesPath, str(newName))
             relativePath = osp.join(osp.basename(imagesPath), str(newName))
             if not osp.exists(folderPath):
@@ -339,12 +340,14 @@ class BundleMaker(BundleMakerBase):
             if textureFilePath:
                 try:
                     if node.useFrameExtension.get():
-                        self.addExceptionAttr(node)
-                        continue
+                        path = imaya.readPathAttr(node.fileTextureName)
+                        if util.getSequenceSize(path) > self.seq_size_limit:
+                            self.addExceptionAttr(node)
+                            continue
                 except AttributeError:
                     pass
                 if osp.normcase(osp.normpath(textureFilePath)) not in [
-                        osp.normcase(osp.normpath(path)) for path in
+                        osp.normcase(osp.normpath(_path)) for _path in
                         self.textureExceptions]:
                     if textureFilePath not in self.collectedTextures.keys():
                         if pc.attributeQuery('excp', n=node, exists=True):
@@ -395,11 +398,11 @@ class BundleMaker(BundleMakerBase):
             else:
                 continue
             newName = newName + 1
-            self.status.setValue(newName)
+            self.status.setValue(count)
         self.status.setMaximum(0)
         self.status.setStatus('All textures collected successfully...')
         return True
-    
+
     def addExceptionAttr(self, node):
         if not pc.attributeQuery('excp', n=node, exists=True):
             pc.addAttr(node, sn='excp', ln='exception',
@@ -420,6 +423,7 @@ class BundleMaker(BundleMakerBase):
                 detail = ('Could not find following proxy files\r\n' +
                           '\r\n'.join(badPaths))
                 self.status.error(detail)
+            self.status.setProcess('CollectRedshiftProxies')
             self.status.setStatus('Collecting Redshift Proxies...')
             nodesLen = len(nodes)
             proxyPath = osp.join(self.rootPath, 'proxies')

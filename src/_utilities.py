@@ -9,6 +9,9 @@ import sys
 import sys as pc
 import pymel.core as pm
 
+
+import iutil
+
 mapFiles = '''#ICE_BundleScript
 #version==0.3
 import pymel.core as pc
@@ -185,3 +188,13 @@ reconnectAiAOVs();
 def createReconnectAiAOVScript():
     return pm.scriptNode(
         name='reconnectAiAOV', bs=reconnectAiAOVScript, stp='mel', st=1)
+
+
+def getSequenceSize(path):
+    sizes = []
+    for _file in iutil.getSequenceFiles(path):
+        try:
+            sizes.append(os.stat(_file).st_size)
+        except:
+            pass
+    return sum(sizes)
