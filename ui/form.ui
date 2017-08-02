@@ -58,6 +58,9 @@
         </spacer>
        </item>
        <item>
+        <widget class="QComboBox" name="projBox"/>
+       </item>
+       <item>
         <widget class="QComboBox" name="epBox">
          <property name="toolTip">
           <string>Switch all episodes</string>
@@ -138,7 +141,7 @@
         <x>0</x>
         <y>0</y>
         <width>1034</width>
-        <height>202</height>
+        <height>204</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">

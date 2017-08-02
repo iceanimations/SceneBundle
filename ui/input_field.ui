@@ -20,9 +20,6 @@
    <enum>QFrame::Raised</enum>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
-   <property name="margin">
-    <number>0</number>
-   </property>
    <item>
     <widget class="QLineEdit" name="nameBox">
      <property name="sizePolicy">
@@ -52,6 +49,9 @@
       <string>...</string>
      </property>
     </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="projBox"/>
    </item>
    <item>
     <widget class="QComboBox" name="epBox">

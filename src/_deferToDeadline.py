@@ -9,8 +9,10 @@ from _process import BundleMakerProcess, mayaVersion, isMaya64
 #  Deadline Scene Bundle Job  #
 ###############################
 
+
 class DeadlineSceneBundleException(dl.DeadlineWrapperException):
     pass
+
 
 class MayaBatchScriptPluginInfo(dl.DeadlinePluginInfo):
     version = dl.DeadlineAttr('version', '', str)
@@ -22,9 +24,11 @@ class MayaBatchScriptPluginInfo(dl.DeadlinePluginInfo):
     scriptJob = dl.DeadlineAttr('ScriptJob', True, bool)
     scriptFilename=dl.DeadlineAttr('ScriptFilename', 'makeBundle.py', str)
 
+
 class DeadlineSceneBundleJob(dl.DeadlineJob):
     exception = DeadlineSceneBundleException
     pluginInfoClass = MayaBatchScriptPluginInfo
+
 
 class BundleMakerDeadline(BundleMakerProcess):
     job = None
@@ -77,4 +81,3 @@ class BundleMakerDeadline(BundleMakerProcess):
         else:
             self.status.setStatus('Bundle Deferred to Deadline: %d'%self.jobid)
             self.status.done()
-

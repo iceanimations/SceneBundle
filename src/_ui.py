@@ -3,6 +3,7 @@ Created on Nov 5, 2014
 
 @author: qurban.ali
 '''
+
 from ._base import isMayaGUI, isMaya
 from . import _process
 from . import _base
@@ -110,6 +111,16 @@ class _ProjectConf(dict):
 
 projects_conf = _ProjectConf()
 projects_conf.updateFromConfFile()
+
+
+_BundleMakerForm, _BundleMakerBase = uic.loadUiType(
+        osp.join(ui_path, 'bundle.ui'))
+_EditForm, _EditBase = uic.loadUiType(
+        osp.join(ui_path, 'form.ui'))
+_InputFieldForm, _InputFieldBase = uic.loadUiType(
+        osp.join(ui_path, 'input_field.ui'))
+_ExceptionsForm, _ExceptionsBase = uic.loadUiType(
+        osp.join(ui_path, 'exceptions.ui'))
 
 
 class BundleMakerUIProcessAdapter(core.QObject, BundleMakerProcess):
@@ -231,7 +242,7 @@ class BundleMakerUIProcessAdapter(core.QObject, BundleMakerProcess):
             self.gui.thread = None
 
 
-BundleProcess = BundleMakerUIProcessAdapter
+_BundleProcess = BundleMakerUIProcessAdapter
 
 
 class Setting(object):
@@ -286,10 +297,7 @@ class PathStatus(object):
         }
 
 
-Form, Base = uic.loadUiType(osp.join(ui_path, 'bundle.ui'))
-
-
-class BundleMakerUI(Form, Base):
+class BundleMakerUI(_BundleMakerForm, _BundleMakerBase):
     settings = BundleSettings()
     bundleMaker = None
     filename = None
@@ -624,9 +632,9 @@ class BundleMakerUI(Form, Base):
                     PathStatus.fgColors.get(PathStatus.kSuccess))
             self.currentItem = None
 
-        ep, seq, sh, pro = None, None, None, self.project
+        ep, seq, sh, proj = None, None, None, self.project
         if self.isDeadlineCheck():
-            if pro == '--Project--':
+            if proj == '--Project--':
                 self.stopPolling()
                 msgBox.showMessage(
                     self,
@@ -651,7 +659,7 @@ class BundleMakerUI(Form, Base):
                 self.filename = cmds.file(q=1, sn=1)
             self.bundler.open = False
             self.createBundle(
-                project=pro,
+                project=proj,
                 episode=self.getEp(),
                 sequence=self.getSeq(),
                 shot=self.getSh())
@@ -678,7 +686,7 @@ class BundleMakerUI(Form, Base):
 
                 failed = False
                 try:
-                    name, filename, ep, seq, sh = text.split(' | ')
+                    name, filename, proj, ep, seq, sh = text.split(' | ')
                 except ValueError:
                     try:
                         name, filename = text.split(' | ')
@@ -688,7 +696,7 @@ class BundleMakerUI(Form, Base):
                         name = ''
                 self.filename = filename
                 if self.isDeadlineCheck() and not all(
-                        [name, any([ep, seq, sh]), filename]):
+                        [name, proj, any([ep, seq, sh]), filename]):
                     failed = True
                     if self.pathStatus[idx] != PathStatus.kFailed:
                         self.createLog(
@@ -713,7 +721,7 @@ class BundleMakerUI(Form, Base):
                         PathStatus.fgColors.get(PathStatus.kFailed))
                 else:
                     if self.bgButton.isChecked():
-                        self.bundler = BundleProcess(self)
+                        self.bundler = _BundleProcess(self)
                     else:
                         self.bundler = BundleMaker(self)
 
@@ -728,7 +736,7 @@ class BundleMakerUI(Form, Base):
                     self.errorFlag = False
                     self.createBundle(
                         name=name,
-                        project=pro,
+                        project=proj,
                         episode=ep,
                         sequence=seq,
                         shot=sh)
@@ -811,7 +819,7 @@ class BundleMakerUI(Form, Base):
                         continue
                     else:
                         if self.bgButton.isChecked():
-                            self.bundler = BundleProcess(self)
+                            self.bundler = _BundleProcess(self)
                         else:
                             self.bundler = BundleMaker(self)
 
@@ -1090,10 +1098,7 @@ class BundleMakerUI(Form, Base):
         return self.filename
 
 
-Form1, Base1 = uic.loadUiType(osp.join(ui_path, 'form.ui'))
-
-
-class EditForm(Form1, Base1):
+class EditForm(_EditForm, _EditBase):
     def __init__(self, parent=None):
         super(EditForm, self).__init__(parent)
         self.setupUi(self)
@@ -1101,16 +1106,21 @@ class EditForm(Form1, Base1):
         self.parentWin = parent
         self.inputFields = []
 
+        populateProjectsBox(self.projBox)
+        setComboBoxText(self.projBox, parent.project)
         populateBoxes(self.epBox, self.seqBox, self.shBox, self.project)
-        self.populate()
         self.epBox.currentIndexChanged.connect(
             lambda *args: self.switchAllBoxes('epBox'))
         self.seqBox.currentIndexChanged.connect(
             lambda *args: self.switchAllBoxes('seqBox'))
         self.shBox.currentIndexChanged.connect(
             lambda *args: self.switchAllBoxes('shBox'))
+        self.projBox.currentIndexChanged.connect(
+            lambda *args: self.switchAllBoxes('projBox'))
+        self.projBox.currentIndexChanged.connect(self.populateBoxes)
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2,
                         self.seqBox2, self.shBox2)
+        self.populate()
 
         self.epBox2.setValidator(__validator__)
         self.seqBox2.setValidator(__validator__)
@@ -1135,22 +1145,26 @@ class EditForm(Form1, Base1):
             self.epBox.hide()
             self.seqBox.hide()
             self.shBox.hide()
+            self.projBox.hide()
 
         self.okButton.clicked.connect(self.ok)
 
     @property
     def project(self):
-        return self.parentWin.project
+        return self.projBox.currentText()
 
     def populate(self):
         paths = self.parentWin.getPaths()
         for path in paths:
-            name = ep = seq = sh = ''
+            proj = name = ep = seq = sh = ''
             if ' | ' in path:
-                name, path, ep, seq, sh = path.split(' | ')
-            iField = InputField(self, name, path, ep, seq, sh)
+                name, path, proj, ep, seq, sh = path.split(' | ')
+            iField = InputField(self, name, path, proj, ep, seq, sh)
             self.itemsLayout.addWidget(iField)
             self.inputFields.append(iField)
+
+    def populateBoxes(self, *args):
+        populateBoxes(self.epBox, self.seqBox, self.shBox, self.project)
 
     def switchAllBoxes(self, which_box='epBox'):
         box = getattr(self, which_box, None)
@@ -1178,6 +1192,7 @@ class EditForm(Form1, Base1):
         for iField in self.inputFields:
             name = iField.getName()
             path = iField.getPath()
+            proj = iField.project
             ep = iField.getEp()
             seq = iField.getSeq()
             sh = iField.getSh()
@@ -1195,7 +1210,7 @@ class EditForm(Form1, Base1):
                     msg='Path not specified for the bundle',
                     icon=QMessageBox.Information)
                 return
-            paths.append(' | '.join([name, path, ep, seq, sh]))
+            paths.append(' | '.join([name, path, proj, ep, seq, sh]))
         self.parentWin.setPaths(paths)
         self.accept()
 
@@ -1206,22 +1221,26 @@ class EditForm(Form1, Base1):
         return -1
 
 
-Form2, Base2 = uic.loadUiType(osp.join(ui_path, 'input_field.ui'))
-
-
-class InputField(Form2, Base2):
+class InputField(_InputFieldForm, _InputFieldBase):
     def __init__(self,
                  parent=None,
                  name=None,
                  path=None,
+                 proj=None,
                  ep=None,
                  seq=None,
-                 sh=None):
+                 sh=None,
+                 ):
         super(InputField, self).__init__(parent)
         self.setupUi(self)
         self.parentWin = parent
 
-        populateBoxes(self.epBox, self.seqBox, self.shBox, self.project)
+        populateProjectsBox(self.projBox)
+        if proj:
+            self.setProj(proj)
+        elif path:
+            setBoxFromPathTokens(self.projBox, path)
+        self.populateBoxes()
         addEventToBoxes(self.epBox, self.seqBox, self.shBox, self.epBox2,
                         self.seqBox2, self.shBox2)
 
@@ -1245,19 +1264,28 @@ class InputField(Form2, Base2):
             lambda: fillName(*boxes)), [self.epBox, self.seqBox, self.shBox])
         map(lambda box: box.textChanged.connect(lambda: fillName(*boxes)),
             [self.epBox2, self.seqBox2, self.shBox2])
+        self.projBox.currentIndexChanged.connect(self.populateBoxes)
+
+        if proj:
+            self.setProj(proj)
+        elif path:
+            setBoxFromPathTokens(self.projBox, path)
 
         if name:
             self.nameBox.setText(name)
         if path:
             self.pathBox.setText(path)
+
         if ep:
             self.setEp(ep)
         elif path:
             setBoxFromPathTokens(self.epBox, path)
+
         if seq:
             self.setSeq(seq)
         elif path:
             setBoxFromPathTokens(self.seqBox, path)
+
         if sh:
             self.setSh(sh)
         elif path:
@@ -1267,12 +1295,21 @@ class InputField(Form2, Base2):
             self.epBox.hide()
             self.seqBox.hide()
             self.shBox.hide()
+            self.projBox.hide()
 
         self.browseButton.clicked.connect(self.browseFolder)
 
     @property
     def project(self):
-        return self.parentWin.project
+        return self.projBox.currentText()
+
+    @property
+    def proj(self):
+        return self.projBox.currentText()
+
+    def populateBoxes(self, *args):
+        populateBoxes(
+            self.epBox, self.seqBox, self.shBox, self.projBox.currentText())
 
     def setBoxesFromPathTokens(self):
         path = self.pathBox.text()
@@ -1311,6 +1348,12 @@ class InputField(Form2, Base2):
             index = self.shBox.count() - 1
             self.shBox2.setText(sh)
         self.shBox.setCurrentIndex(index)
+
+    def setProj(self, proj):
+        index = self.getIndexOfBox(self.projBox, proj)
+        if index == -1:
+            index = 0
+        self.projBox.setCurrentIndex(index)
 
     def getIndexOfBox(self, box, text):
         for i in range(box.count()):
@@ -1355,10 +1398,7 @@ class InputField(Form2, Base2):
         return text
 
 
-Form3, Base3 = uic.loadUiType(osp.join(ui_path, 'exceptions.ui'))
-
-
-class Exceptions(Form3, Base3):
+class Exceptions(_ExceptionsForm, _ExceptionsBase):
     def __init__(self, parent, paths):
         super(Exceptions, self).__init__(parent)
         self.setupUi(self)

@@ -20,14 +20,13 @@ from PyQt4.QtGui import QApplication, qApp
 from PyQt4.QtTest import QTest
 from PyQt4.QtCore import Qt, QObject, QTimer
 
-app = QApplication(sys.argv)
-
 from _testbase import TestBase, TestBundleHandler, setUp, tearDown
 
 import maya.cmds as mc
 import src._ui as ui
-BundleMakerUI = ui.BundleMakerUI
 
+app = QApplication(sys.argv)
+BundleMakerUI = ui.BundleMakerUI
 currentdir = os.path.dirname(__file__)
 
 
@@ -188,7 +187,7 @@ class TestBundleMakerUI_List(TestBase):
             self.rootPaths.append(os.path.join(self.tmpdir, bundledir))
             filename = os.path.join(self.tmpdir, srcdir, 'scenes',
                                     'mayaproj.ma')
-            paths.append(' | '.join([bundledir, filename, '', '', '']))
+            paths.append(' | '.join([bundledir, filename, '', '', '', '']))
         self.rootPaths = tuple(self.rootPaths)
 
         self.handler = TestBundleHandler()
