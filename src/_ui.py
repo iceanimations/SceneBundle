@@ -1310,6 +1310,7 @@ class InputField(_InputFieldForm, _InputFieldBase):
     def populateBoxes(self, *args):
         populateBoxes(
             self.epBox, self.seqBox, self.shBox, self.projBox.currentText())
+        self.setBoxesFromPathTokens()
 
     def setBoxesFromPathTokens(self):
         path = self.pathBox.text()
