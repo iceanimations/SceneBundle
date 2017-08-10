@@ -433,6 +433,7 @@ class BundleMaker(BundleMakerBase):
             self.status.setValue(0)
             for i, node in enumerate(nodes):
                 newProxyPath = self.collectOneRSProxy(node, i, proxyPath)
+                newProxyPath = os.path.realpath(newProxyPath)
                 if newProxyPath:
                     node.fileName.set(newProxyPath)
                 self.status.setValue(i+1)
