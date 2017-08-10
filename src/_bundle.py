@@ -26,7 +26,6 @@ reload(util)
 reload(deadline)
 
 MAX_PATH_LENGTH = 256
-K
 mapFiles = util.mapFiles
 
 
