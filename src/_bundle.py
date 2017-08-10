@@ -26,6 +26,7 @@ reload(util)
 reload(deadline)
 
 MAX_PATH_LENGTH = 256
+K
 mapFiles = util.mapFiles
 
 
@@ -432,14 +433,14 @@ class BundleMaker(BundleMakerBase):
             self.status.setMaximum(nodesLen)
             self.status.setValue(0)
             for i, node in enumerate(nodes):
-                newProxyPath = self.collectOneRSProxy(node, proxyPath)
+                newProxyPath = self.collectOneRSProxy(node, i, proxyPath)
                 if newProxyPath:
                     node.fileName.set(newProxyPath)
                 self.status.setValue(i+1)
             self.status.setMaximum(0)
         return True
 
-    def collectOneRSProxy(self, node, bundleProxyDir):
+    def collectOneRSProxy(self, node, num, bundleProxyDir):
         '''Given a proxy node copy the proxy pointed to and its textures to
         appropriate locations within the given bundleProxyDir'''
         path = node.fileName.get()
@@ -469,7 +470,7 @@ class BundleMaker(BundleMakerBase):
         asset_name = re.sub('[._]?v\d+.*$', '', asset_name)
         asset_name = re.sub('_?' + process + '.*$', '', asset_name)
         if not asset_name:
-            asset_name = osp.splitext(basename)[0]
+            asset_name = str(num)
         asset_dir = dirname
 
         if process and rank > 0:
