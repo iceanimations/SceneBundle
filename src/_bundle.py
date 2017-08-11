@@ -364,12 +364,12 @@ class BundleMaker(BundleMakerBase):
                                 if match:
                                     relativeFilePath = osp.join(
                                             relativePath, re.sub(
-                                                '\d{4}', match.group(),
+                                                '\d{3,}', match.group(),
                                                 osp.basename(fileNames[0])))
                                 else:
                                     relativeFilePath = osp.join(
                                             relativePath, re.sub(
-                                                '\d{4}', '<f>',
+                                                '\d{3,}', '<f>',
                                                 osp.basename(fileNames[0])))
                                 relativeFilePath = relativeFilePath.replace(
                                         '\\', '/')
