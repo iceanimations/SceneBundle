@@ -851,8 +851,15 @@ class BundleMaker(BundleMakerBase):
             fullPath = osp.join(
                     self.rootPath,
                     self.texturesMapping[node]).replace('\\', '/')
+            sequence = False
             try:
+                if node.useFrameExtension.get():
+                    node.useFrameExtension.set(0)
+                    sequence = True
+                if '<f>' in fullPath:
+                    fullPath = fullPath.replace('<f>', '12345')
                 node.fileTextureName.set(fullPath)
+                if sequence: node.useFrameExtension.set(1)
             except AttributeError:
                 node.filename.set(fullPath)
             except RuntimeError:
