@@ -154,7 +154,7 @@ class TestBundleMakerUI_CurrentScene(TestBase):
                 os.path.exists(os.path.join(self.tmpdir, self.name, cache)))
 
     def testRsProxies(self):
-        proxies = [r"proxies\air_horn_shaded_v001\air_horn_shaded_v001.rs"]
+        proxies = [r"proxies\0\air_horn_shaded_v001.rs"]
         for proxy in proxies:
             self.assertTrue(
                 os.path.exists(os.path.join(self.tmpdir, self.name, proxy)))
@@ -244,7 +244,7 @@ class TestBundleMakerUI_List(TestBase):
 
     def testRsProxies(self):
         for bundledir in self.bundledir:
-            proxies = [r"proxies\air_horn_shaded_v001\air_horn_shaded_v001.rs"]
+            proxies = [r"proxies\0\air_horn_shaded_v001.rs"]
             for proxy in proxies:
                 path = os.path.join(self.tmpdir, bundledir, proxy)
                 self.assertTrue(os.path.exists(path))

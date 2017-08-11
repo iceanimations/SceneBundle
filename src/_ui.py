@@ -22,6 +22,7 @@ import yaml
 import traceback
 import logging
 import re
+from collections import namedtuple
 
 import msgBox
 
@@ -1494,6 +1495,33 @@ def getPathTokens(p):
     tokens = re.split(r'[\\/]', p)
     tokens.extend(re.split(r'[\\/_]', p))
     return list(set(filter(bool, tokens)))
+
+
+BundleParams = namedtuple('BundleParams', ['proj', 'ep', 'seq', 'sh'])
+
+
+def getBundleParamsFromPath(p):
+    tokens = getPathTokens(p)
+    params = BundleParams(*(['']*4))
+
+    for proj in projects_conf.keys():
+        if proj in tokens:
+            params.proj = proj
+            break
+
+    for ep in projects_conf.getEpisodes(params.proj):
+        if ep in tokens:
+            params.ep = ep
+
+    for seq in projects_conf.getSequences(params.proj):
+        if ep in tokens:
+            params.ep = ep
+
+    for sh in projects_conf.getShots(params.proj):
+        if sh in tokens:
+            params.sh = sh
+
+    return params
 
 
 zpPattern = re.compile(r'(\D+)?(\d+)?')

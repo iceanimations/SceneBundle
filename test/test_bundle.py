@@ -63,7 +63,7 @@ class TestBundle(TestBase):
                 self.name, cache ) ) )
 
     def testRsProxies(self):
-        proxies = [ r"proxies\air_horn_shaded_v001\air_horn_shaded_v001.rs" ]
+        proxies = [ r"proxies\0\air_horn_shaded_v001.rs" ]
         for proxy in proxies:
             self.assertTrue( os.path.exists( os.path.join( self.tmpdir,
                 self.name, proxy ) ) )
