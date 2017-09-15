@@ -98,7 +98,7 @@ class _ProjectConf(dict):
         return _list
 
     def getEpisodes(self, project):
-        default = ['EP' + str(val).zfill(3) for val in range(1, 27)]
+        default = ['Intro'] + ['EP' + str(val).zfill(3) for val in range(1, 27)]
         return self._getElementList(project, 'episodes', default)
 
     def getSequences(self, project):
