@@ -1299,6 +1299,7 @@ class InputField(_InputFieldForm, _InputFieldBase):
             self.projBox.hide()
 
         self.browseButton.clicked.connect(self.browseFolder)
+        fillName(*boxes)
 
     @property
     def project(self):
