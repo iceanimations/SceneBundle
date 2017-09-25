@@ -587,7 +587,11 @@ class BundleMaker(BundleMakerBase):
                 if files:
                     for phile in files:
                         self.copyfile(phile, newPath)
-                    node.tex0.set(osp.join(newPath, osp.basename(files[0])))
+                    if path:
+                        node.tex0.set(osp.join(newPath, osp.basename(path)))
+                    else:
+                        node.tex0.set(osp.join(
+                                newPath, osp.basename(files[0])))
 
                 self.status.setValue(i+1)
 
