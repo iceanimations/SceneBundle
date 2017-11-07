@@ -35,8 +35,9 @@ if not config:
     config['submitSceneFile'] = False
     config['ignoreDefaultCamera'] = False
 
+    config['output_base'] = r'\\renders\Storage\Projects\external'
     config['output_loc'] = (
-            r'\\ice-lac\Storage\Projects\external\%(project)s'
+            r'%(output_base)s\%(project)s'
             r'\02_production\%(episode)s\%(sequence)s\%(shot)s')
     config['bundle_loc'] = (
             r'%(bundle_base)s\%(project)s\%(episode)s'
@@ -196,6 +197,7 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
         self.bundle_base = self.getPreferredBase()
 
         self.vardict = {
+            'output_base': self.conf.get("output_base"),
             'bundle_base': self.bundle_base,
             'project': self.project,
             'episode': self.episode,
