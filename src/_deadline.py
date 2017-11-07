@@ -54,11 +54,11 @@ if not config:
                     'poolidx': idx
                 } for idx in range(1, num_pools + 1)
             ],
-            'base_selection':
-            'random_choice'
+            'base_selection': 'random_choice'
         }
     }
     config['pool_selection'] = 'random_choice'
+    config['secondaryPools'] = config['pools'].copy()
 
     config['overrides'] = [
         {  # first override
@@ -150,6 +150,7 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
                     self.conf[key] = value
 
         self.validatePools()
+        self.validatePools(key='secondaryPools')
 
         if sync:
             self.syncWithConf()
@@ -193,7 +194,8 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
         if submitSceneFile is not None:
             self.submitSceneFile = submitSceneFile
 
-        self.pool = self.getPreferredPool()
+        self.pool = self.getPreferredPool('pools')
+        self.secondaryPool = self.getPreferredPool('secondaryPools')
         self.bundle_base = self.getPreferredBase()
 
         self.vardict = {
@@ -248,9 +250,12 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
                     return base
         return random.choice(bases)
 
-    def getPreferredPool(self):
-        pools = self.conf['pools']
+    def getPreferredPool(self, key='pools'):
+        pools = self.conf.get(key, {})
         method = self.conf.get('pool_selection')
+
+        if not pools:
+            return None
 
         # if a valid pools is already selected stick to it
         for chosen_pool in self.chosen_pools:
@@ -306,8 +311,8 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
                 [self.getFramesPendingInJob(job) for job in pooljobs])
         return frames
 
-    def validatePools(self):
-        pools = self.conf.get('pools', {})
+    def validatePools(self, key='secondaryPools'):
+        pools = self.conf.get(key, {})
 
         if not hasattr(self, 'deadline_pools'):
             self.deadline_pools = dl.pools()
@@ -329,6 +334,6 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
                 valid_pools[pool] = pool_settings
 
         if not valid_pools:
-            valid_pools = config['pools']
+            valid_pools = config[key]
 
-        self.conf['pools'] = valid_pools
+        self.conf[key] = valid_pools
