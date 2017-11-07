@@ -334,6 +334,6 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
                 valid_pools[pool] = pool_settings
 
         if not valid_pools:
-            valid_pools = config[key]
+            valid_pools = config.get(key, {})
 
         self.conf[key] = valid_pools
