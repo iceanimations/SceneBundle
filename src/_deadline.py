@@ -103,16 +103,27 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
         self.sequence = sequence
         self.shot = shot
 
-    def configure(self, sync=True):
-        self.conf = config.copy()
+    def evalOverrideConditions(self, conditions):
+        applyOverride = False
 
-        for override in self.conf.pop('overrides'):
-            match_all = bool(override.get('match_all', True))
-            applyOverride = False
-            conditions = override['conditions']
+        match_all = True
+        if conditions:
+            if isinstance(conditions[-1], basestring):
+                if conditions[-1] == 'match_all':
+                    match_all = True
+                elif conditions[-1] == 'match_any':
+                    match_all = False
 
-            for cond in conditions:
-                try:
+        for cond in conditions:
+
+            try:
+                if not isinstance(cond, list):
+                    continue
+
+                if isinstance(cond[0], list):
+                    applyOverride = self.evalOverrideConditions(cond)
+
+                else:
                     operand1 = None
                     operand2 = cond[1]
                     method = 'eq'
@@ -137,20 +148,33 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
                         raise ValueError('Unknown condition')
 
                     applyOverride = dl.matchValue(operand1, operand2, method)
-                    if ((not applyOverride and match_all) or
-                            (applyOverride and not match_all)):
-                        break
 
-                except Exception as e:
-                    print 'ignoring condition %r due to error %r' % (
-                        conditions, e)
+                if ((not applyOverride and match_all) or
+                        (applyOverride and not match_all)):
+                    break
+
+            except Exception as e:
+                print 'ignoring condition %r due to error %r' % (
+                    cond, e)
+
+        return applyOverride
+
+    def configure(self, sync=True):
+        self.conf = config.copy()
+
+        for override in self.conf.pop('overrides'):
+            conditions = override['conditions']
+            applyOverride = False
+
+            if conditions and isinstance(conditions, list):
+                applyOverride = self.evalOverrideConditions(conditions)
 
             if applyOverride:
                 for key, value in override.get('settings', {}).items():
                     self.conf[key] = value
 
-        self.validatePools()
-        self.validatePools(key='secondaryPools')
+        self.validatePools('pools')
+        self.validatePools('secondaryPools')
 
         if sync:
             self.syncWithConf()
@@ -311,7 +335,7 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
                 [self.getFramesPendingInJob(job) for job in pooljobs])
         return frames
 
-    def validatePools(self, key='secondaryPools'):
+    def validatePools(self, key='pools'):
         pools = self.conf.get(key, {})
 
         if not hasattr(self, 'deadline_pools'):
