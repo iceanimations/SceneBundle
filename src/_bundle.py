@@ -342,16 +342,14 @@ class BundleMaker(BundleMakerBase):
                     if node.useFrameExtension.get():
                         path = imaya.readPathAttr(node.fileTextureName)
                         if util.getSequenceSize(path) > self.seq_size_limit:
-                            self.addExceptionAttr(node)
+                            util.addExceptionAttr(node)
                             continue
                 except AttributeError:
                     pass
-                if osp.normcase(osp.normpath(textureFilePath)) not in [
-                        osp.normcase(osp.normpath(_path)) for _path in
-                        self.textureExceptions]:
+                if not self.isTextureException(
+                        osp.normcase(osp.normpath(textureFilePath))):
                     if textureFilePath not in self.collectedTextures.keys():
-                        if pc.attributeQuery('excp', n=node, exists=True):
-                            pc.deleteAttr('excp', n=node)
+                        util.removeExceptionAttr(node)
                         if ('<udim>' in textureFilePath.lower() or '<f>' in
                                 textureFilePath.lower()):
                             fileNames = self.getUDIMFiles(textureFilePath)
@@ -393,7 +391,7 @@ class BundleMaker(BundleMakerBase):
                                 textureFilePath]
                         continue
                 else:
-                    self.addExceptionAttr(node)
+                    util.addExceptionAttr(node)
                     continue
             else:
                 continue
@@ -402,11 +400,6 @@ class BundleMaker(BundleMakerBase):
         self.status.setMaximum(0)
         self.status.setStatus('All textures collected successfully...')
         return True
-
-    def addExceptionAttr(self, node):
-        if not pc.attributeQuery('excp', n=node, exists=True):
-            pc.addAttr(node, sn='excp', ln='exception',
-                       dt='string')
 
     def collectRedshiftProxies(self):
         try:
@@ -417,7 +410,7 @@ class BundleMaker(BundleMakerBase):
             badPaths = []
             for node in nodes:
                 path = node.fileName.get()
-                if not osp.exists(path):
+                if not util.getSequence(path) and not osp.exists(path):
                     badPaths.append(path)
             if badPaths:
                 detail = ('Could not find following proxy files\r\n' +
@@ -440,17 +433,27 @@ class BundleMaker(BundleMakerBase):
             self.status.setMaximum(0)
         return True
 
+    def isTextureException(self, path):
+        return path in [osp.normcase(osp.normpath(_path))
+                        for _path in self.textureExceptions]
+
     def collectOneRSProxy(self, node, num, bundleProxyDir):
         '''Given a proxy node copy the proxy pointed to and its textures to
         appropriate locations within the given bundleProxyDir'''
         path = node.fileName.get()
 
-        if not osp.exists(path):
+        sequence = util.getSequence(path)
+
+        if not sequence and not osp.exists(path):
             return None
 
         path = osp.normpath(path)
         dirname = osp.dirname(path)
         basename = osp.basename(path)
+
+        if self.isTextureException(dirname):
+            util.addExceptionAttr(node)
+            return path
 
         # get base context ( = process)
         rank = 999
@@ -467,6 +470,7 @@ class BundleMaker(BundleMakerBase):
 
         # asset_name, asset_dir and rel_dir
         asset_name = basename
+        asset_name = re.sub('[._]?#+.*$', '', asset_name)
         asset_name = re.sub('[._]?v\d+.*$', '', asset_name)
         asset_name = re.sub('_?' + process + '.*$', '', asset_name)
         if not asset_name:
@@ -520,7 +524,11 @@ class BundleMaker(BundleMakerBase):
                 pass
 
         # copy the actual proxy
-        self.copyfile(path, new_proxy_dir)
+        if sequence:
+            for path in sequence:
+                self.copyfile(path, new_proxy_dir)
+        else:
+            self.copyfile(path, new_proxy_dir)
 
         return osp.join(new_proxy_dir, basename)
 

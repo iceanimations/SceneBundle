@@ -8,6 +8,7 @@ import os
 import sys
 import sys as pc
 import pymel.core as pm
+import re
 
 
 import iutil
@@ -190,11 +191,40 @@ def createReconnectAiAOVScript():
         name='reconnectAiAOV', bs=reconnectAiAOVScript, stp='mel', st=1)
 
 
-def getSequenceSize(path):
+def getSequenceSize(path, func=None):
+    if func is None:
+        func = iutil.getSequenceFiles
+    return getSize(func(path))
+
+
+def getSequence(path, symbol='#'):
+    path_dir, path_base = os.path.split(path)
+    sequence = []
+    if symbol in path_base:
+        pattern = re.compile(re.sub(
+                '#+', lambda match: r'\d' * len(match.group()), path_base))
+        if os.path.exists(path_dir) and os.path.isdir(path_dir):
+            sequence = [os.path.join(path_dir, fn)
+                        for fn in os.listdir(path_dir)
+                        if pattern.match(fn)]
+    return sequence
+
+
+def getSize(files):
     sizes = []
-    for _file in iutil.getSequenceFiles(path):
+    for _file in files:
         try:
             sizes.append(os.stat(_file).st_size)
         except:
             pass
     return sum(sizes)
+
+
+def addExceptionAttr(node):
+    if not pc.attributeQuery('excp', n=node, exists=True):
+        pc.addAttr(node, sn='excp', ln='exception', dt='string')
+
+
+def removeExceptionAttr(node):
+    if pc.attributeQuery('excp', n=node, exists=True):
+        pc.deleteAttr('excp', n=node)
