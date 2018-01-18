@@ -346,8 +346,7 @@ class BundleMaker(BundleMakerBase):
                             continue
                 except AttributeError:
                     pass
-                if not self.isTextureException(
-                        osp.normcase(osp.normpath(textureFilePath))):
+                if not self.isTextureException(textureFilePath):
                     if textureFilePath not in self.collectedTextures.keys():
                         util.removeExceptionAttr(node)
                         if ('<udim>' in textureFilePath.lower() or '<f>' in
@@ -434,12 +433,16 @@ class BundleMaker(BundleMakerBase):
         return True
 
     def isTextureException(self, path):
-        return path in [osp.normcase(osp.normpath(_path))
-                        for _path in self.textureExceptions]
+        path = osp.normcase(osp.normpath(path))
+        for _path in self.textureExceptions:
+            if path == osp.normcase(osp.normpath(_path)):
+                return True
+        return False
 
     def collectOneRSProxy(self, node, num, bundleProxyDir):
         '''Given a proxy node copy the proxy pointed to and its textures to
         appropriate locations within the given bundleProxyDir'''
+
         path = node.fileName.get()
 
         sequence = util.getSequence(path)
