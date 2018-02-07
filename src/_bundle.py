@@ -192,7 +192,7 @@ class BundleMaker(BundleMakerBase):
                                         self.closeFile()
                                         self.removeBundle()
                                     self.status.setStatus(
-                                            'Scene bundled successfully...')
+                                            'Scene bundled successfully!')
                                     self.status.done()
         pc.workspace(ws, o=True)
 
@@ -282,7 +282,7 @@ class BundleMaker(BundleMakerBase):
     @_restoreAttribute('onError')
     def collectTextures(self):
         self.status.setProcess('CollectTextures')
-        self.status.setStatus('Checking texture files...')
+        self.status.setStatus('Checking texture files ...')
         textureFileNodes = self.getFileNodes()
         badTexturePaths = []
 
@@ -322,7 +322,7 @@ class BundleMaker(BundleMakerBase):
 
         newName = 0
         count = 0
-        self.status.setStatus('collecting textures...')
+        self.status.setStatus('collecting textures ...')
         imagesPath = osp.join(self.rootPath, 'sourceImages')
         self.status.setMaximum(len(textureFileNodes))
         self.status.setValue(0)
@@ -397,7 +397,7 @@ class BundleMaker(BundleMakerBase):
             newName = newName + 1
             self.status.setValue(count)
         self.status.setMaximum(0)
-        self.status.setStatus('All textures collected successfully...')
+        self.status.setStatus('All textures collected successfully ...')
         return True
 
     def collectRedshiftProxies(self):
@@ -416,7 +416,7 @@ class BundleMaker(BundleMakerBase):
                           '\r\n'.join(badPaths))
                 self.status.error(detail)
             self.status.setProcess('CollectRedshiftProxies')
-            self.status.setStatus('Collecting Redshift Proxies...')
+            self.status.setStatus('Collecting Redshift Proxies ...')
             nodesLen = len(nodes)
             proxyPath = osp.join(self.rootPath, 'proxies')
             if not osp.exists(proxyPath):
@@ -562,7 +562,7 @@ class BundleMaker(BundleMakerBase):
                     '\r\n'.join(badPaths))
                 self.status.error(detail)
 
-            self.status.setStatus('Collecting Redshift Sprite Textures...')
+            self.status.setStatus('Collecting Redshift Sprite Textures ...')
             nodeLen = len(nodes)
             texturePath = osp.join(self.rootPath, 'spriteTextures')
             if not osp.exists(texturePath):
@@ -631,7 +631,7 @@ class BundleMaker(BundleMakerBase):
 
     def collectReferences(self):
         self.status.setProcess('CollectReferences')
-        self.status.setStatus('collecting references info...')
+        self.status.setStatus('collecting references info ...')
         refNodes = self.getRefNodes()
         self.status.setMaximum(len(refNodes))
         self.status.setValue(0)
@@ -657,7 +657,7 @@ class BundleMaker(BundleMakerBase):
                 # self.createLog(detail)
                 self.status.error(detail, exc_info=False)
         else:
-            self.status.setStatus('No references found in the scene...')
+            self.status.setStatus('No references found in the scene ...')
         return True
 
     def getCacheNodes(self):
@@ -665,13 +665,13 @@ class BundleMaker(BundleMakerBase):
 
     def collectCaches(self):
         self.status.setProcess('CollectCaches')
-        self.status.setStatus('Prepering to collect cache files...')
+        self.status.setStatus('Prepering to collect cache files ...')
         self.status.setMaximum(0)
         self.status.setValue(0)
         cacheNodes = self.getCacheNodes()
 
         badCachePaths = []
-        self.status.setStatus('checking cache files...')
+        self.status.setStatus('checking cache files ...')
         for node in cacheNodes:
             files = node.getFileName()
             if files:
@@ -691,7 +691,7 @@ class BundleMaker(BundleMakerBase):
             # self.createLog(detail)
             self.status.error(detail, exc_info=False)
 
-        self.status.setStatus('collecting cache files...')
+        self.status.setStatus('collecting cache files ...')
         cacheFolder = osp.join(self.rootPath, 'data')
         newName = 0
         self.status.setMaximum(len(cacheNodes))
@@ -758,7 +758,7 @@ class BundleMaker(BundleMakerBase):
     def collectParticleCache(self):
         self.collectMCFIs()
         self.status.setProcess('CollectParticleCache')
-        self.status.setStatus('Collecting particle cache...')
+        self.status.setStatus('Collecting particle cache ...')
 
         path = self.getParticleCacheDirectory()
         if path and osp.exists(path):
@@ -789,12 +789,12 @@ class BundleMaker(BundleMakerBase):
                 self.status.setMaximum(0)
                 self.status.setStatus('particle cache collected successfully')
             else:
-                self.status.setStatus('No particle cache found...')
+                self.status.setStatus('No particle cache found!')
         return True
 
     def copyRef(self):
         self.status.setProcess('CopyRef')
-        self.status.setStatus('copying references...')
+        self.status.setStatus('copying references ...')
 
         c = 0
         self.status.setMaximum(len(self.refNodes))
@@ -858,7 +858,7 @@ class BundleMaker(BundleMakerBase):
 
     def mapTextures(self):
         self.status.setProcess('MapTextures')
-        self.status.setStatus('Mapping collected textures...')
+        self.status.setStatus('Mapping collected textures ...')
         self.status.setMaximum(len(self.texturesMapping))
         self.status.setValue(0)
         c = 0
@@ -885,7 +885,7 @@ class BundleMaker(BundleMakerBase):
 
     def mapCache(self):
         self.status.setProcess('MapCache')
-        self.status.setStatus('Mapping cache files...')
+        self.status.setStatus('Mapping cache files ...')
         self.status.setMaximum(len(self.cacheMapping))
         self.status.setValue(0)
         c = 0
@@ -920,12 +920,12 @@ class BundleMaker(BundleMakerBase):
 
     def exportScene(self):
         self.status.setStatus('ExportScene')
-        self.status.setStatus('Exporting scene...')
+        self.status.setStatus('Exporting scene ...')
         self.createScriptNode()
         scenePath = osp.join(self.rootPath, 'scenes', str(self.nameBox.text()))
         pc.exportAll(scenePath, type=cmds.file(q=True, type=True)[0],
                      f=True, pr=True)
-        self.status.setStatus('Scene bundled successfully...')
+        self.status.setStatus('Scene bundled successfully ...')
 
     def saveSceneAs(self, name=None):
         self.status.setProcess('SaveSceneAs')
@@ -948,7 +948,7 @@ class BundleMaker(BundleMakerBase):
         #######################################################################
         self.status.setProcess('SubmitToDeadline')
         self.status.setMaximum(0)
-        self.status.setStatus('configuring deadline submitter...')
+        self.status.setStatus('configuring deadline submitter ...')
         self.onError = OnError.LOG_RAISE
         try:
             subm = deadline.DeadlineBundleSubmitter(
