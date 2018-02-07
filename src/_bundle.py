@@ -453,15 +453,15 @@ class BundleMaker(BundleMakerBase):
         appropriate locations within the given bundleProxyDir'''
 
         path = node.fileName.get()
-        path = osp.normpath(osp.normcase(path))
 
-        if path in self.collectedProxies:
-            return self.collectedProxies[path]
+        _path = osp.normcase(osp.normpath(path))
+        if _path in self.collectedProxies:
+            return self.collectedProxies[_path]
 
         sequence = util.getSequence(path)
 
         if not sequence and not osp.exists(path):
-            return None
+            return path
 
         path = osp.normpath(path)
         dirname = osp.dirname(path)
@@ -552,7 +552,7 @@ class BundleMaker(BundleMakerBase):
             self.copyfile(path, new_proxy_dir)
 
         new_path = osp.join(new_proxy_dir, basename)
-        self.collectedProxies[path] = new_path
+        self.collectedProxies[_path] = new_path
 
         return new_path
 

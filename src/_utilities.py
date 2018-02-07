@@ -17,6 +17,7 @@ mapFiles = '''#ICE_BundleScript
 import pymel.core as pc
 import maya.cmds as cmds
 import os.path as osp
+import os
 
 rootPath = osp.dirname(osp.dirname(cmds.file(q=True, location=True)))
 refRootPath = osp.normpath(osp.join(rootPath, "scenes", "refs"))
@@ -66,8 +67,11 @@ for node in pc.ls(type=["RedshiftProxyMesh"]):
     if pc.attributeQuery("excp", n=node, exists=True):
         continue
     path = osp.normpath(node.fileName.get())
-    _, relpath = path.split(os.sep + 'proxies' + os.sep)
-    node.filename.set(osp.join(rootPath, 'proxies', relpath))
+    try:
+        _, relpath = path.split(os.sep + 'proxies' + os.sep)
+        node.fileName.set(osp.join(rootPath, 'proxies', relpath))
+    except ValueError:
+        continue
 
 msg=False
 for node in pc.ls(type="cacheFile"):
@@ -208,11 +212,12 @@ def getSequence(path, symbol='#'):
     sequence = []
     if symbol in path_base:
         pattern = re.compile(re.sub(
-                '#+', lambda match: r'\d' * len(match.group()), path_base))
+                '#+', lambda match: r'\d' * len(match.group()),
+                os.path.normcase(path_base)))
         if os.path.exists(path_dir) and os.path.isdir(path_dir):
             sequence = [os.path.join(path_dir, fn)
                         for fn in os.listdir(path_dir)
-                        if pattern.match(fn)]
+                        if pattern.match(os.path.normcase(fn))]
     return sequence
 
 
