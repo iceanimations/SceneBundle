@@ -41,6 +41,7 @@ class BundleMaker(BundleMakerBase):
         self.rootPath = None
         self.texturesMapping = {}
         self.collectedTextures = {}
+        self.collectedProxies = {}
         self.refNodes = []
         self.cacheMapping = {}
         self.paths = []
@@ -60,7 +61,9 @@ class BundleMaker(BundleMakerBase):
                 finally:
                     setattr(self, attrName, val)
                 return ret
+
             return _wrapper
+
         return _decorator
 
     @property
@@ -103,8 +106,8 @@ class BundleMaker(BundleMakerBase):
             script.st.set(1)
             script.rename('ICE_BundleScript')
         else:
-            script = pc.scriptNode(name='ICE_BundleScript', st=1, bs=mapFiles,
-                                   stp='python')
+            script = pc.scriptNode(
+                name='ICE_BundleScript', st=1, bs=mapFiles, stp='python')
         try:
             util.createReconnectAiAOVScript()
         except Exception as e:
@@ -126,13 +129,13 @@ class BundleMaker(BundleMakerBase):
                 raise RuntimeError('File Does Not Exist')
             imaya.openFile(self.filename)
         except RuntimeError as e:
-            self.status.error('Cannot Open File %s ... %s' % (
-                filename, str(e)))
+            self.status.error('Cannot Open File %s ... %s' % (filename,
+                                                              str(e)))
 
     def copyfile(self, file_, folder):
         path = osp.relpath(
-                osp.normpath(osp.join(folder, osp.basename(file_))),
-                start=self.rootPath)
+            osp.normpath(osp.join(folder, osp.basename(file_))),
+            start=self.rootPath)
         shutil.copy(file_, folder)
         self.copiedFiles.append(os.path.normpath(path))
 
@@ -141,8 +144,12 @@ class BundleMaker(BundleMakerBase):
         self.status.setStatus('Closing File ...')
         imaya.newScene()
 
-    def createBundle(self, name=None, project=None, episode=None,
-                     sequence=None, shot=None):
+    def createBundle(self,
+                     name=None,
+                     project=None,
+                     episode=None,
+                     sequence=None,
+                     shot=None):
         if name is None:
             name = self.name
         if project is None:
@@ -185,14 +192,14 @@ class BundleMaker(BundleMakerBase):
                                         self.archive()
                                     if self.deadline:
                                         self.submitToDeadline(
-                                                name, project, episode,
-                                                sequence, shot)
+                                            name, project, episode, sequence,
+                                            shot)
                                     if self.delete:
                                         self.deleteCacheNodes()
                                         self.closeFile()
                                         self.removeBundle()
                                     self.status.setStatus(
-                                            'Scene bundled successfully!')
+                                        'Scene bundled successfully!')
                                     self.status.done()
         pc.workspace(ws, o=True)
 
@@ -213,8 +220,8 @@ class BundleMaker(BundleMakerBase):
                     while 1:
                         if not osp.exists(dest):
                             break
-                        dest = dest.replace('(' + str(count) + ')', '(' +
-                                            str(count+1) + ')')
+                        dest = dest.replace('(' + str(count) + ')',
+                                            '(' + str(count + 1) + ')')
                         count += 1
                 src = r"R:\Pipe_Repo\Users\Qurban\templateProject"
                 shutil.copytree(src, dest)
@@ -310,8 +317,8 @@ class BundleMaker(BundleMakerBase):
                     if pc.getAttr(node.ftn, l=True):
                         pc.setAttr(node.ftn, l=False)
                 except Exception as ex:
-                    badTexturePaths.append('Could not unlock: %s: %s' % (
-                        filePath, ex))
+                    badTexturePaths.append('Could not unlock: %s: %s' %
+                                           (filePath, ex))
 
         if badTexturePaths:
             detail = ('Some textures do not exist or could not unlock a '
@@ -334,7 +341,7 @@ class BundleMaker(BundleMakerBase):
                 os.mkdir(folderPath)
             try:
                 textureFilePath = imaya.getFullpathFromAttr(
-                        node.fileTextureName)
+                    node.fileTextureName)
             except AttributeError:
                 textureFilePath = imaya.getFullpathFromAttr(node.filename)
             if textureFilePath:
@@ -349,8 +356,8 @@ class BundleMaker(BundleMakerBase):
                 if not self.isTextureException(textureFilePath):
                     if textureFilePath not in self.collectedTextures.keys():
                         util.removeExceptionAttr(node)
-                        if ('<udim>' in textureFilePath.lower() or '<f>' in
-                                textureFilePath.lower()):
+                        if ('<udim>' in textureFilePath.lower()
+                                or '<f>' in textureFilePath.lower()):
                             fileNames = self.getUDIMFiles(textureFilePath)
                             if fileNames:
                                 for phile in fileNames:
@@ -360,16 +367,17 @@ class BundleMaker(BundleMakerBase):
                                                   textureFilePath)
                                 if match:
                                     relativeFilePath = osp.join(
-                                            relativePath, re.sub(
-                                                '\d{3,}', match.group(),
-                                                osp.basename(fileNames[0])))
+                                        relativePath,
+                                        re.sub('\d{3,}',
+                                               match.group(),
+                                               osp.basename(fileNames[0])))
                                 else:
                                     relativeFilePath = osp.join(
-                                            relativePath, re.sub(
-                                                '\d{3,}', '<f>',
-                                                osp.basename(fileNames[0])))
+                                        relativePath,
+                                        re.sub('\d{3,}', '<f>',
+                                               osp.basename(fileNames[0])))
                                 relativeFilePath = relativeFilePath.replace(
-                                        '\\', '/')
+                                    '\\', '/')
                                 self.texturesMapping[node] = relativeFilePath
                             else:
                                 continue
@@ -378,16 +386,16 @@ class BundleMaker(BundleMakerBase):
                                 self.copyfile(textureFilePath, folderPath)
                                 self.copyRSFile(textureFilePath, folderPath)
                                 relativeFilePath = osp.join(
-                                        relativePath,
-                                        osp.basename(textureFilePath))
+                                    relativePath,
+                                    osp.basename(textureFilePath))
                                 self.texturesMapping[node] = relativeFilePath
                             else:
                                 continue
                         self.collectedTextures[
-                                textureFilePath] = relativeFilePath
+                            textureFilePath] = relativeFilePath
                     else:
                         self.texturesMapping[node] = self.collectedTextures[
-                                textureFilePath]
+                            textureFilePath]
                         continue
                 else:
                     util.addExceptionAttr(node)
@@ -423,12 +431,13 @@ class BundleMaker(BundleMakerBase):
                 os.mkdir(proxyPath)
             self.status.setMaximum(nodesLen)
             self.status.setValue(0)
+            self.collectedProxies = {}
             for i, node in enumerate(nodes):
                 newProxyPath = self.collectOneRSProxy(node, i, proxyPath)
                 newProxyPath = os.path.realpath(newProxyPath)
                 if newProxyPath:
                     node.fileName.set(newProxyPath)
-                self.status.setValue(i+1)
+                self.status.setValue(i + 1)
             self.status.setMaximum(0)
         return True
 
@@ -444,6 +453,10 @@ class BundleMaker(BundleMakerBase):
         appropriate locations within the given bundleProxyDir'''
 
         path = node.fileName.get()
+        path = osp.normpath(osp.normcase(path))
+
+        if path in self.collectedProxies:
+            return self.collectedProxies[path]
 
         sequence = util.getSequence(path)
 
@@ -465,7 +478,7 @@ class BundleMaker(BundleMakerBase):
         for candidate in process_candidates:
             try:
                 index = dirname.split(os.sep).index(candidate)
-                if index < rank:   # and candidate in basename.split('_'):
+                if index < rank:  # and candidate in basename.split('_'):
                     process = candidate
                     rank = index
             except ValueError:
@@ -481,7 +494,7 @@ class BundleMaker(BundleMakerBase):
         asset_dir = dirname
 
         if process and rank > 0:
-            asset_name = dirname.split(os.sep)[rank-1]
+            asset_name = dirname.split(os.sep)[rank - 1]
             asset_dir = os.sep.join(dirname.split(os.sep)[:rank])
         rel_dir = osp.relpath(dirname, asset_dir)
 
@@ -500,19 +513,24 @@ class BundleMaker(BundleMakerBase):
                 if not osp.exists(new_texture_dir):
                     iutil.mkdir(new_asset_dir, rel_texture_dir)
                 # find files
-                files = [osp.join(texture_dir, file_)
-                         for file_ in os.listdir(texture_dir)
-                         if osp.isfile(osp.join(texture_dir, file_)) and
-                         not file_.endswith('.link') and
-                         not file_.startswith('.')]
+                files = [
+                    osp.join(texture_dir, file_)
+                    for file_ in os.listdir(texture_dir)
+                    if osp.isfile(osp.join(texture_dir, file_)) and
+                    not file_.endswith('.link') and not file_.startswith('.')
+                ]
                 # copy over
                 for file_ in files:
                     self.copyfile(file_, new_texture_dir)
 
         # copy co-existing textures
-        files = [phile for phile in os.listdir(dirname) if
-                 osp.splitext(phile)[-1] in ['.jpg', '.png', '.tga',
-                 '.tiff', '.tif', '.bmp', '.rsmap', '.jpeg']]
+        files = [
+            phile for phile in os.listdir(dirname)
+            if osp.splitext(phile)[-1] in [
+                '.jpg', '.png', '.tga', '.tiff', '.tif', '.bmp', '.rsmap',
+                '.jpeg'
+            ]
+        ]
 
         # make proxy dir
         new_proxy_dir = osp.join(new_asset_dir, rel_dir)
@@ -533,7 +551,10 @@ class BundleMaker(BundleMakerBase):
         else:
             self.copyfile(path, new_proxy_dir)
 
-        return osp.join(new_proxy_dir, basename)
+        new_path = osp.join(new_proxy_dir, basename)
+        self.collectedProxies[path] = new_path
+
+        return new_path
 
     def collectRedshiftSpritesNMaps(self):
         self.status.setProcess('CollectRedshiftSpritesNMaps')
@@ -584,8 +605,8 @@ class BundleMaker(BundleMakerBase):
                             for phile in os.listdir(osp.dirname(path)):
                                 if re.match(parts[0] + '\.\d+\.' + parts[2],
                                             phile):
-                                    files.append(osp.join(osp.dirname(path),
-                                                          phile))
+                                    files.append(
+                                        osp.join(osp.dirname(path), phile))
                             if not files:
                                 files.append(path)
                         else:
@@ -601,10 +622,10 @@ class BundleMaker(BundleMakerBase):
                     if path:
                         node.tex0.set(osp.join(newPath, osp.basename(path)))
                     else:
-                        node.tex0.set(osp.join(
-                                newPath, osp.basename(files[0])))
+                        node.tex0.set(
+                            osp.join(newPath, osp.basename(files[0])))
 
-                self.status.setValue(i+1)
+                self.status.setValue(i + 1)
 
         self.status.setMaximum(0)
         return True
@@ -652,8 +673,8 @@ class BundleMaker(BundleMakerBase):
             if badRefs:
                 detail = 'Following references can not be collected\r\n'
                 for node in badRefs:
-                    detail += ('\r\n' + node.path + '\r\nReason: ' +
-                               badRefs[node])
+                    detail += (
+                        '\r\n' + node.path + '\r\nReason: ' + badRefs[node])
                 # self.createLog(detail)
                 self.status.error(detail, exc_info=False)
         else:
@@ -712,8 +733,7 @@ class BundleMaker(BundleMakerBase):
                 except Exception as ex:
                     errors[osp.splitext(cacheMCFilePath)[0]] = str(ex)
                 self.cacheMapping[node] = osp.join(
-                        folderPath,
-                        osp.splitext(osp.basename(cacheMCFilePath))[0])
+                    folderPath, osp.splitext(osp.basename(cacheMCFilePath))[0])
                 self.status.setValue(newName)
 
         if errors:
@@ -821,8 +841,8 @@ class BundleMaker(BundleMakerBase):
             if errors:
                 detail = 'Could not copy following references\r\n'
                 for node in errors:
-                    detail += ('\r\n' + node.path + '\r\nReason: ' +
-                               errors[node])
+                    detail += (
+                        '\r\n' + node.path + '\r\nReason: ' + errors[node])
                 self.status.error(detail)
 
         self.status.setMaximum(0)
@@ -863,9 +883,8 @@ class BundleMaker(BundleMakerBase):
         self.status.setValue(0)
         c = 0
         for node in self.texturesMapping:
-            fullPath = osp.join(
-                    self.rootPath,
-                    self.texturesMapping[node]).replace('\\', '/')
+            fullPath = osp.join(self.rootPath,
+                                self.texturesMapping[node]).replace('\\', '/')
             sequence = False
             try:
                 if node.useFrameExtension.get():
@@ -874,7 +893,8 @@ class BundleMaker(BundleMakerBase):
                 if '<f>' in fullPath:
                     fullPath = fullPath.replace('<f>', '12345')
                 node.fileTextureName.set(fullPath)
-                if sequence: node.useFrameExtension.set(1)
+                if sequence:
+                    node.useFrameExtension.set(1)
             except AttributeError:
                 node.filename.set(fullPath)
             except RuntimeError:
@@ -891,9 +911,9 @@ class BundleMaker(BundleMakerBase):
         c = 0
         for node in self.cacheMapping:
             node.cachePath.set(
-                    osp.dirname(self.cacheMapping[node]), type="string")
+                osp.dirname(self.cacheMapping[node]), type="string")
             node.cacheName.set(
-                    osp.basename(self.cacheMapping[node]), type="string")
+                osp.basename(self.cacheMapping[node]), type="string")
             c += 1
             self.status.setValue(c)
         self.status.setMaximum(0)
@@ -907,11 +927,11 @@ class BundleMaker(BundleMakerBase):
     def archive(self):
         self.status.setProcess('Archive')
         archiver = arch.getFormats().values()[0]
-        self.status.setStatus(
-                'Creating Archive %s ...' % (self.rootPath+archiver.ext))
+        self.status.setStatus('Creating Archive %s ...' %
+                              (self.rootPath + archiver.ext))
         try:
-            arch.make_archive(self.rootPath, archiver.name,
-                              progressBar=self.progressHandler)
+            arch.make_archive(
+                self.rootPath, archiver.name, progressBar=self.progressHandler)
         except arch.ArchivingError as e:
             detail = "\nArchiving Error: " + str(e)
             self.status.error(detail, exc_info=True)
@@ -923,8 +943,8 @@ class BundleMaker(BundleMakerBase):
         self.status.setStatus('Exporting scene ...')
         self.createScriptNode()
         scenePath = osp.join(self.rootPath, 'scenes', str(self.nameBox.text()))
-        pc.exportAll(scenePath, type=cmds.file(q=True, type=True)[0],
-                     f=True, pr=True)
+        pc.exportAll(
+            scenePath, type=cmds.file(q=True, type=True)[0], f=True, pr=True)
         self.status.setStatus('Scene bundled successfully ...')
 
     def saveSceneAs(self, name=None):
@@ -936,8 +956,11 @@ class BundleMaker(BundleMakerBase):
         self.createScriptNode()
         scenePath = osp.join(self.rootPath, 'scenes', name)
         cmds.file(rename=scenePath)
-        cmds.file(f=True, save=True, options="v=0;",
-                  type=cmds.file(q=True, type=True)[0])
+        cmds.file(
+            f=True,
+            save=True,
+            options="v=0;",
+            type=cmds.file(q=True, type=True)[0])
         self.status.setStatus('Scene Saved to location: %s' % scenePath)
 
     @_restoreAttribute('onError')
@@ -951,12 +974,12 @@ class BundleMaker(BundleMakerBase):
         self.status.setStatus('configuring deadline submitter ...')
         self.onError = OnError.LOG_RAISE
         try:
-            subm = deadline.DeadlineBundleSubmitter(
-                    name, project, episode, sequence, shot)
+            subm = deadline.DeadlineBundleSubmitter(name, project, episode,
+                                                    sequence, shot)
         except Exception as ex:
             import traceback
             traceback.print_exc()
-            detail = 'Deadline submission error: '+str(ex)
+            detail = 'Deadline submission error: ' + str(ex)
             # self.createLog(detail)
             self.onError |= OnError.RAISE
             self.status.error(detail)
@@ -984,8 +1007,8 @@ class BundleMaker(BundleMakerBase):
         self.status.setValue(0)
         for pi, projectPath in enumerate(subm.project_paths):
             try:
-                self.status.setStatus('copying %s to directory %s ...' % (
-                    self.rootPath, projectPath))
+                self.status.setStatus('copying %s to directory %s ...' %
+                                      (self.rootPath, projectPath))
                 shutil.copytree(cmds.workspace(q=1, rd=1), projectPath)
                 self.status.setValue(pi)
             except Exception as e:
@@ -1010,8 +1033,8 @@ class BundleMaker(BundleMakerBase):
         self.status.setMaximum(len(jobs))
         self.status.setValue(0)
         for ji, job in enumerate(jobs):
-            self.status.setStatus(
-                    'submitting job %d of %d' % (ji+1, len(jobs)))
+            self.status.setStatus('submitting job %d of %d' % (ji + 1,
+                                                               len(jobs)))
             self.status.setValue(ji)
             try:
                 job.submit()
@@ -1035,7 +1058,7 @@ class BundleMaker(BundleMakerBase):
             shutil.rmtree(self.rootPath)
         except Exception as e:
             detail = "\r\nError in Removing Bundle: " + str(e)
-            detail = self.currentFileName() + '\r\n'*2 + detail
+            detail = self.currentFileName() + '\r\n' * 2 + detail
             self.status.error(detail, exc_info=True)
             return False
         return True
