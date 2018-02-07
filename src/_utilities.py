@@ -13,7 +13,7 @@ import re
 import iutil
 
 mapFiles = '''#ICE_BundleScript
-#version==0.3
+#version==0.4
 import pymel.core as pc
 import maya.cmds as cmds
 import os.path as osp
@@ -63,6 +63,8 @@ for node in pc.ls(type=["RedshiftSprite", "RedshiftNormalMap"]):
             '/'))
 
 for node in pc.ls(type=["RedshiftProxyMesh"]):
+    if pc.attributeQuery("excp", n=node, exists=True):
+        continue
     path = osp.normpath(node.fileName.get())
     _, relpath = path.split(os.sep + 'proxies' + os.sep)
     node.filename.set(osp.join(rootPath, 'proxies', relpath))
