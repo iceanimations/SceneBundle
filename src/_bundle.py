@@ -246,6 +246,8 @@ class BundleMaker(BundleMakerBase):
         return pc.ls(type='file')
 
     def getUDIMFiles(self, path):
+        if not path:
+            return []
         dirname = osp.dirname(path)
         if not osp.exists(dirname):
             return []
@@ -592,10 +594,12 @@ class BundleMaker(BundleMakerBase):
             self.status.setValue(0)
 
             for i, node in enumerate(nodes):
+                path = node.tex0.get()
+                if not path:
+                    continue
                 newPath = osp.join(texturePath, str(i))
                 if not osp.exists(newPath):
                     os.mkdir(newPath)
-                path = node.tex0.get()
 
                 files = []
                 if path and osp.exists(path) and osp.isfile(path):
