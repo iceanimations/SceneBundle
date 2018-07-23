@@ -228,13 +228,14 @@ class BundleMakerBase(object):
             self, progressHandler=None, path=None, filename=None, name=None,
             deadline=True, doArchive=False, delete=False, keepReferences=False,
             project=None, zdepth=None, sequence=None, episode=None, shot=None,
-            open=True):
+            open=True, keepProxies=False):
         ''':type progressHandler: BundleProgressHandler'''
         self.textureExceptions = []
         self.deadline = deadline
         self.doArchive = doArchive
         self.delete = delete
         self.keepReferences = keepReferences
+        self.keepProxies = keepProxies
         self.zdepth = zdepth
         self.path = path
         self.name = name
@@ -256,6 +257,14 @@ class BundleMakerBase(object):
     @keepReferences.setter
     def keepReferences(self, val):
         self._keepReferences = val
+        
+    @property
+    def keepProxies(self):
+        return self._keepProxies
+    
+    @keepProxies.setter
+    def keepProxies(self, val):
+        self._keepProxies = val
 
     @property
     def zdepth(self):

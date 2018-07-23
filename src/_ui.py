@@ -145,6 +145,7 @@ class BundleMakerUIProcessAdapter(core.QObject, BundleMakerProcess):
                  doArchive=False,
                  delete=False,
                  keepReferences=False,
+                 keepProxies=False,
                  project=None,
                  zdepth=None,
                  sequence=None,
@@ -162,6 +163,7 @@ class BundleMakerUIProcessAdapter(core.QObject, BundleMakerProcess):
             doArchive=doArchive,
             delete=delete,
             keepReferences=keepReferences,
+            keepProxies=keepProxies,
             project=project,
             zdepth=zdepth,
             sequence=sequence,
@@ -888,6 +890,7 @@ class BundleMakerUI(_BundleMakerForm, _BundleMakerBase):
         self.bundler.archive = self.makeZipButton.isChecked()
         self.bundler.delete = not self.keepBundleButton.isChecked()
         self.bundler.keepReferences = self.keepReferencesButton.isChecked()
+        self.bundler.keepProxies = self.keepProxiesButton.isChecked()
         self.bundler.textureExceptions = self.textureExceptions
         self.openLogFile()
         self.bundler.createBundle(

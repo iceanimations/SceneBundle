@@ -411,36 +411,37 @@ class BundleMaker(BundleMakerBase):
         return True
 
     def collectRedshiftProxies(self):
-        try:
-            nodes = pc.ls(type='RedshiftProxyMesh')
-        except AttributeError:
-            return True
-        if nodes:
-            badPaths = []
-            for node in nodes:
-                path = node.fileName.get()
-                if not util.getSequence(path) and not osp.exists(path):
-                    badPaths.append(path)
-            if badPaths:
-                detail = ('Could not find following proxy files\r\n' +
-                          '\r\n'.join(badPaths))
-                self.status.error(detail)
-            self.status.setProcess('CollectRedshiftProxies')
-            self.status.setStatus('Collecting Redshift Proxies ...')
-            nodesLen = len(nodes)
-            proxyPath = osp.join(self.rootPath, 'proxies')
-            if not osp.exists(proxyPath):
-                os.mkdir(proxyPath)
-            self.status.setMaximum(nodesLen)
-            self.status.setValue(0)
-            self.collectedProxies = {}
-            for i, node in enumerate(nodes):
-                newProxyPath = self.collectOneRSProxy(node, i, proxyPath)
-                newProxyPath = os.path.realpath(newProxyPath)
-                if newProxyPath:
-                    node.fileName.set(newProxyPath)
-                self.status.setValue(i + 1)
-            self.status.setMaximum(0)
+        if not self.keepProxies:
+            try:
+                nodes = pc.ls(type='RedshiftProxyMesh')
+            except AttributeError:
+                return True
+            if nodes:
+                badPaths = []
+                for node in nodes:
+                    path = node.fileName.get()
+                    if not util.getSequence(path) and not osp.exists(path):
+                        badPaths.append(path)
+                if badPaths:
+                    detail = ('Could not find following proxy files\r\n' +
+                              '\r\n'.join(badPaths))
+                    self.status.error(detail)
+                self.status.setProcess('CollectRedshiftProxies')
+                self.status.setStatus('Collecting Redshift Proxies ...')
+                nodesLen = len(nodes)
+                proxyPath = osp.join(self.rootPath, 'proxies')
+                if not osp.exists(proxyPath):
+                    os.mkdir(proxyPath)
+                self.status.setMaximum(nodesLen)
+                self.status.setValue(0)
+                self.collectedProxies = {}
+                for i, node in enumerate(nodes):
+                    newProxyPath = self.collectOneRSProxy(node, i, proxyPath)
+                    newProxyPath = os.path.realpath(newProxyPath)
+                    if newProxyPath:
+                        node.fileName.set(newProxyPath)
+                    self.status.setValue(i + 1)
+                self.status.setMaximum(0)
         return True
 
     def isTextureException(self, path):

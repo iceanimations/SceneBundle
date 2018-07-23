@@ -181,6 +181,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="keepProxiesButton">
+        <property name="text">
+         <string>Keep Proxies</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="zdepthButton">
         <property name="toolTip">
          <string>Turns zdepth on and all other layers off</string>
