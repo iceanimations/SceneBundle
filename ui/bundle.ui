@@ -182,6 +182,9 @@
       </item>
       <item>
        <widget class="QCheckBox" name="keepProxiesButton">
+        <property name="toolTip">
+         <string>Don't collect the proxies if checked</string>
+        </property>
         <property name="text">
          <string>Keep Proxies</string>
         </property>
