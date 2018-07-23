@@ -35,7 +35,7 @@ illegal_camera_names: []
 
 #default path and name settings
 #variable names can be bundle_base, project, episode, sequence, shot, name
-output_base: '\\renders2\Storage\Projects\external'
+output_base: '\\renders4\Storage\Projects\external'
 bundle_loc: '%(bundle_base)s\%(project)s\%(episode)s\%(sequence)s\%(shot)s'
 output_loc: '%(output_base)s\%(project)s\02_production\%(episode)s\%(sequence)s\%(shot)s'
 job_name: '%(project)s_%(episode)s_%(sequence)s_%(shot)s - %(name)s'
