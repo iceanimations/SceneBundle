@@ -58,7 +58,7 @@ if not config:
         }
     }
     config['pool_selection'] = 'random_choice'
-    config['secondaryPools'] = config['pools'].copy()
+    config['secondaryPool'] = 'none'
 
     config['overrides'] = [
         {  # first override
@@ -174,7 +174,6 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
                     self.conf[key] = value
 
         self.validatePools('pools')
-        self.validatePools('secondaryPools')
 
         if sync:
             self.syncWithConf()
@@ -219,8 +218,11 @@ class DeadlineBundleSubmitter(dlm.DeadlineMayaSubmitter):
             self.submitSceneFile = submitSceneFile
 
         self.pool = self.getPreferredPool('pools')
-        self.secondaryPool = self.getPreferredPool('secondaryPools')
         self.bundle_base = self.getPreferredBase()
+
+        secondaryPool = self.conf.get('secondaryPool')
+        if secondaryPool is not None:
+            self.secondaryPool = secondaryPool
 
         self.vardict = {
             'output_base': self.conf.get("output_base"),
