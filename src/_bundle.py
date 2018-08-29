@@ -419,7 +419,10 @@ class BundleMaker(BundleMakerBase):
             if nodes:
                 badPaths = []
                 for node in nodes:
-                    path = node.fileName.get()
+                    try:
+                        path = node.computerFileNamePattern.get()
+                    except AttributeError:
+                        path = node.fileName.get()
                     if not util.getSequence(path) and not osp.exists(path):
                         badPaths.append(path)
                 if badPaths:
@@ -455,7 +458,10 @@ class BundleMaker(BundleMakerBase):
         '''Given a proxy node copy the proxy pointed to and its textures to
         appropriate locations within the given bundleProxyDir'''
 
-        path = node.fileName.get()
+        try:
+            path = node.computedFileNamePattern.get()
+        except AttributeError:
+            path = node.fileName.get()
 
         _path = osp.normcase(osp.normpath(path))
         if _path in self.collectedProxies:
