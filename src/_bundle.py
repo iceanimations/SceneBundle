@@ -903,7 +903,9 @@ class BundleMaker(BundleMakerBase):
                     sequence = True
                 if '<f>' in fullPath:
                     fullPath = fullPath.replace('<f>', '12345')
+                colorSpace = node.colorSpace.get()
                 node.fileTextureName.set(fullPath)
+                node.colorSpace.set(colorSpace)
                 if sequence:
                     node.useFrameExtension.set(1)
             except AttributeError:
