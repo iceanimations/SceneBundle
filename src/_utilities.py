@@ -54,8 +54,10 @@ def getLast3(path):
 for node in pc.ls(type="file"):
     if pc.attributeQuery("excp", n=node, exists=True):
         continue
+    cs = node.colorSpace.get()
     node.fileTextureName.set(osp.join(rootPath, getLast3(
             node.fileTextureName.get() )).replace('\\\\', '/'))
+    node.colorSpace.set(cs)
 
 for node in pc.ls(type=["RedshiftSprite", "RedshiftNormalMap"]):
     if pc.attributeQuery("excp", n=node, exists=True):
