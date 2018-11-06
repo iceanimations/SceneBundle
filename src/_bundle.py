@@ -440,6 +440,7 @@ class BundleMaker(BundleMakerBase):
                 self.collectedProxies = {}
                 for i, node in enumerate(nodes):
                     newProxyPath = self.collectOneRSProxy(node, i, proxyPath)
+                    if not newProxyPath: continue
                     newProxyPath = os.path.realpath(newProxyPath)
                     if newProxyPath:
                         node.fileName.set(newProxyPath)
@@ -464,6 +465,8 @@ class BundleMaker(BundleMakerBase):
             path = node.fileName.get()
 
         _path = osp.normcase(osp.normpath(path))
+        if _path.startswith('\\\\') or _path.startswith('//'):
+            return
         if _path in self.collectedProxies:
             return self.collectedProxies[_path]
 
