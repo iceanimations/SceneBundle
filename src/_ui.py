@@ -1496,6 +1496,7 @@ def switchBox(box1, box2):
 
 
 def getPathTokens(p):
+    p, _ = os.path.splitext(p)
     tokens = re.split(r'[\\/]', p)
     tokens.extend(re.split(r'[\\/_]', p))
     return list(set(filter(bool, tokens)))
@@ -1561,6 +1562,7 @@ def setComboBoxText(box, value, case_sensitive=True, zero_padding=True):
 
 def setBoxFromPathTokens(box, path):
     tokens = getPathTokens(path)
+    print(tokens)
     for tok in tokens:
         res = setComboBoxText(
             box, tok, case_sensitive=False, zero_padding=False)
