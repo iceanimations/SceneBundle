@@ -370,7 +370,7 @@ class BundleMaker(BundleMakerBase):
                                 if match:
                                     relativeFilePath = osp.join(
                                         relativePath,
-                                        re.sub('\d{3,}',
+                                        re.sub('1\d{3}',
                                                match.group(),
                                                osp.basename(fileNames[0])))
                                 else:
