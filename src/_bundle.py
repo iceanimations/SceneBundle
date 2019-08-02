@@ -281,7 +281,8 @@ class BundleMaker(BundleMakerBase):
         goodFiles = []
         fileNames = os.listdir(dirname)
         for fName in fileNames:
-            if re.match(pattern, fName):
+            if re.match(pattern, fName,
+                        re.I if os.name == 'nt' else 0):
                 goodFiles.append(osp.join(dirname, fName))
         return goodFiles
 
@@ -618,7 +619,8 @@ class BundleMaker(BundleMakerBase):
                         if len(parts) == 3:
                             for phile in os.listdir(osp.dirname(path)):
                                 if re.match(parts[0] + '\.\d+\.' + parts[2],
-                                            phile):
+                                            phile,
+                                            re.I if os.name == 'nt' else 0):
                                     files.append(
                                         osp.join(osp.dirname(path), phile))
                             if not files:
