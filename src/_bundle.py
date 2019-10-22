@@ -4,6 +4,7 @@ import os
 import os.path as osp
 import re
 import shutil
+import glob
 
 # maya libs
 import pymel.core as pc
@@ -907,7 +908,11 @@ class BundleMaker(BundleMakerBase):
                     node.useFrameExtension.set(0)
                     sequence = True
                 if '<f>' in fullPath:
-                    fullPath = fullPath.replace('<f>', '12345')
+                    globs = glob.glob(fullPath.replace('<f>', '*'))
+                    if globs:
+                        fullPath = globs[0]
+                    else:
+                        fullPath = fullPath.replace('<f>', '12345')
                 colorSpace = node.colorSpace.get()
                 node.fileTextureName.set(fullPath)
                 node.colorSpace.set(colorSpace)
